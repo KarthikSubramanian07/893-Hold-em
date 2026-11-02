@@ -1,10 +1,12 @@
 <div align="center">
 
-<img src="docs/media/night-table-showdown.png" alt="The night table at the showdown: a lantern over a black lacquer table, masked House players across, gold leaf over the winning cards" width="100%" />
+<img src="docs/media/hero-showdown.jpg" alt="A showdown at Bar 893: the Kitsune and Tengu masks across a black lacquer table, gold leaf over the winning cards, red eye-lines to the two seats the House caught, and the Master saying: Paid. But Karthik and Mio got seen. The street remembers faces." width="100%" />
 
 # 893 Hold'em
 
 **A co-op poker heist for 2 to 6. Beat the House without saying a word.**
+
+**[Play at holdem893.pages.dev →](https://holdem893.pages.dev)**
 
 One link, no accounts. Open a table, send the link, and sit down at Bar 893, up a
 staircase too narrow for two in Shinjuku's Golden Gai. It's 3 a.m. It's raining.
@@ -44,6 +46,9 @@ spoilers live in [`docs/STORY.md`](docs/STORY.md). The rules and the art directi
 <tr>
 <td><img src="docs/media/landing-desktop.jpg" alt="The landing page: a matchbook-paper hero with 893 Hold'em in ink and vermilion" /></td>
 <td><img src="docs/media/receipt-desktop.jpg" alt="The end-of-night receipt with a RAID stamp" /></td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/media/matchbook.jpg" alt="The matchbook: a vermilion matchbook opened to the hanko stamps a crew has earned" /></td>
 </tr>
 </table>
 
