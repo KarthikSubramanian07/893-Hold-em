@@ -76,11 +76,17 @@ export function RulesContent() {
             once. That flip is the only conversation you get.
           </li>
           <li>
-            <b>The showdown.</b> The crew's best active hand faces the House's best.
+            <b>The showdown.</b> Two counts, settled at once.
             <span className="rules__outcomes">
-              <span>Crew wins: take rises by every active stake. Everyone still in gets paid, even with trash.</span>
-              <span>House wins: heat rises by every active stake.</span>
-              <span>Tie: nothing happens.</span>
+              <span>
+                Take: the crew's best active hand faces the House's best. If the crew wins, take rises by every active stake.
+                Everyone still in gets paid, even with trash.
+              </span>
+              <span>
+                Heat: each mask watches two seats. Anyone still in whose own hand loses to the mask watching them draws heat
+                equal to their stake, even when the crew wins. You were seen.
+              </span>
+              <span>Ties pay nothing and burn nothing, unless the Serpent is out.</span>
               <span>Everybody folded: heat rises by one. Walking away still gets noticed.</span>
             </span>
           </li>
@@ -114,7 +120,7 @@ export function RulesContent() {
             <tr>
               <th scope="col">Table</th>
               <th scope="col">Rules from</th>
-              <th scope="col">Heat limit</th>
+              <th scope="col">Clean odds</th>
               <th scope="col">Deck</th>
             </tr>
           </thead>
@@ -125,13 +131,13 @@ export function RulesContent() {
                   <span className="rules__tk">{t.kanji}</span> {t.name}
                 </th>
                 <td>Hand {t.ruleFrom}</td>
-                <td>{t.heatLimit}</td>
+                <td>{t.odds}</td>
                 <td>{t.deck.length} cards</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <p className="rules__fine">The take target scales with the crew: per-seat target times the number of seats.</p>
+        <p className="rules__fine">The heat limit and the take target both scale with the crew, since every seat still in can draw heat. The lobby shows the numbers for your table.</p>
       </section>
 
       <section>
