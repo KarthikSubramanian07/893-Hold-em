@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>893 Hold'em: story lab</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --washi: #efe8da;
+        --washi-2: #e6dcc8;
+        --sumi: #1b1a17;
+        --sumi-2: #2a2824;
+        --shu: #d2412a;
+        --kin: #c9a45c;
+        --ai: #2d4a6b;
+        --neon: #ff4f6d;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        background: #100f0d;
+        color: var(--washi);
+        font: 13px/1.5 'JetBrains Mono Variable', ui-monospace, monospace;
+      }
+      .lab { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+      .lab__bar {
+        display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;
+        padding: 0.9rem 1.5rem; border-bottom: 1px solid rgb(239 232 218 / 0.08);
+        background: rgb(16 15 13 / 0.9); position: sticky; top: 0; z-index: 5;
+      }
+      .lab__title { font: 600 0.72rem/1 inherit; letter-spacing: 0.3em; text-transform: uppercase; color: rgb(239 232 218 / 0.6); }
+      .lab__title b { color: var(--shu); font-weight: 600; }
+      .lab__nav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+      .lab__nav button, .lab__btn {
+        font: 500 0.7rem/1 inherit; letter-spacing: 0.14em; text-transform: uppercase;
+        color: rgb(239 232 218 / 0.66); background: none; border: 1px solid transparent;
+        border-radius: 2px; padding: 0.55rem 0.7rem; cursor: pointer;
+      }
+      .lab__nav button[aria-pressed='true'] { color: var(--washi); border-color: rgb(239 232 218 / 0.22); }
+      .lab__nav button span { font-family: 'Shippori Mincho B1', serif; font-size: 0.95rem; margin-right: 0.35rem; letter-spacing: 0; color: var(--shu); }
+      .lab__btn { border-color: rgb(239 232 218 / 0.18); }
+      .lab__btn:hover, .lab__nav button:hover { color: var(--washi); border-color: var(--shu); }
+      .lab__main { position: relative; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./lab.tsx"></script>
+  </body>
+</html>
