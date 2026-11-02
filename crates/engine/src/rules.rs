@@ -114,11 +114,11 @@ pub fn house_hands(crew: usize, rule: Option<RuleId>) -> usize {
 /// getaways for crews that play well.
 pub const BALANCE: [[(u32, u32); 5]; 3] = [
     // Shitamachi
-    [(7, 6), (11, 9), (14, 12), (17, 15), (21, 18)],
+    [(7, 8), (11, 13), (14, 20), (18, 24), (21, 27)],
     // Kabukicho
-    [(6, 7), (9, 10), (12, 14), (15, 17), (18, 21)],
+    [(6, 9), (9, 14), (12, 21), (15, 27), (18, 27)],
     // Oyabun
-    [(5, 8), (8, 12), (10, 16), (14, 20), (17, 24)],
+    [(5, 13), (8, 20), (10, 26), (14, 30), (17, 38)],
 ];
 
 fn balance(d: Difficulty, crew: usize) -> (u32, u32) {
