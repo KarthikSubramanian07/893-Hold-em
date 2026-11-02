@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aspectBlend, boardSpot, cameraFrame, heroCardPixels, lanternHeight, maskLayout, seatLayout, TABLE } from './layout';
+import { aspectBlend, boardSpot, cameraFrame, heroCardPixels, lanternHeight, MASK_FACE, maskLayout, projectNdc, seatAnchor, seatLayout, stageLayout, TABLE, type Vec3 } from './layout';
 
 describe('seatLayout', () => {
   it('puts the viewer at the front centre', () => {
@@ -112,5 +112,94 @@ describe('heroCardPixels', () => {
 describe('lanternHeight', () => {
   it('hangs higher on tall screens so it clears the masks', () => {
     expect(lanternHeight(390 / 844)).toBeGreaterThan(lanternHeight(1440 / 900));
+  });
+});
+
+describe('projectNdc', () => {
+  it('puts the camera target at the centre of the screen', () => {
+    for (const a of [390 / 844, 1440 / 900]) {
+      const f = cameraFrame(a);
+      const p = projectNdc(f.target, a);
+      expect(p.x).toBeCloseTo(0);
+      expect(p.y).toBeCloseTo(0);
+      expect(p.depth).toBeGreaterThan(0);
+    }
+  });
+
+  it('keeps left on the left and up on top', () => {
+    const a = 1.6;
+    expect(projectNdc({ x: -1, y: 0, z: 0 }, a).x).toBeLessThan(0);
+    expect(projectNdc({ x: 0, y: 2, z: -1 }, a).y).toBeGreaterThan(projectNdc({ x: 0, y: 0, z: -1 }, a).y);
+  });
+});
+
+/** Screen-space box (in NDC) of a flat rect standing at `c`. */
+function box(c: Vec3, hw: number, top: number, bottom: number, aspect: number) {
+  const pts = [
+    [-hw, top],
+    [hw, top],
+    [-hw, -bottom],
+    [hw, -bottom],
+  ].map(([dx, dy]) => projectNdc({ x: c.x + dx!, y: c.y + dy!, z: c.z }, aspect));
+  return { x0: Math.min(...pts.map((p) => p.x)), x1: Math.max(...pts.map((p) => p.x)), y0: Math.min(...pts.map((p) => p.y)), y1: Math.max(...pts.map((p) => p.y)) };
+}
+const overlap = (a: ReturnType<typeof box>, b: ReturnType<typeof box>) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
+describe('stageLayout', () => {
+  const ASPECTS = [1440 / 900, 390 / 844, 1280 / 800, 1024 / 768];
+  it('never hangs the lantern in front of a face, at any mask count', () => {
+    for (const a of ASPECTS) {
+      for (let n = 1; n <= 4; n++) {
+        const st = stageLayout(n, a);
+        // The lantern sways a little: pad its box.
+        const lantern = box(st.lantern, 0.36, 0.36, 0.4, a);
+        for (const m of st.masks) {
+          const face = box(m, MASK_FACE.hw * st.scale, MASK_FACE.hh * st.scale, MASK_FACE.hh * st.scale, a);
+          expect(overlap(lantern, face), `lantern vs face, n=${n}, aspect=${a.toFixed(2)}`).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('never stands the rule card in front of a face', () => {
+    for (const a of ASPECTS) {
+      for (let n = 1; n <= 4; n++) {
+        const st = stageLayout(n, a);
+        const rule = box(st.rule, 0.21, 0.37, 0.37, a);
+        for (const m of st.masks) {
+          const face = box(m, MASK_FACE.hw * st.scale, MASK_FACE.hh * st.scale, MASK_FACE.hh * st.scale * 0.85, a);
+          expect(overlap(rule, face), `rule vs face, n=${n}, aspect=${a.toFixed(2)}`).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('keeps every face on screen', () => {
+    for (const a of ASPECTS) {
+      for (let n = 1; n <= 4; n++) {
+        const st = stageLayout(n, a);
+        for (const m of st.masks) {
+          const face = box(m, MASK_FACE.hw * st.scale, MASK_FACE.hh * st.scale, MASK_FACE.hh * st.scale, a);
+          expect(face.x0).toBeGreaterThan(-1);
+          expect(face.x1).toBeLessThan(1);
+          expect(face.y1).toBeLessThan(1);
+        }
+      }
+    }
+  });
+
+  it('moves a lone mask off the lantern line', () => {
+    const st = stageLayout(1, 1.6);
+    expect(Math.sign(st.masks[0]!.x)).not.toBe(Math.sign(st.lantern.x));
+  });
+});
+
+describe('seatAnchor', () => {
+  it("points at a seat's name plate, and at your seal for you", () => {
+    const [you, other] = seatLayout(2, 1.6);
+    const mine = seatAnchor(you!, true);
+    expect(mine.x).toBeLessThan(0);
+    const theirs = seatAnchor(other!, false);
+    expect(Math.hypot(theirs.x, theirs.z)).toBeGreaterThan(Math.hypot(other!.x, other!.z));
   });
 });
