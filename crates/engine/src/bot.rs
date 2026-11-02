@@ -713,14 +713,18 @@ mod tests {
 
     #[test]
     fn trash_folds_when_heat_is_precious() {
+        // Last hand, the take is already in: one more point of heat is the only
+        // way to lose the night. Trash has nothing to gain by staying.
         let (mut g, _) = heads_up("7c 2d", 0);
+        g.hand = crate::rules::HANDS_PER_NIGHT;
+        g.take = g.target;
         g.heat = g.heat_limit - 1;
         g.street = 3;
         let v = view_for(&g, Some("s1"), 0);
         let r = read(&v, "s1", CALM, &mut Rng::seeded(4)).unwrap();
         assert!(
             r.fold > r.stay,
-            "one heat from a raid, trash should fold: {r:?}"
+            "target met and one heat from a raid, trash should fold: {r:?}"
         );
     }
 
