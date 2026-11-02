@@ -1,7 +1,8 @@
 name: CI
 
-# Type-check, lint, test, and build every push and pull request. No secrets
-# needed, so forks get the same checks.
+# Type-check, lint, test, and build every push and pull request. The rooms
+# Worker and the browser both import the Rust engine as WebAssembly, so the
+# wasm package is built first. No secrets needed, so forks get the same checks.
 on:
   push:
     branches: [main]
@@ -16,11 +17,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install wasm-pack
+        run: curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run build:wasm
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test -- --passWithNoTests
