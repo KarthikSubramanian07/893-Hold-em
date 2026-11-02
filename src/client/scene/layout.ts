@@ -259,6 +259,17 @@ export function cameraFrame(aspect: number): CameraFrame {
 }
 
 /**
+ * How much of the screen's bottom the HUD occupies, given the top edge of its
+ * bottom band (in CSS pixels from the top) and the canvas height. Never less
+ * than the 150px the desktop dock needs, never more than half the screen.
+ */
+export function bottomCalm(hudTop: number | null, height: number): number {
+  const floor = 150;
+  if (hudTop === null || !Number.isFinite(hudTop) || hudTop >= height) return floor;
+  return clamp(Math.round(height - hudTop + 12), floor, Math.round(height * 0.5));
+}
+
+/**
  * Where your own two cards hang in front of the camera, in pixels. They sit
  * above the bottom HUD band and scale with the shorter screen side.
  */

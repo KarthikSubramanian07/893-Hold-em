@@ -2170,3 +2170,34 @@
     right: 0.75rem;
   }
 }
+
+/* ---- Touch ------------------------------------------------------------- */
+
+/* On touch screens every control gets at least a 44px target (Apple's
+   minimum), without changing how anything looks with a mouse. */
+@media (pointer: coarse) {
+  .icon-btn,
+  .tray__btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* The ✕ beside a crew member keeps its size on paper; its target grows
+     into the row's padding without moving anything. */
+  .crew__kick {
+    width: 44px;
+    height: 44px;
+    margin: -8px;
+  }
+
+  .rule__chip {
+    height: 44px;
+  }
+
+  /* The lobby scrolls inside its panel on short phones; fade the bottom
+     edge so it reads as more paper below, not a cut. */
+  .hud__main:has(> .lobby) {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  }
+}

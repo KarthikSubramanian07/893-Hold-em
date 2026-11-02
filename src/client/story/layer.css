@@ -51,3 +51,18 @@
 .hidden-card[data-open] {
   translate: -50% min(-12vh, calc(-1 * (100vh - 26rem) / 2));
 }
+
+/* A stamp slip and a subtitle can arrive together at the showdown. On wide
+   screens the subtitle keeps to the middle, clear of the slip's column; in
+   between, the slip rides over the top bar (it lets taps through). */
+@media (min-width: 761px) and (max-width: 1099px) {
+  .stamp-toast.stamp-toast--street {
+    top: max(0.75rem, env(safe-area-inset-top));
+  }
+}
+
+@media (min-width: 1100px) {
+  .hud > .hud__subs--float {
+    padding-inline: 21.5rem;
+  }
+}

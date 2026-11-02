@@ -2,10 +2,10 @@
 // on any screen, above the HUD at the bottom.
 
 import { useFrame, useThree } from '@react-three/fiber';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type * as THREE from 'three';
 import type { Slot } from '../../../engine/types';
-import { cameraFrame, CARD, heroCardPixels } from '../layout';
+import { bottomCalm, cameraFrame, CARD, heroCardPixels } from '../layout';
 import { Card } from './Card';
 
 const DIST = 1.4;
@@ -17,7 +17,8 @@ export function HeroCards({ cards, glow, folded }: { cards: Slot[]; glow: boolea
   const fov = cameraFrame(aspect).fov;
   const halfH = DIST * Math.tan((fov * Math.PI) / 360);
   const perPx = (2 * halfH) / size.height;
-  const px = heroCardPixels(size.width, size.height);
+  const calm = useHudBottom(size.height);
+  const px = heroCardPixels(size.width, size.height, calm);
   const scale = (px.cardHeight * perPx) / CARD.h;
   const baseY = (px.centreY - size.height / 2) * perPx;
   const dropY = folded ? -px.cardHeight * 0.35 * perPx : 0;
@@ -51,4 +52,31 @@ export function HeroCards({ cards, glow, folded }: { cards: Slot[]; glow: boolea
       })}
     </group>
   );
+}
+
+/**
+ * Track the top of the HUD's bottom band (the call dock or the showdown
+ * panel), so your cards sit above it on every screen. On a phone the dock is
+ * far taller than on a desktop, and the cards would otherwise hide behind it.
+ */
+function useHudBottom(height: number): number {
+  const [top, setTop] = useState<number | null>(null);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const el = document.querySelector('.hud__bottom');
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      setTop(r.height > 0 ? r.top : null);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      removeEventListener('resize', measure);
+    };
+  }, []);
+  return bottomCalm(top, height);
 }
