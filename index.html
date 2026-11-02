@@ -3,17 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>893 Hold'em: a co-op poker heist for 2 to 6</title>
-    <meta name="description" content="A co-op poker heist for 2 to 6. Beat the House without saying a word. One link, no accounts, free in your browser." />
+    <title>893 Hold'em: a free co-op poker game for 2 to 6 players</title>
+    <meta name="description" content="A free co-op poker game for 2 to 6 players in your browser. Team up against a masked House and talk only through your calls. One link, no accounts." />
     <link rel="canonical" href="https://holdem893.pages.dev/" />
     <meta name="theme-color" content="#1b1a17" />
     <meta name="color-scheme" content="light" />
     <meta name="author" content="Karthik Subramanian" />
-    <meta name="keywords" content="co-op poker, cooperative card game, Texas Hold'em, browser game, party game, multiplayer, no accounts, yakuza" />
+    <meta name="keywords" content="co-op poker, cooperative poker game, co-op card game, Texas Hold'em with friends, free browser game, multiplayer poker, party game, no accounts" />
 
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="alternate" type="text/markdown" href="/index.md" />
+    <link rel="help" href="/llms.txt" />
+    <script src="/boot.js"></script>
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="893 Hold'em" />
@@ -50,7 +53,14 @@
         "inLanguage": "en",
         "isAccessibleForFree": true,
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-        "author": { "@type": "Person", "name": "Karthik Subramanian" },
+        "keywords": "893 Hold'em, co-op poker, cooperative poker game, co-op card game, Texas Hold'em with friends, free browser game, multiplayer poker",
+        "author": {
+          "@type": "Person",
+          "name": "Karthik Subramanian",
+          "description": "Independent developer who designed and built 893 Hold'em, a free open-source co-op poker game.",
+          "url": "https://github.com/KarthikSubramanian07",
+          "sameAs": ["https://github.com/KarthikSubramanian07"]
+        },
         "license": "https://opensource.org/licenses/MIT",
         "codeRepository": "https://github.com/KarthikSubramanian07/893-Hold-em"
       }
@@ -70,13 +80,21 @@
         animation: cold-veil 0.6s ease 3s forwards;
       }
       @keyframes cold-veil { to { opacity: 0; } }
+      /* The front page as plain text, for crawlers and readers without
+         JavaScript. With JavaScript (boot.js), the app takes its place. */
+      .js .prerender { display: none; }
+      .prerender { max-width: 40rem; margin: 0 auto; padding: 3rem 1.5rem 4rem; color: #1b1a17; font: 18px/1.65 "Iowan Old Style", Palatino, "Hiragino Mincho ProN", Georgia, serif; }
+      .prerender h1 { font-size: clamp(2rem, 6vw, 3rem); line-height: 1.1; margin: 0 0 1.25rem; }
+      .prerender h2 { font-size: 1.35rem; margin: 2.2rem 0 0.6rem; }
+      .prerender a { color: inherit; text-decoration-color: #d2412a; text-underline-offset: 3px; }
     </style>
   </head>
   <body>
+    <!-- site:home -->
     <div id="root"></div>
     <noscript>
-      <p style="font: 18px/1.5 Georgia, serif; max-width: 32rem; margin: 20vh auto; padding: 0 1.5rem; color: #1b1a17">
-        893 Hold'em is a co-op poker heist for 2 to 6 players. The bar needs JavaScript to deal the cards.
+      <p style="font: 16px/1.5 Georgia, serif; max-width: 40rem; margin: 0 auto 3rem; padding: 0 1.5rem; color: #4a463e">
+        Playing needs JavaScript to deal the cards. The <a href="/rules">rules</a> and everything above read fine without it.
       </p>
     </noscript>
     <script type="module" src="/src/client/main.tsx"></script>

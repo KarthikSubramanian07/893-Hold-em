@@ -11,6 +11,6 @@
     "verbatimModuleSyntax": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["worker", "functions", "src/engine", "src/room", "src/protocol.ts"],
+  "include": ["worker", "functions", "src/engine", "src/room", "src/edge", "src/protocol.ts"],
   "exclude": ["**/*.test.ts"]
 }
