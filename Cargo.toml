@@ -1,0 +1,20 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/KarthikSubramanian07/893-Hold-em"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+# Small, fast wasm for the Worker and the browser.
+[profile.wasm]
+inherits = "release"
+opt-level = "s"
+strip = true
