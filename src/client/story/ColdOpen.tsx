@@ -59,6 +59,8 @@ export function ColdOpen({ onDone, beats = COLD_OPEN, contained = false }: ColdO
   useEffect(() => {
     const skip = (e: Event) => {
       if (e instanceof KeyboardEvent && (e.metaKey || e.ctrlKey || e.altKey)) return;
+      // The key only opens the door; it shouldn't also scroll the page behind it.
+      if (e instanceof KeyboardEvent && e.key !== 'Tab') e.preventDefault();
       finish();
     };
     addEventListener('keydown', skip);

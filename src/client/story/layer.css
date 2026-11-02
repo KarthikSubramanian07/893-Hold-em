@@ -1,0 +1,53 @@
+/* Where the story layer sits when you're not at a table. */
+
+/* The Master's remark on the paper pages: a slip of washi at the foot of the
+   screen, so the words never sit on top of the page's own type. */
+.narrator.street-subs {
+  position: fixed;
+  left: 50%;
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  z-index: 880;
+  width: min(40rem, calc(100vw - 1.5rem));
+  min-height: 0;
+  translate: -50% 0;
+}
+
+.street-subs .narrator__line {
+  overflow: hidden;
+  width: 100%;
+  padding: 0.95rem 1.4rem 1.05rem 1.05rem;
+  background:
+    var(--grain, none),
+    linear-gradient(180deg, var(--st-washi), var(--st-washi-2));
+  border: 1px solid rgb(27 26 23 / 0.14);
+  border-radius: 2px;
+  box-shadow:
+    0 24px 50px -18px rgb(27 26 23 / 0.45),
+    0 2px 6px rgb(27 26 23 / 0.12);
+}
+
+.street-subs .narrator__ghost {
+  font-size: 5.5rem;
+  right: 0.4rem;
+}
+
+.stamp-toast.stamp-toast--street {
+  top: 4.75rem;
+}
+
+@media (max-width: 760px) {
+  .stamp-toast.stamp-toast--street {
+    top: max(0.75rem, env(safe-area-inset-top));
+    right: 0.75rem;
+  }
+
+  .street-subs .narrator__text {
+    font-size: 1.02rem;
+  }
+}
+
+/* Off the table the Master's slip sits at the foot of the screen; the
+   hidden card rises a little higher so it never lands on his words. */
+.hidden-card[data-open] {
+  translate: -50% min(-12vh, calc(-1 * (100vh - 26rem) / 2));
+}

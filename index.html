@@ -58,6 +58,18 @@
     <style>
       /* Paint the paper before the app loads, so there is no white flash. */
       html { background: #efe8da; }
+      /* A first visit opens on the alley at night: hold the dark until the cold open arrives.
+         It lifts on its own if the story never loads. */
+      html[data-cold] body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: 1001;
+        background: #070707;
+        pointer-events: none;
+        animation: cold-veil 0.6s ease 3s forwards;
+      }
+      @keyframes cold-veil { to { opacity: 0; } }
     </style>
   </head>
   <body>

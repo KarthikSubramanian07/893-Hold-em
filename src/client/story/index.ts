@@ -10,12 +10,7 @@
 //   <Narrator lines />  <ColdOpen onDone />  <Matchbook />  <StampToast />
 //   <BarCat />  <HiddenCard open onClose />  <Seal text />
 
-import '@fontsource/shippori-mincho-b1/500.css';
-import '@fontsource/shippori-mincho-b1/600.css';
-import '@fontsource/shippori-mincho-b1/800.css';
-import '@fontsource/caveat/500.css';
-import '@fontsource-variable/jetbrains-mono';
-import './story.css';
+import './styles';
 
 export type { Line, MaskId, Mood, RegularName, Speaker, StoryEvent } from './types';
 export { narrate, idleLine, chapterTitle, holdFor, type NarrateContext } from './narrator';
@@ -45,3 +40,6 @@ export { BarCat } from './BarCat';
 export { HiddenCard } from './HiddenCard';
 export { Seal, type SealProps } from './Seal';
 export { Rain } from './Rain';
+export { StoryLayer, type StoryLayerProps } from './StoryLayer';
+export { coldOpenFor, coldOpenSeen } from './firstVisit';
+export { eggRemark, subtitleSlot, idleDue, IDLE_EVERY_MS, type EggVenue } from './stage';
