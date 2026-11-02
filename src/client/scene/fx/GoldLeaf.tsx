@@ -17,18 +17,18 @@ export function GoldLeaf({ on }: { on: boolean }) {
       v: new THREE.Vector3((r() - 0.5) * 3.2, 2.4 + r() * 2.6, (r() - 0.5) * 2.2 - 0.4),
       spin: new THREE.Vector3(r() * 9, r() * 9, r() * 9),
       flutter: 1 + r() * 3,
-      size: 0.035 + r() * 0.05,
+      size: 0.05 + r() * 0.06,
       phase: r() * 6.28,
     }));
   }, []);
   const mat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        color: PALETTE.kin,
-        metalness: 1,
-        roughness: 0.22,
-        emissive: new THREE.Color(PALETTE.kin),
-        emissiveIntensity: 1.4,
+        color: '#d8a640',
+        metalness: 0.85,
+        roughness: 0.35,
+        emissive: new THREE.Color(PALETTE.kin).multiplyScalar(0.9),
+        emissiveIntensity: 1.25,
         side: THREE.DoubleSide,
       }),
     [],
