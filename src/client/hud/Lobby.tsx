@@ -63,7 +63,7 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
                   send({ t: 'bot', op: 'add' });
                 }}
               >
-                + Seat a regular
+                + Add a bot
               </button>
               <button
                 type="button"
@@ -74,7 +74,7 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
                   send({ t: 'bot', op: 'remove' });
                 }}
               >
-                − Send one home
+                − Remove a bot
               </button>
             </div>
           )}
@@ -105,7 +105,7 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
 
       <div className="lobby__col lobby__setup">
         <fieldset className="lobby__field" disabled={!host}>
-          <legend className="label lobby__legend">The room</legend>
+          <legend className="label lobby__legend">Difficulty</legend>
           <div className="rooms">
             {ORDER.map((id, i) => {
               const t = TABLES[id];
@@ -132,7 +132,7 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
                         <i key={p} className={p <= i ? 'on' : ''} />
                       ))}
                     </span>
-                    {on ? `Heat ${view.heatLimit} · Take ${view.target}` : `${t.odds} clean`}
+                    {on ? `Need ${view.target} · raid at ${view.heatLimit}` : `${t.odds} clean`}
                   </span>
                 </label>
               );
@@ -142,7 +142,7 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
         </fieldset>
 
         <fieldset className="lobby__field" disabled={!host}>
-          <legend className="label lobby__legend">Call timer</legend>
+          <legend className="label lobby__legend">Time to choose</legend>
           <div className="seg" role="radiogroup" aria-label="Call timer">
             {TIMERS.map((t) => (
               <label key={t.v} className={`seg__opt${view.config.timer === t.v ? ' is-on' : ''}`}>
@@ -179,8 +179,8 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
               </button>
               <p className="lobby__fine">
                 {seats.length < MIN_CREW
-                  ? 'Need at least two at the table. Send the link, or seat a regular.'
-                  : `${seats.length} at the table. Six hands. Target set when you start.`}
+                  ? 'You need at least two players. Send the link to a friend, or add a bot.'
+                  : `${seats.length} players, six hands. Win ${view.target} take before you reach ${view.heatLimit} heat.`}
               </p>
             </>
           ) : (
@@ -221,7 +221,7 @@ function CrewRow({
             親 Host
           </span>
         )}
-        {seat.bot && <span className="crew__tag">Regular</span>}
+        {seat.bot && <span className="crew__tag">Bot</span>}
         {!seat.connected && <span className="crew__tag">Stepped out</span>}
       </span>
       {you ? (

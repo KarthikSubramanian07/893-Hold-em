@@ -296,3 +296,20 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* The short version, first: five lines a newcomer can hold in their head. */
+.rules__quick {
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--hair, rgb(27 26 23 / 0.16));
+  background: rgb(210 65 42 / 0.05);
+}
+
+.rules__quick ol {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.rules__quick li {
+  margin: 0.3rem 0;
+}
+
