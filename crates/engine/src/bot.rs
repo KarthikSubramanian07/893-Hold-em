@@ -26,7 +26,13 @@ use crate::view::{CallView, GameView, Slot};
 pub struct Temperament {
     pub boldness: f64,
     pub samples: u32,
+    /// How hard to guard heat. Multiplies the exchange rate, and makes big
+    /// stakes costlier as the room before a raid shrinks.
+    pub caution: f64,
 }
+
+/// Default caution, tuned by `crates/sim`.
+pub const CAUTION: f64 = 1.0;
 
 impl Temperament {
     /// A stable temperament per seat, so each regular has a consistent style.
@@ -38,6 +44,7 @@ impl Temperament {
         Temperament {
             boldness,
             samples: 500,
+            caution: CAUTION,
         }
     }
 }
@@ -258,7 +265,11 @@ pub struct Read {
 pub fn read(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Option<Read> {
     let seat = view.seats.iter().find(|s| s.id == me)?;
     let o = odds(view, me, t.samples, rng)?;
-    let lambda = exchange_rate(view);
+    let room = f64::from(view.heat_limit.saturating_sub(view.heat)).max(0.5);
+    let base = exchange_rate(view) * t.caution;
+    // A raid is a cliff, not a slope: a stake that could eat a big share of the
+    // remaining room costs more than its average.
+    let lambda_for = |stake: f64| base * (1.0 + t.caution * stake / room);
     let mult = if view.rule == Some(RuleId::Homura) {
         2.0
     } else {
@@ -299,11 +310,12 @@ pub fn read(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Option<
         })
         .product();
     let fold = if others_in == 0 {
-        -lambda * mult
+        -lambda_for(1.0) * mult
     } else {
-        mult * (other_stakes * o.crew_without * (1.0 - p_all_fold) - lambda * p_all_fold)
+        mult * (other_stakes * o.crew_without * (1.0 - p_all_fold) - lambda_for(1.0) * p_all_fold)
     };
-    let stay = mult * ((other_stakes + stake) * o.crew_with - lambda * stake * o.lose) + option;
+    let stay =
+        mult * ((other_stakes + stake) * o.crew_with - lambda_for(stake) * stake * o.lose) + option;
     let raise = (seat.stake.unwrap_or(1) < MAX_STAKE).then(|| {
         if view.rule == Some(RuleId::Kizuna) {
             // Bond lifts every active stake: more take for all, more heat for
@@ -311,11 +323,12 @@ pub fn read(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Option<
             let lift = (others_in + 1) as f64;
             let mates_lose = others_in as f64 * (1.0 - o.crew_without).max(0.3);
             mult * ((other_stakes + stake + lift) * o.crew_with
-                - lambda * ((stake + 1.0) * o.lose + mates_lose))
+                - lambda_for(stake + 1.0) * ((stake + 1.0) * o.lose + mates_lose))
                 + option
                 + t.boldness
         } else {
-            mult * ((other_stakes + stake + 1.0) * o.crew_with - lambda * (stake + 1.0) * o.lose)
+            mult * ((other_stakes + stake + 1.0) * o.crew_with
+                - lambda_for(stake + 1.0) * (stake + 1.0) * o.lose)
                 + option
                 + t.boldness
         }
@@ -379,6 +392,7 @@ mod tests {
     const CALM: Temperament = Temperament {
         boldness: 0.0,
         samples: 4000,
+        caution: CAUTION,
     };
 
     #[test]

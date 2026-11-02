@@ -113,12 +113,12 @@ pub fn house_hands(crew: usize, rule: Option<RuleId>) -> usize {
 /// would draw); targets are tuned by `crates/sim` toward 70% / 50% / 30% clean
 /// getaways for crews that play well.
 pub const BALANCE: [[(u32, u32); 5]; 3] = [
-    // Shitamachi: heat limit 2n + 4
-    [(8, 10), (10, 14), (12, 18), (14, 22), (16, 26)],
-    // Kabukicho: heat limit 2n + 2
-    [(6, 11), (8, 15), (10, 19), (12, 24), (14, 28)],
-    // Oyabun: heat limit 2n + 1
-    [(5, 12), (7, 16), (9, 21), (11, 26), (13, 31)],
+    // Shitamachi
+    [(7, 6), (11, 9), (14, 12), (17, 15), (21, 18)],
+    // Kabukicho
+    [(6, 7), (9, 10), (12, 14), (15, 17), (18, 21)],
+    // Oyabun
+    [(5, 8), (8, 12), (10, 16), (14, 20), (17, 24)],
 ];
 
 fn balance(d: Difficulty, crew: usize) -> (u32, u32) {
