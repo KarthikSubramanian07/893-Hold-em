@@ -48,6 +48,7 @@ function view(over: Partial<GameView> = {}): GameView {
     house: [{ cards: ['back', 'back'], hand: null, champion: false }],
     board: NO_BOARD,
     street: 0,
+    night: 1,
     hand: 1,
     hands: 6,
     take: 0,

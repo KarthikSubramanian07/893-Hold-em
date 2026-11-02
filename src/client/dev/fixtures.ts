@@ -36,6 +36,7 @@ const base: GameView = {
   house: [],
   board: [null, null, null, null, null],
   street: 0,
+  night: 1,
   hand: 0,
   hands: 6,
   take: 0,

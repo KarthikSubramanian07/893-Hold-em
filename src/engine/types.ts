@@ -156,6 +156,8 @@ export interface GameView {
   /** Always five slots. */
   board: Slot[];
   street: Street;
+  /** Nights started at this table: 0 before the first, then 1, 2, … */
+  night: number;
   /** 1-based hand number; 0 in the lobby. */
   hand: number;
   hands: number;

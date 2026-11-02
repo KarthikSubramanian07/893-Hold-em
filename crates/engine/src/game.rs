@@ -172,6 +172,9 @@ pub struct Game {
     pub bots_made: u32,
     /// Bumps on every change, so clients and the room can drop stale work.
     pub version: u64,
+    /// Nights started at this table, so a second night reads differently.
+    #[serde(default)]
+    pub night: u32,
     /// Simulator only: play all six hands even past the heat limit, so a
     /// night's whole trajectory can be measured.
     #[serde(default)]
@@ -204,6 +207,7 @@ impl Game {
             heat: 0,
             target: 0,
             heat_limit,
+            night: 0,
             endless: false,
             rule: None,
             rule_pile: Vec::new(),
@@ -437,6 +441,7 @@ impl Game {
         if self.seats.len() < MIN_CREW {
             return Err(GameError::TooFew);
         }
+        self.night += 1;
         self.take = 0;
         self.heat = 0;
         self.hand = 0;
@@ -1107,9 +1112,12 @@ mod tests {
             Verdict::Clean => assert!(g.take >= g.target && g.hand == HANDS_PER_NIGHT),
             Verdict::Short => assert!(g.take < g.target && g.hand == HANDS_PER_NIGHT),
         }
+        assert_eq!(g.night, 1);
         g.again(&ids[0]).unwrap();
         assert_eq!(g.phase, Phase::Lobby);
         assert_eq!(g.seats.len(), 4);
+        g.start(&ids[0], now).unwrap();
+        assert_eq!(g.night, 2, "another night counts");
     }
 
     #[test]

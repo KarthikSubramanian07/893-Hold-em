@@ -68,9 +68,18 @@ interface Say {
   hold?: number;
 }
 
+/**
+ * What line choices hash on: the table code, plus the night after the first,
+ * so a crew that stays for another night hears it told differently. Every seat
+ * shares both values, so everyone still reads the same words.
+ */
+export function seedOf(view: Pick<GameView, 'code' | 'night'>): string {
+  return (view.night ?? 0) > 1 ? `${view.code}~${view.night}` : view.code;
+}
+
 function line(view: GameView, event: string, say: Say): Line {
   return {
-    id: `${view.code}:${view.hand}:${event}`,
+    id: `${seedOf(view)}:${view.hand}:${event}`,
     speaker: say.speaker,
     text: say.text,
     ...(say.kanji ? { kanji: say.kanji } : {}),
@@ -80,7 +89,7 @@ function line(view: GameView, event: string, say: Say): Line {
 }
 
 const choose = (view: GameView, bank: Bank, event: string, vars?: Record<string, string | number>) =>
-  fill(pick(bank, view.code, view.hand, event), vars);
+  fill(pick(bank, seedOf(view), view.hand, event), vars);
 
 /** A seated bot regular with something to say about this moment, if any. */
 function regularMoment(view: GameView, moment: 'heat' | 'last' | 'take' | 'walked' | 'yakuza'): { who: RegularName; bank: Bank } | null {
@@ -141,7 +150,7 @@ export function narrate(prev: GameView | null, next: GameView, you: string | nul
   if (prev.take < next.target && next.take >= next.target) {
     const gin = regularMoment(next, 'take');
     out.push(
-      gin && chance(0.5, next.code, next.hand, 'take:who')
+      gin && chance(0.5, seedOf(next), next.hand, 'take:who')
         ? line(next, 'take', { speaker: gin.who, text: choose(next, gin.bank, 'take:regular'), mood: 'gold' })
         : line(next, 'take', { speaker: 'master', text: choose(next, TAKE, 'take'), kanji: '円', mood: 'gold' }),
     );
@@ -198,7 +207,7 @@ function joinLine(view: GameView, seat: SeatView): Line {
 function handLine(view: GameView): Line | null {
   if (view.hand === view.hands) {
     const nao = regularMoment(view, 'last');
-    if (nao && chance(0.4, view.code, view.hand, 'last:who')) {
+    if (nao && chance(0.4, seedOf(view), view.hand, 'last:who')) {
       return line(view, 'hand:last', { speaker: nao.who, text: choose(view, nao.bank, 'last:regular'), mood: 'wry' });
     }
     const need = view.target - view.take;
@@ -270,14 +279,14 @@ function showdownLine(view: GameView): Line {
 
   if (kind === 'yakuza') {
     const sumi = regularMoment(view, 'yakuza');
-    if (sumi && chance(0.35, view.code, view.hand, 'yakuza:who')) {
+    if (sumi && chance(0.35, seedOf(view), view.hand, 'yakuza:who')) {
       return line(view, event, { speaker: sumi.who, text: choose(view, sumi.bank, 'yakuza:regular'), kanji: '八九三', mood: 'gold' });
     }
     return master();
   }
   if (kind === 'walked') {
     const mame = regularMoment(view, 'walked');
-    if (mame && chance(0.5, view.code, view.hand, 'walked:who')) {
+    if (mame && chance(0.5, seedOf(view), view.hand, 'walked:who')) {
       return line(view, event, { speaker: mame.who, text: choose(view, mame.bank, 'walked:regular'), mood: 'hush' });
     }
     return master();
@@ -297,12 +306,12 @@ function showdownLine(view: GameView): Line {
     return master();
   }
   if (kind === 'house') {
-    if (chance(0.6, view.code, view.hand, 'showdown:who')) {
+    if (chance(0.6, seedOf(view), view.hand, 'showdown:who')) {
       return line(view, event, { speaker: mask.id, text: choose(view, mask.lines.win, `mask:${mask.id}:win`), mood: 'danger' });
     }
     return master();
   }
-  if (chance(0.5, view.code, view.hand, 'showdown:who')) {
+  if (chance(0.5, seedOf(view), view.hand, 'showdown:who')) {
     return line(view, event, { speaker: mask.id, text: choose(view, mask.lines.tie, `mask:${mask.id}:tie`), mood: 'hush' });
   }
   return master();
@@ -318,7 +327,7 @@ function verdictLines(view: GameView): Line[] {
   const verdict = view.verdict!;
   const ch = CHAPTERS[table];
   const event = `verdict:${table}:${verdict}`;
-  const run = pick(ch.epilogue[verdict], view.code, view.hand, event);
+  const run = pick(ch.epilogue[verdict], seedOf(view), view.hand, event);
   const mood: Mood = verdict === 'clean' ? 'gold' : verdict === 'raid' ? 'danger' : 'cold';
   const out = run.map((text, i) =>
     line(view, `${event}:${i}`, { speaker: 'master', text, mood, kanji: i === 0 ? ch.kanji : undefined, hold: Math.max(5200, holdFor(text) + 1200) }),
@@ -342,9 +351,9 @@ function verdictLines(view: GameView): Line[] {
  */
 export function idleLine(view: GameView, tick: number, opts: { cat?: boolean } = {}): Line | null {
   if (view.phase !== 'lobby') return null;
-  if (!chance(0.66, view.code, tick, 'idle:speak')) return null;
-  const bank = opts.cat && chance(0.3, view.code, tick, 'idle:cat') ? IDLE_CAT : IDLE;
-  const text = fill(pick(bank, view.code, tick, 'idle'));
+  if (!chance(0.66, seedOf(view), tick, 'idle:speak')) return null;
+  const bank = opts.cat && chance(0.3, seedOf(view), tick, 'idle:cat') ? IDLE_CAT : IDLE;
+  const text = fill(pick(bank, seedOf(view), tick, 'idle'));
   return { id: `${view.code}:idle:${tick}`, speaker: 'master', text, mood: 'calm', hold: holdFor(text) };
 }
 

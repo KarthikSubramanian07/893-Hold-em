@@ -84,6 +84,8 @@ pub struct GameView {
     pub house: Vec<HouseHandView>,
     pub board: Vec<Slot>,
     pub street: u8,
+    /// Nights started at this table (1 for the first).
+    pub night: u32,
     pub hand: u8,
     pub hands: u8,
     pub take: u32,
@@ -189,6 +191,7 @@ pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
         house,
         board,
         street: g.street,
+        night: g.night,
         hand: g.hand,
         hands: HANDS_PER_NIGHT,
         take: g.take,
