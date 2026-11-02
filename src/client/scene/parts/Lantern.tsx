@@ -1,28 +1,44 @@
 // The one paper lantern. It sways on its cord, and because the spot light
-// hangs inside it, every shadow on the table sways with it.
+// hangs inside it, every shadow on the table sways with it. Click it and it
+// swings; click it eight times in four seconds and it gutters (story/eggs.ts).
 
-import { useFrame } from '@react-three/fiber';
+import { type ThreeEvent, useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { lanternHeight } from '../layout';
+import { lanternClick } from '../../story/eggs';
+import { since } from '../EggListener';
+import { lanternGutter, swingStep } from '../eggFx';
+import type { Vec3 } from '../layout';
 import { damp, useLive } from '../live';
 import { PALETTE } from '../palette';
 import { softDot } from '../textures/canvas';
 import { lanternTexture } from '../textures/surfaces';
 
 const PIVOT_Y = 4.6;
-const BULB_Z = -0.5;
 const R = 0.3;
 const H = 0.64;
 
-export function Lantern({ shadows, aspect }: { shadows: boolean; aspect: number }) {
-  const BULB_Y = lanternHeight(aspect);
+export function Lantern({ shadows, rest }: { shadows: boolean; rest: Vec3 }) {
+  const BULB_Y = rest.y;
   const live = useLive();
   const swing = useRef<THREE.Group>(null);
   const spot = useRef<THREE.SpotLight>(null);
   const fill = useRef<THREE.PointLight>(null);
   const target = useMemo(() => new THREE.Object3D(), []);
   const level = useRef(live.targets.lantern);
+  const pendulum = useRef<[number, number]>([0, 0]);
+
+  const onClick = (e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    // Pushed away from the side you touched it.
+    const side = e.point.x >= live.lanternPos.x ? -1 : 1;
+    // Enough to swing visibly, not so much that the next click misses it.
+    live.lanternKick += side * (live.reducedMotion ? 0.05 : 0.16);
+    lanternClick();
+  };
+  const hover = (on: boolean) => () => {
+    document.body.style.cursor = on ? 'pointer' : '';
+  };
 
   const geo = useMemo(() => {
     const pts: THREE.Vector2[] = [];
@@ -63,8 +79,10 @@ export function Lantern({ shadows, aspect }: { shadows: boolean; aspect: number 
     const t = clock.elapsedTime;
     const amp = live.reducedMotion ? 0.006 : 0.042;
     const g = swing.current;
+    pendulum.current = swingStep(pendulum.current[0], pendulum.current[1], dt, live.lanternKick);
+    live.lanternKick = 0;
     if (g) {
-      g.rotation.z = amp * Math.sin(t * 0.52) + amp * 0.3 * Math.sin(t * 1.31 + 1);
+      g.rotation.z = amp * Math.sin(t * 0.52) + amp * 0.3 * Math.sin(t * 1.31 + 1) + pendulum.current[0];
       g.rotation.x = amp * 0.6 * Math.sin(t * 0.41 + 2);
       g.updateMatrixWorld();
       g.localToWorld(live.lanternPos.set(0, BULB_Y - PIVOT_Y, 0));
@@ -74,12 +92,13 @@ export function Lantern({ shadows, aspect }: { shadows: boolean; aspect: number 
     const flick =
       1 +
       (live.reducedMotion ? 0 : 0.035 * Math.sin(t * 9.1) * Math.sin(t * 2.3) + 0.02 * Math.sin(t * 23.7) * (0.5 + live.heat));
-    const lvl = level.current * flick;
+    const lvl = level.current * flick * lanternGutter(since(live, 'lantern', t));
     mats.paper.emissiveIntensity = 2.4 * lvl;
     mats.halo.opacity = 0.9 * lvl;
     if (spot.current) {
       spot.current.intensity = 17 * lvl;
-      target.position.set(live.lanternPos.x * 0.6, 0, live.lanternPos.z * 0.6 + 0.15);
+      // Aim at the board even when the lantern hangs off to one side.
+      target.position.set(live.lanternPos.x * 0.25, 0, live.lanternPos.z * 0.6 + 0.15);
       target.updateMatrixWorld();
     }
     if (fill.current) fill.current.intensity = 2.2 * lvl;
@@ -90,7 +109,7 @@ export function Lantern({ shadows, aspect }: { shadows: boolean; aspect: number 
   return (
     <>
       <primitive object={target} />
-      <group position={[0, PIVOT_Y, BULB_Z]}>
+      <group position={[rest.x, PIVOT_Y, rest.z]}>
         <group ref={swing}>
           {/* cord */}
           <mesh position={[0, (BULB_Y - PIVOT_Y + H / 2) / 2, 0]}>
@@ -99,6 +118,11 @@ export function Lantern({ shadows, aspect }: { shadows: boolean; aspect: number 
           </mesh>
           <group position={[0, BULB_Y - PIVOT_Y, 0]}>
             <mesh geometry={geo} material={mats.paper} rotation={[0, Math.PI, 0]} />
+            {/* A slightly generous, invisible target, so a swinging lantern is still easy to tap. */}
+            <mesh onClick={onClick} onPointerOver={hover(true)} onPointerOut={hover(false)} scale={[1, 1.15, 1]}>
+              <sphereGeometry args={[R * 1.35, 16, 12]} />
+              <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
+            </mesh>
             <mesh material={mats.cap} position={[0, H / 2 + 0.02, 0]}>
               <cylinderGeometry args={[R * 0.42, R * 0.46, 0.06, 32]} />
             </mesh>

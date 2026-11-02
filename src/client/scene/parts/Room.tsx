@@ -5,6 +5,8 @@
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { since } from '../EggListener';
+import { neonEgg } from '../eggFx';
 import { useLive } from '../live';
 import { PALETTE } from '../palette';
 import { neonTexture } from '../textures/surfaces';
@@ -33,6 +35,7 @@ const frag = /* glsl */ `
   uniform float uHeat;
   uniform float uPolice;
   uniform float uSurge;
+  uniform float uGate;
   uniform float uRain;
 
   float h11(float p) { p = fract(p * 0.1031); p *= p + 33.33; p *= p + p; return fract(p); }
@@ -118,7 +121,7 @@ const frag = /* glsl */ `
     float f2 = 1.0 - 0.9 * step(0.985 - hot * 0.08, fract(sin(floor(t * 13.0) * 78.233) * 12345.6));
     float f3 = 0.86 + 0.14 * sin(t * 50.0) * step(0.6, fract(t * 0.21));
     vec3 neon = n.r * vec3(1.0, 0.31, 0.43) * f1 + n.g * vec3(0.25, 0.9, 0.82) * f2 + n.b * vec3(1.0, 0.32, 0.14) * f3;
-    col += neon * (0.9 + uNeonLevel * 2.4 + uSurge * 2.5);
+    col += neon * (0.9 + uNeonLevel * 2.4 + uSurge * 2.5) * uGate;
     return col;
   }
 
@@ -187,6 +190,7 @@ export function Room() {
           uHeat: { value: 0 },
           uPolice: { value: 0 },
           uSurge: { value: 0 },
+          uGate: { value: 1 },
           uRain: { value: 1 },
         },
         toneMapped: false,
@@ -204,7 +208,10 @@ export function Room() {
     u.uNeonLevel!.value = live.neon;
     u.uHeat!.value = live.heat;
     u.uPolice!.value = live.police;
-    u.uSurge!.value = live.surge;
+    // 8-9-3: the signs stutter like a dying ballast, then surge.
+    const egg = neonEgg(since(live, 'neon', t));
+    u.uSurge!.value = live.surge + egg.surge;
+    u.uGate!.value = live.reducedMotion ? Math.max(0.6, egg.gate) : egg.gate;
     const strobe = Math.floor(t * 2.2 * 2) % 2 === 0;
     const blink = Math.floor(t * 8.8) % 2 === 0 ? 1 : 0.4;
     const pl = police.current;
@@ -215,7 +222,7 @@ export function Room() {
     }
     if (neonLight.current) {
       const flick = 0.9 + 0.1 * Math.sin(t * 31) * Math.sin(t * 3.3);
-      neonLight.current.intensity = (2.5 + live.neon * 9 + live.surge * 18) * flick;
+      neonLight.current.intensity = (2.5 + live.neon * 9 + (live.surge + egg.surge) * 18) * flick * egg.gate;
     }
   });
 
