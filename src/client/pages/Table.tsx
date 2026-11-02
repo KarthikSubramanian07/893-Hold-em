@@ -14,32 +14,45 @@ import { isPracticeCode } from '../net/practice';
 import { useTable, type Profile } from '../net/store';
 import { ProfileForm } from '../profile/ProfileForm';
 import { TableScene } from '../scene';
+import { BarCat, Narrator, checkName, type Line } from '../story';
+import { subtitleSlot } from '../story/stage';
 import { RulesDrawer } from '../ui/RulesDrawer';
 import { Seal } from '../ui/Seal';
 import './table.css';
+import { useTableStory } from '../hud/useTableStory';
 import '../hud/hud.css';
 
-function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(() => matchMedia('(prefers-reduced-motion: reduce)').matches);
+const NO_LINES: readonly Line[] = [];
+
+function useMedia(query: string): boolean {
+  const [on, setOn] = useState(() => matchMedia(query).matches);
   useEffect(() => {
-    const m = matchMedia('(prefers-reduced-motion: reduce)');
-    const on = () => setReduced(m.matches);
-    m.addEventListener('change', on);
-    return () => m.removeEventListener('change', on);
-  }, []);
-  return reduced;
+    const m = matchMedia(query);
+    const change = () => setOn(m.matches);
+    change();
+    m.addEventListener('change', change);
+    return () => m.removeEventListener('change', change);
+  }, [query]);
+  return on;
+}
+
+function useReducedMotion(): boolean {
+  return useMedia('(prefers-reduced-motion: reduce)');
 }
 
 export function TablePage({ code }: { code: string }) {
   const [profile, setProfile] = useState<Profile | null>(() => loadProfile());
   const [editing, setEditing] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  // The subtitles wait for the shoji: nobody speaks behind a closed door.
+  const [doorsOpen, setDoorsOpen] = useState(false);
   const [muted, setMuted] = useState(() => loadMuted());
   const view = useTable((s) => s.view);
   const status = useTable((s) => s.status);
   const error = useTable((s) => s.error);
   const reduced = useReducedMotion();
   const practice = isPracticeCode(code);
+  const wide = useMedia('(min-width: 900px)');
 
   useEffect(() => {
     document.title = practice ? "Practice with the regulars · 893 Hold'em" : `Table ${code} · 893 Hold'em`;
@@ -49,7 +62,9 @@ export function TablePage({ code }: { code: string }) {
   const profileReady = profile !== null;
   useEffect(() => {
     if (!profileReady) return;
-    useTable.getState().connect(code, loadProfile() ?? { name: 'Stranger', avatar: 'kitsune' });
+    const p = loadProfile() ?? { name: 'Stranger', avatar: 'kitsune' };
+    checkName(p.name);
+    useTable.getState().connect(code, p);
     return () => useTable.getState().leave();
   }, [code, profileReady]);
 
@@ -70,6 +85,7 @@ export function TablePage({ code }: { code: string }) {
   }, [muted]);
 
   useGameSounds(view);
+  const story = useTableStory(view, code);
 
   const toggleMute = () => {
     const next = !muted;
@@ -89,12 +105,18 @@ export function TablePage({ code }: { code: string }) {
     setProfile(saved);
     setEditing(false);
     useTable.getState().send({ t: 'rename', name: saved.name, avatar: saved.avatar });
+    checkName(saved.name);
   };
 
   const openRules = () => {
     sfx.click();
     setRulesOpen(true);
   };
+
+  const slot = subtitleSlot(view?.phase, wide);
+  const subtitles = (
+    <Narrator lines={doorsOpen ? story.lines : NO_LINES} tone="night" className={`hud__subs hud__subs--${slot}`} />
+  );
 
   const fatal = !view && (status === 'closed' || error) ? bartender(error) ?? 'The line went dead before we found your table.' : null;
 
@@ -105,12 +127,19 @@ export function TablePage({ code }: { code: string }) {
 
       {view && (
         <div className="hud">
-          <TopBar view={view} muted={muted} onMute={toggleMute} onRules={openRules} />
+          <TopBar
+            view={view}
+            muted={muted}
+            onMute={toggleMute}
+            onRules={openRules}
+            extra={story.cat ? <BarCat className="top__cat" size={46} /> : null}
+          />
           <Banner status={status} error={error} hasView onRetry={() => profile && useTable.getState().connect(code, profile)} />
           <main className="hud__main" id="main">
             {view.phase === 'lobby' && <Lobby view={view} onEditProfile={() => setEditing(true)} />}
-            {view.phase === 'over' && <Receipt view={view} />}
+            {view.phase === 'over' && <Receipt view={view} aside={slot === 'aside' ? subtitles : null} />}
           </main>
+          {slot !== 'aside' && subtitles}
           <div className="hud__bottom">
             {view.phase === 'call' && <CallDock view={view} />}
             {view.phase === 'showdown' && <Showdown view={view} />}
@@ -120,7 +149,7 @@ export function TablePage({ code }: { code: string }) {
         </div>
       )}
 
-      <Shoji open={!!view} reduced={reduced}>
+      <Shoji open={!!view} reduced={reduced} onGone={setDoorsOpen}>
         {!profile ? (
           <div className="shoji__card paper">
             <ProfileForm initial={null} code={code} onSubmit={sitDown} />
@@ -149,15 +178,36 @@ export function TablePage({ code }: { code: string }) {
 }
 
 /** Two paper doors with a lantern behind them. They slide apart when the table is ready. */
-function Shoji({ open, reduced, children }: { open: boolean; reduced: boolean; children: ReactNode }) {
+function Shoji({
+  open,
+  reduced,
+  onGone,
+  children,
+}: {
+  open: boolean;
+  reduced: boolean;
+  onGone?: (gone: boolean) => void;
+  children: ReactNode;
+}) {
   const [gone, setGone] = useState(false);
+  const report = useRef(onGone);
+  useEffect(() => {
+    report.current = onGone;
+  }, [onGone]);
   useEffect(() => {
     if (!open) {
       setGone(false);
+      report.current?.(false);
       return;
     }
     sfx.reveal();
-    const t = setTimeout(() => setGone(true), reduced ? 450 : 1700);
+    const t = setTimeout(
+      () => {
+        setGone(true);
+        report.current?.(true);
+      },
+      reduced ? 450 : 1700,
+    );
     return () => clearTimeout(t);
   }, [open, reduced]);
   if (gone) return null;

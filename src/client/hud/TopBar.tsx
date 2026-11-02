@@ -1,5 +1,5 @@
 // The calm strip across the top: where you are, how the night is going.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { RULES } from '../../engine/rules';
 import type { GameView } from '../../engine/types';
 import { sfx } from '../audio';
@@ -14,11 +14,14 @@ export function TopBar({
   muted,
   onMute,
   onRules,
+  extra,
 }: {
   view: GameView;
   muted: boolean;
   onMute: () => void;
   onRules: () => void;
+  /** Anything that lives on the bar itself (on some nights, the cat). */
+  extra?: ReactNode;
 }) {
   const inNight = view.phase !== 'lobby';
   return (
@@ -50,6 +53,7 @@ export function TopBar({
       )}
 
       <div className="top__right">
+        {extra}
         {view.rule && <RuleChip id={view.rule} />}
         <button
           type="button"

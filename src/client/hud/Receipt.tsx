@@ -1,4 +1,5 @@
 // The night, itemized. Printed on the bar's thermal roll and stamped.
+import type { ReactNode } from 'react';
 import { RULES, TABLES } from '../../engine/rules';
 import type { GameView, HistoryEntry } from '../../engine/types';
 import { sfx } from '../audio';
@@ -7,7 +8,7 @@ import { amHost, VERDICT_LINE, VERDICT_SUB } from '../net/selectors';
 import { useTable } from '../net/store';
 import { Seal } from '../ui/Seal';
 
-export function Receipt({ view }: { view: GameView }) {
+export function Receipt({ view, aside }: { view: GameView; aside?: ReactNode }) {
   const send = useTable((s) => s.send);
   const leave = useTable((s) => s.leave);
   const verdict = view.verdict ?? 'short';
@@ -66,6 +67,7 @@ export function Receipt({ view }: { view: GameView }) {
       </article>
 
       <div className="over__actions">
+        {aside}
         {host ? (
           <button
             type="button"
