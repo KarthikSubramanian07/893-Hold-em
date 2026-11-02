@@ -700,11 +700,17 @@ impl Game {
             .filter(|s| s.active)
             .map(|s| u32::from(s.stake))
             .sum();
-        // Heat: anyone still in whose own hand lost to the House was seen,
-        // even if the champion carried the hand. Under Serpent a tie is a loss.
+        // Heat: each mask watches two seats. Anyone still in whose own hand
+        // loses to the mask watching them was seen, even if the champion
+        // carried the hand. Under Serpent a tie is a loss.
         let burned: Vec<(String, u32)> = crew
             .iter()
-            .filter(|(_, v)| better(house_top, v.score) || (serpent && v.score == house_top))
+            .filter(|(id, v)| {
+                let watcher = self
+                    .watcher_of(id)
+                    .map_or(house_top, |w| house_values[w].score);
+                better(watcher, v.score) || (serpent && v.score == watcher)
+            })
             .map(|(id, _)| {
                 let stake = self.seat(id).map_or(1, |s| u32::from(s.stake));
                 (id.clone(), stake)
@@ -762,6 +768,13 @@ impl Game {
         self.verdict = Some(verdict);
         self.phase = Phase::Over;
         self.deadline = None;
+    }
+
+    /// Index of the mask that watches `seat`: masks watch seats in pairs, in
+    /// seat order. An Oni's extra mask watches nobody.
+    pub fn watcher_of(&self, seat: &str) -> Option<usize> {
+        let k = self.seats.iter().position(|s| s.id == seat)?;
+        (!self.house.is_empty()).then(|| (k / 2).min(self.house.len() - 1))
     }
 
     pub fn evaluate_seat(&self, s: &Seat) -> HandValue {
@@ -1033,15 +1046,19 @@ mod tests {
             assert_eq!(r.take, paid, "{r:?}");
             assert_eq!(r.heat, burned, "{r:?}");
             assert!(!r.burned.contains(&c), "folded seats never draw heat");
-            if r.outcome == Outcome::House {
+            // Three seats face two masks: s0 and s1 are watched by mask 0.
+            assert_eq!(g.watcher_of(&a), Some(0));
+            assert_eq!(g.watcher_of(&b), Some(0));
+            assert_eq!(g.watcher_of(&c), Some(1));
+            for id in [&a, &b] {
+                let w = g.watcher_of(id).unwrap();
+                let mine = g.evaluate_seat(g.seat(id).unwrap()).score;
+                let watched = g.house_value(w).score;
                 assert_eq!(
-                    r.burned.len(),
-                    2,
-                    "on a loss every active seat lost on its own"
+                    r.burned.contains(id),
+                    watched > mine || (g.rule == Some(RuleId::Hebi) && watched == mine),
+                    "{id} burns exactly when its watcher beats it"
                 );
-            }
-            if r.outcome == Outcome::Crew {
-                assert!(r.burned.len() <= 1, "the champion never burns on a win");
             }
             assert!(
                 !r.crew_champions.contains(&c),

@@ -62,7 +62,7 @@ pub fn exchange_rate(view: &GameView) -> f64 {
 /// What one seat believes about the hand, from one Monte Carlo pass.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Odds {
-    /// Chance this seat's own hand loses to the House (draws heat if in).
+    /// Chance this seat's own hand loses to the mask watching it (draws heat if in).
     pub lose: f64,
     /// Chance the crew's champion beats the House with this seat in.
     pub crew_with: f64,
@@ -108,6 +108,7 @@ pub fn odds(view: &GameView, me: &str, samples: u32, rng: &mut Rng) -> Option<Od
     let board: Vec<Card> = view.board.iter().filter_map(card).collect();
     let lowball = view.rule == Some(RuleId::Gyaku);
     let serpent = view.rule == Some(RuleId::Hebi);
+    let watcher = seat.watcher.unwrap_or(0);
 
     let mut seen = CardSet::of(&hole);
     for &c in &board {
@@ -183,12 +184,17 @@ pub fn odds(view: &GameView, me: &str, samples: u32, rng: &mut Rng) -> Option<Od
         }
         seven[2..].copy_from_slice(&full_board);
 
-        // The House's best (or weakest, under Reversal).
+        // The House's best (or weakest, under Reversal), and the hand of the
+        // mask watching this seat, which is what its heat check faces.
         let mut house_top: Option<u32> = None;
-        for h in &house {
+        let mut watched = 0;
+        for (i, h) in house.iter().enumerate() {
             seven[0] = h[0].unwrap_or_else(|| draw(rng));
             seven[1] = h[1].unwrap_or_else(|| draw(rng));
             let s = score_best(&seven);
+            if i == watcher.min(house.len() - 1) {
+                watched = s;
+            }
             house_top = Some(match house_top {
                 Some(t) if !better(s, t) => t,
                 _ => s,
@@ -199,7 +205,7 @@ pub fn odds(view: &GameView, me: &str, samples: u32, rng: &mut Rng) -> Option<Od
         seven[0] = a;
         seven[1] = b;
         let mine = score_best(&seven);
-        let i_lose = better(house_top, mine) || (serpent && mine == house_top);
+        let i_lose = better(watched, mine) || (serpent && mine == watched);
 
         let mut weight = 1.0;
         let mut mates_best: Option<u32> = None;
@@ -270,10 +276,32 @@ pub fn read(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Option<
 
     // Staying keeps the option to fold on a later street; worth a little early.
     let option = 0.08 * f64::from(3u8.saturating_sub(view.street)) * stake;
+    // Folding only works if someone else carries the hand. Teammates decide at
+    // the same moment, so guess how likely each is to stay from their calls.
+    let p_all_fold: f64 = view
+        .seats
+        .iter()
+        .filter(|s| s.active && s.id != me)
+        .map(|s| {
+            let raised = s
+                .calls
+                .iter()
+                .flatten()
+                .any(|c| matches!(c, CallView::Made(Stance::Raise)));
+            let p_stay = if raised {
+                0.95
+            } else if view.street == 0 {
+                0.55
+            } else {
+                0.75
+            };
+            1.0 - p_stay
+        })
+        .product();
     let fold = if others_in == 0 {
         -lambda * mult
     } else {
-        mult * other_stakes * o.crew_without
+        mult * (other_stakes * o.crew_without * (1.0 - p_all_fold) - lambda * p_all_fold)
     };
     let stay = mult * ((other_stakes + stake) * o.crew_with - lambda * stake * o.lose) + option;
     let raise = (seat.stake.unwrap_or(1) < MAX_STAKE).then(|| {
@@ -306,7 +334,7 @@ pub fn decide(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Stanc
         return Stance::Stay;
     };
     // A little noise so regulars are not perfectly predictable.
-    let mut jitter = |rng: &mut Rng| (rng.unit() - 0.5) * 0.08;
+    let jitter = |rng: &mut Rng| (rng.unit() - 0.5) * 0.08;
     let fold = r.fold + jitter(rng);
     let stay = r.stay + jitter(rng);
     let raise = r.raise.map(|x| x + jitter(rng));

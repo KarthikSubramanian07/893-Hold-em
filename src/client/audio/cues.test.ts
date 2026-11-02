@@ -20,6 +20,7 @@ function seat(i: number, over: Partial<SeatView> = {}): SeatView {
     calls: [null, null, null, null],
     hand: null,
     champion: false,
+    watcher: 0,
     ...over,
   };
 }

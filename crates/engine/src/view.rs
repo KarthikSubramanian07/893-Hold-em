@@ -62,6 +62,8 @@ pub struct SeatView {
     pub calls: Vec<Option<CallView>>,
     pub hand: Option<HandValue>,
     pub champion: bool,
+    /// Index into `house` of the mask watching this seat (its heat check).
+    pub watcher: Option<usize>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -140,6 +142,7 @@ pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
                 calls,
                 hand: (open && s.hole.len() == 2).then(|| g.evaluate_seat(s)),
                 champion: result.is_some_and(|r| r.crew_champions.contains(&s.id)),
+                watcher: g.watcher_of(&s.id),
             }
         })
         .collect();
