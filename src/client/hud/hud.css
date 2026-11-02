@@ -6,6 +6,7 @@
   inset: 0;
   z-index: 10;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   pointer-events: none;
 }
@@ -48,6 +49,7 @@
 .hud__bottom {
   pointer-events: none;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   padding: 0 1rem max(1rem, env(safe-area-inset-bottom));
 }
@@ -1523,6 +1525,7 @@
   line-height: 1;
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  margin-bottom: 0.5rem;
   transform: rotate(-6deg);
   mix-blend-mode: multiply;
   animation: thunk-stamp 0.6s 1.3s var(--ease-stamp) both;
@@ -1794,10 +1797,11 @@
   }
 
   .dock {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       'meta side'
-      'stamps stamps';
+      'stamps stamps'
+      'status status';
     gap: 0.8rem 1rem;
     max-height: none;
     padding: 0.85rem;
@@ -1812,17 +1816,22 @@
   }
 
   .dock__side {
-    grid-area: side;
-    grid-template-columns: 1fr auto;
+    display: contents;
   }
 
-  .dock__side .ring {
-    order: 2;
+  .dock__side .ring,
+  .dock__notimer {
+    grid-area: side;
+    justify-self: end;
   }
 
   .dock__status {
-    font-size: 12px;
-    text-align: right;
+    grid-area: status;
+    font-size: 12.5px;
+  }
+
+  .dock--quiet .dock__quiet {
+    grid-column: 1;
   }
 
   .dock__stamps {
@@ -1869,7 +1878,15 @@
   }
 
   .hanko--raise {
-    left: calc(100% * 5 / 6);
+    left: calc(100% * 5 / 6 - 34px);
+  }
+
+  .hanko--stay {
+    left: calc(50% - 20px);
+  }
+
+  .hanko--fold {
+    left: calc(100% / 6 - 10px);
   }
 
   .dock--quiet {
