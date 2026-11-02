@@ -80,7 +80,7 @@ Each hand after the first draws one card. The difficulty decides which cards are
 | `kizuna` | 絆 | Bond | Stakes are shared. Every raise raises every active stake. |
 | `hebi` | 蛇 | Serpent | Ties go to the House. |
 | `kitsune` | 狐 | Fox | One random crew member's hole cards are dealt face up for all to see. |
-| `gyaku` | 逆 | Reversal | Lowball. The *weakest* hand wins. Oyabun table only. |
+| `gyaku` | 逆 | Reversal | Lowball. Every hand is still its best five, but the *weaker* one wins: the crew's weakest active hand faces the House's weakest. Oyabun table only. |
 
 ### Difficulty ("tables")
 
