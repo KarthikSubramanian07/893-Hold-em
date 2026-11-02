@@ -17,6 +17,7 @@
     "lint": "oxlint src worker functions scripts",
     "sim": "vite-node scripts/simulate.ts",
     "e2e": "node scripts/e2e.mjs",
+    "e2e:practice": "node scripts/practice-e2e.mjs",
     "deploy:rooms": "npm run build:wasm && wrangler deploy --config worker/wrangler.jsonc",
     "deploy:web": "npm run build && wrangler pages deploy dist --project-name holdem893 --branch main",
     "deploy": "npm run deploy:rooms && npm run deploy:web",
