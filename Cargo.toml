@@ -17,4 +17,3 @@ panic = "abort"
 [profile.wasm]
 inherits = "release"
 opt-level = "s"
-strip = true

@@ -17,9 +17,12 @@
     "lint": "oxlint src worker functions scripts",
     "sim": "vite-node scripts/simulate.ts",
     "e2e": "node scripts/e2e.mjs",
-    "deploy:rooms": "wrangler deploy --config worker/wrangler.jsonc",
+    "deploy:rooms": "npm run build:wasm && wrangler deploy --config worker/wrangler.jsonc",
     "deploy:web": "npm run build && wrangler pages deploy dist --project-name holdem893 --branch main",
-    "deploy": "npm run deploy:rooms && npm run deploy:web"
+    "deploy": "npm run deploy:rooms && npm run deploy:web",
+    "build:wasm": "wasm-pack build crates/wasm --target web --out-dir pkg --release --no-pack",
+    "smoke:rooms": "node scripts/rooms-smoke.mjs",
+    "predev": "npm run build:wasm"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
