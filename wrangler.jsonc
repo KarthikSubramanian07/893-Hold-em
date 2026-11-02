@@ -1,0 +1,10 @@
+{
+  // The Pages site: the static game plus one Pages Function that forwards
+  // /room/<code> sockets to the rooms Worker over a service binding. Players
+  // only ever see <project>.pages.dev; the Worker has no public face.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "holdem893",
+  "pages_build_output_dir": "dist",
+  "compatibility_date": "2026-10-01",
+  "services": [{ "binding": "ROOMS", "service": "holdem893-rooms" }]
+}
