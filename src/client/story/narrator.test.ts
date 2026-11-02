@@ -84,6 +84,14 @@ describe('welcome', () => {
     expect(first[0]!.speaker).toBe('master');
   });
 
+  it('never tells a practice player to send a link', () => {
+    for (const returning of [false, true]) {
+      const said = narrate(null, { ...lobby, code: 'ALONE' }, 's0', { ...ctx, returning });
+      expect(ids(said)).toEqual(['welcome:practice']);
+      expect(said[0]!.text).not.toMatch(/link/i);
+    }
+  });
+
   it('notices a table code with 893 in it', () => {
     expect(ids(narrate(null, { ...lobby, code: 'Q893K' }, 's0', ctx))).toEqual(['welcome:code893']);
     expect(ids(narrate(null, { ...lobby, code: 'Q839K' }, 's0', ctx))).toEqual(['welcome:first']);
