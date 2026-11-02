@@ -54,24 +54,78 @@ spoilers live in [`docs/STORY.md`](docs/STORY.md). The rules and the art directi
 
 ## Architecture
 
+```mermaid
+flowchart LR
+  subgraph Browser["Your browser"]
+    HUD["React 19 HUD<br/>washi paper, calls, receipt"]
+    Scene["three.js night scene<br/>lantern, rain, neon, masks"]
+    Story["Story layer<br/>the Master, regulars, stamps"]
+    Local["Practice table<br/>src/client/net/local.ts"]
+    WasmB["Rust engine as wasm"]
+    HUD --- Scene
+    HUD --- Story
+    Local --> WasmB
+  end
+
+  subgraph Pages["holdem893.pages.dev, Cloudflare Pages"]
+    Static["Static site and game bundle"]
+    MW["functions/_middleware.ts<br/>Markdown for agents, real 404s"]
+    Fn["functions/room/[code].ts"]
+  end
+
+  subgraph Rooms["holdem893-rooms, a private Worker"]
+    DO["One Durable Object per table<br/>worker/index.ts: sockets, storage, alarms"]
+    WasmS["Rust engine as wasm<br/>crates/engine"]
+    DO -- "JSON in, JSON out" --> WasmS
+  end
+
+  HUD -- "page load" --> MW --> Static
+  HUD <-- "WebSocket /room/K7QX2" --> Fn
+  Fn -- "service binding" --> DO
+  HUD -. "/practice, no network" .-> Local
 ```
-                         ┌──────────────────────────────────────────────┐
-  browser                │  holdem893.pages.dev  (Cloudflare Pages)       │
- ┌──────────────────┐    │                                                │
- │ React 19 HUD     │◀──▶│  static site      functions/room/[code].ts     │
- │ three.js scene   │ ws │                    │ service binding (private)  │
- │ WebAudio synth   │    └────────────────────┼───────────────────────────┘
- │ story + stamps   │                         ▼
- │                  │    ┌──────────────────────────────────────────────┐
- │ practice mode ───┼─┐  │  holdem893-rooms  (Worker)                     │
- └──────────────────┘ │  │  one Durable Object per table                  │
-                      │  │  ┌──────────────────────────────────────────┐ │
-                      │  │  │ worker/index.ts: sockets, storage, alarms│ │
-                      │  │  │          │ JSON in / JSON out              │ │
-                      │  │  │          ▼                                 │ │
-                      └─▶│  │ hachi-wasm  ◀── crates/engine (Rust)       │ │
-                         │  └──────────────────────────────────────────┘ │
-                         └──────────────────────────────────────────────┘
+
+One Rust engine runs in all three places that need the rules: the table's Durable Object,
+the practice table in your tab, and the balancing simulator. They can't disagree.
+
+### One hand, start to finish
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant P as Each player
+  participant DO as Table (Durable Object)
+  participant E as Rust engine
+  DO->>E: deal hole cards, draw a House Rule
+  E-->>DO: a private view for every seat
+  DO-->>P: your cards only, never anyone else's
+  loop four rounds: preflop, flop, turn, river
+    P->>DO: a secret call: fold, stay, or raise
+    Note over DO: an alarm fires when the timer runs out,<br/>and the regulars think on their own clock
+    DO->>E: all calls are in
+    E-->>DO: calls turn over together, next card
+    DO-->>P: the new board and everyone's calls
+  end
+  DO->>E: showdown
+  E-->>DO: crew best vs House best, take, heat
+  DO-->>P: the result, and what it did to you
+```
+
+### Where the code lives
+
+```
+crates/
+  engine/    Rust. Cards, a seeded RNG, a bit-sliced 7-card evaluator, Monte Carlo
+             odds, the night state machine, per-seat redaction, and the regulars.
+  wasm/      wasm-bindgen bindings: one package for the Worker, the browser, and tests.
+  sim/       Self-play simulator that tunes heat limits and take targets.
+worker/      The rooms Durable Object: hibernating sockets, storage, alarms.
+functions/   Pages Functions: the room forwarder and the agent-friendly middleware.
+site/        Markdown pages, built into HTML, .md, llms.txt, and the sitemap.
+src/
+  client/    React HUD, three.js scene, synthesized sound, the story layer.
+  edge/      Markdown negotiation and honest 404s, unit tested.
+  engine/    Typed wrappers over the wasm engine.
 ```
 
 | Layer | Where | What |
