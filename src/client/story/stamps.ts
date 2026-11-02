@@ -10,6 +10,9 @@
 import { create } from 'zustand';
 import type { Difficulty, GameView } from '../../engine/types';
 import { burned, classifyShowdown, isRoyal, playedYakuza } from './analysis';
+import { MATCHBOOK_KEY } from './firstVisit';
+
+export { MATCHBOOK_KEY };
 
 export type StampId =
   | 'first-night'
@@ -141,8 +144,6 @@ function worstAtTable(view: GameView, you: string): boolean {
 // ---------------------------------------------------------------------------
 // The matchbook: what persists
 // ---------------------------------------------------------------------------
-
-export const MATCHBOOK_KEY = '893:matchbook';
 
 export interface MatchbookData {
   v: 1;

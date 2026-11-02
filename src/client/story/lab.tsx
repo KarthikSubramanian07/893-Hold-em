@@ -37,6 +37,9 @@ import {
 import { scriptedNight } from './fixtures';
 import { CAT, speakerInfo } from './lines';
 import type { StampId } from './stamps';
+import '../styles/fonts.css';
+import '@fontsource-variable/jetbrains-mono/wght.css';
+import '@fontsource/caveat/latin-500.css';
 import './lab.css';
 
 type View = 'coldopen' | 'narrator' | 'matchbook' | 'stamps' | 'cast' | 'eggs';

@@ -32,7 +32,7 @@ export function ProfileForm({
     sfx.unlock();
     const clean = name.trim();
     if (!clean) {
-      setErr('The bartender needs something to call you.');
+      setErr('The Master needs something to call you.');
       return;
     }
     sfx.stamp();

@@ -13,6 +13,16 @@ describe('matchRoute', () => {
     expect(matchRoute('/t/K7QX2/')).toEqual({ name: 'table', code: 'K7QX2' });
   });
 
+  it('matches the matchbook', () => {
+    expect(matchRoute('/matchbook')).toEqual({ name: 'matchbook' });
+    expect(matchRoute('/matchbook/')).toEqual({ name: 'matchbook' });
+    expect(matchRoute('/Matchbook')).toEqual({ name: 'matchbook' });
+    expect(matchRoute('/matchbook/extra')).toEqual({ name: 'notfound', reason: 'path' });
+    expect(canonicalPath('/Matchbook', matchRoute('/Matchbook'))).toBe('/matchbook');
+    expect(canonicalPath('/matchbook/', matchRoute('/matchbook/'))).toBe('/matchbook');
+    expect(canonicalPath('/matchbook', matchRoute('/matchbook'))).toBeNull();
+  });
+
   it('closes bad codes', () => {
     expect(matchRoute('/t/OOOOO')).toEqual({ name: 'notfound', reason: 'code' });
     expect(matchRoute('/t/K7QX')).toEqual({ name: 'notfound', reason: 'code' });

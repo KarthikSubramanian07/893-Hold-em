@@ -60,6 +60,9 @@ function Masthead({ onRules }: { onRules: () => void }) {
         <button type="button" className="mast__link label" onClick={onRules}>
           House rules
         </button>
+        <Link to="/matchbook" className="mast__link label">
+          Matchbook
+        </Link>
         <a className="mast__link label" href={REPO} target="_blank" rel="noreferrer">
           Source
         </a>
@@ -393,7 +396,7 @@ function Quiet() {
           A raise says <em>I've got this one, pile in.</em> A fold from the wrong seat leaves everybody exposed. After a few
           hands, a crew of strangers starts reading each other like old friends. That's the game.
         </p>
-        <p className="quiet__sig hand">— the bartender</p>
+        <p className="quiet__sig hand">— the Master</p>
       </div>
     </section>
   );
@@ -430,6 +433,11 @@ function MatchbookFooter({ onRules }: { onRules: () => void }) {
                 <button type="button" className="foot__btn" onClick={onRules}>
                   House rules
                 </button>
+              </li>
+              <li>
+                <Link to="/matchbook" className="foot__btn">
+                  Your matchbook
+                </Link>
               </li>
             </ul>
           </div>

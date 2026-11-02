@@ -363,3 +363,18 @@ useEffect(() => installEggs(), []);
   `lanternClick()` from the lantern. Render `<BarCat />` when
   `catVisits(code)`.
 - Preview everything at `/src/client/story/lab.html` under `npm run dev:web`.
+
+### Where it lives in the app
+
+| Piece | Mounted in | Notes |
+| --- | --- | --- |
+| Narration and stamps | `hud/useTableStory.ts`, used by `pages/Table.tsx` | Every view change runs `narrate` and `observe`. The first view after (re)connecting speaks but never stamps (`witnessed`), so a reload on the receipt can't count a night twice. Lines wait for the shoji doors to open. |
+| `<Narrator />` at the table | `pages/Table.tsx` | `subtitleSlot(phase, wide)`: during a hand the line floats at the top of the scene, over the House, never over your cards or the dock. Under the lobby card it gets a reserved strip at the foot of the screen; at the end of the night it sits beside the receipt on a wide screen. |
+| Eggs, the hidden card, stamp slips, remarks off the table | `story/StoryLayer.tsx`, lazy-loaded by `app/App.tsx` on every route | Installs the eggs once. On the paper pages the Master's remark comes on a washi slip at the foot of the screen; typing 893 also makes the landing numerals stutter (`:root[data-egg='neon']`). The 3D scene listens to the same `893:egg` events. |
+| The cold open | `StoryLayer`, on the landing page only | First visit to `/` only (`coldOpenFor`); `main.tsx` holds the dark until it loads. Invite links go straight to the table. Replay it from the matchbook. |
+| The matchbook | `/matchbook` (`pages/MatchbookPage.tsx`) | Linked from the landing nav and footer and from the receipt (`?table=CODE` gives a way back). |
+| Kyū | `hud/TopBar.tsx`, on `catVisits(code)` nights | She sleeps on the bar, beside the switches. |
+
+Fonts: the story's extra Shippori slices live in `story/fonts.css`, generated
+with the app's subset by `node scripts/fonts.mjs`, and load with the story
+layer rather than up front.

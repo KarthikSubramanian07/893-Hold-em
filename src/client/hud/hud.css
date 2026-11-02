@@ -7,7 +7,7 @@
   z-index: 10;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   pointer-events: none;
 }
 
@@ -21,10 +21,11 @@
 
 .hud > .hud__main {
   grid-row: 3;
+  grid-column: 1;
 }
 
 .hud > .hud__bottom {
-  grid-row: 4;
+  grid-row: 5;
 }
 
 .hud > *,
@@ -1567,7 +1568,7 @@
 
 @media (min-width: 900px) {
   .over {
-    grid-template-columns: 410px 220px;
+    grid-template-columns: 410px minmax(220px, 300px);
     align-items: end;
     gap: 2.5rem;
   }
@@ -1581,6 +1582,36 @@
   .over__wait {
     max-width: 14rem;
   }
+}
+
+.over__book {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.4rem;
+  font: 600 11px/1 var(--mono);
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--night-ink-soft);
+  transition: color 0.2s;
+}
+
+.over__book span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  background: var(--shu);
+  color: var(--washi);
+  font: 800 12px/1 var(--serif);
+  letter-spacing: 0;
+  border-radius: 2px;
+}
+
+.over__book:hover {
+  color: var(--kin);
 }
 
 .over__wait {
@@ -1988,5 +2019,148 @@
 
   .floats {
     bottom: 330px;
+  }
+}
+
+/* ---- Subtitles -------------------------------------------------------- */
+
+/* The Master, the masks and the regulars speak in film subtitles. During a
+   hand the bottom of the screen is yours (your cards, the dock, the
+   showdown), so the line floats at the top of the scene, under the bar,
+   where the House sits: over the room, never over the cards. Under paper
+   (the lobby card, the receipt) the line gets a strip of its own at the
+   foot of the screen, reserved for the whole phase so nothing jumps. */
+.hud > .hud__subs {
+  grid-column: 1;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hud > .hud__subs--float {
+  grid-row: 3;
+  align-self: start;
+  min-height: 0;
+  padding: 0.9rem 1rem 0;
+}
+
+.hud > .hud__subs--strip {
+  grid-row: 4;
+  min-height: 6.75rem;
+  padding: 0 1rem;
+}
+
+.hud__subs--float .narrator__line {
+  align-items: center;
+}
+
+/* The Master's last word, in the column beside the receipt. */
+.over__actions > .hud__subs--aside {
+  min-height: 0;
+  justify-content: flex-start;
+  margin-bottom: 1.2rem;
+}
+
+.hud__subs--aside .narrator__line {
+  max-width: none;
+  column-gap: 0.85rem;
+  padding: 0;
+}
+
+.hud__subs--aside .narrator__text {
+  font-size: 1.12rem;
+  line-height: 1.5;
+}
+
+.hud__subs--aside .narrator__ghost {
+  font-size: 5rem;
+  right: -0.5rem;
+}
+
+.hud__subs--aside .narrator__line::before {
+  inset: -2rem -2.5rem;
+}
+
+/* A soft pool of dark behind the words, so they read over the lantern. */
+.hud__subs .narrator__line::before {
+  content: '';
+  position: absolute;
+  inset: -1.4rem -3.5rem;
+  z-index: -2;
+  background: radial-gradient(closest-side, rgb(10 9 8 / 0.7), rgb(10 9 8 / 0.34) 62%, transparent);
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .hud > .hud__subs--strip {
+    min-height: 5.75rem;
+    padding: 0 0.75rem;
+  }
+
+  .hud__subs .narrator__line {
+    column-gap: 0.8rem;
+    padding: 0.6rem 0.4rem 0.7rem 0.2rem;
+  }
+
+  .hud__subs .narrator__seal {
+    width: 32px;
+    height: 32px;
+  }
+
+  .hud__subs .narrator__text {
+    font-size: 1.02rem;
+    line-height: 1.4;
+  }
+
+  .hud__subs .narrator__line[data-kind='regular'] .narrator__text {
+    font-size: 1.3rem;
+  }
+
+  /* On a phone the line sits right on the lantern; give it a deeper shade. */
+  .hud__subs--float .narrator__line::before {
+    inset: -1rem -1.5rem;
+    background: radial-gradient(closest-side, rgb(10 9 8 / 0.82), rgb(10 9 8 / 0.5) 65%, transparent);
+  }
+
+  /* Under the reactions tray, which sits under the bar on a phone. */
+  [data-phase='showdown'] .hud > .hud__subs--float {
+    padding-top: calc(52px + 0.9rem);
+  }
+
+  /* In the lobby and at the receipt the tray sits at the very bottom; the
+     strip sits on top of it, and the paper above both. */
+  [data-phase='lobby'] .hud__main,
+  [data-phase='over'] .hud__main {
+    padding-bottom: 0.5rem;
+  }
+
+  [data-phase='lobby'] .hud > .hud__bottom,
+  [data-phase='over'] .hud > .hud__bottom {
+    padding-bottom: calc(56px + max(0.6rem, env(safe-area-inset-bottom)));
+  }
+}
+
+/* ---- Kyū -------------------------------------------------------------- */
+
+/* On her nights she sleeps on the bar itself, next to the switches. */
+.top__cat {
+  margin-right: 0.35rem;
+  translate: 0 3px;
+}
+
+.top__cat svg {
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.6));
+}
+
+/* ---- Stamp slips ------------------------------------------------------ */
+
+.stamp-toast.stamp-toast--table {
+  top: calc(64px + 1rem);
+}
+
+@media (max-width: 760px) {
+  /* On a phone the slip lands over the top bar for a moment, like a notice. */
+  .stamp-toast.stamp-toast--table {
+    top: max(0.5rem, env(safe-area-inset-top));
+    right: 0.75rem;
   }
 }
