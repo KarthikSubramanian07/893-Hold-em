@@ -6,6 +6,7 @@ import { makeRoomCode } from '../../protocol';
 import { sfx } from '../audio';
 import { Link, navigate, useSearch } from '../app/router';
 import { CODE_RE } from '../../protocol';
+import { PRACTICE_PATH, isPracticeCode } from '../net/practice';
 import { ColdOpen, Matchbook, Rain, Seal, STAMPS, useMatchbook } from '../story';
 import { useReducedMotion } from '../story/motion';
 import './matchbook.css';
@@ -16,7 +17,9 @@ const OPEN_AFTER_MS = 900;
 export function MatchbookPage() {
   const search = useSearch();
   const back = new URLSearchParams(search).get('table')?.toUpperCase() ?? null;
-  const table = back && CODE_RE.test(back) ? back : null;
+  // Where "back" goes: a room by its code, or the practice table by its door.
+  const table = back && CODE_RE.test(back) ? { to: `/t/${back}`, label: `Back to table ${back}` } : null;
+  const backTo = isPracticeCode(back) ? { to: PRACTICE_PATH, label: 'Back to the practice table' } : table;
   const reduced = useReducedMotion();
   const [open, setOpen] = useState(false);
   const [replay, setReplay] = useState(false);
@@ -63,9 +66,9 @@ export function MatchbookPage() {
         </p>
 
         <nav className="mbp__actions" aria-label="Where to now">
-          {table ? (
-            <Link to={`/t/${table}`} className="btn btn--shu" onClick={() => sfx.click()}>
-              Back to table {table}
+          {backTo ? (
+            <Link to={backTo.to} className="btn btn--shu" onClick={() => sfx.click()}>
+              {backTo.label}
             </Link>
           ) : (
             <button
