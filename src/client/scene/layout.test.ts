@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aspectBlend, boardSpot, cameraFrame, heroCardPixels, lanternHeight, MASK_FACE, maskLayout, projectNdc, seatAnchor, seatLayout, stageLayout, TABLE, type Vec3 } from './layout';
+import { aspectBlend, bottomCalm, boardSpot, cameraFrame, heroCardPixels, lanternHeight, MASK_FACE, maskLayout, projectNdc, seatAnchor, seatLayout, stageLayout, TABLE, type Vec3 } from './layout';
 
 describe('seatLayout', () => {
   it('puts the viewer at the front centre', () => {
@@ -201,5 +201,26 @@ describe('seatAnchor', () => {
     expect(mine.x).toBeLessThan(0);
     const theirs = seatAnchor(other!, false);
     expect(Math.hypot(theirs.x, theirs.z)).toBeGreaterThan(Math.hypot(other!.x, other!.z));
+  });
+});
+
+describe('bottomCalm', () => {
+  it('keeps the desktop default when there is no bottom band', () => {
+    expect(bottomCalm(null, 900)).toBe(150);
+    expect(bottomCalm(900, 900)).toBe(150);
+    expect(bottomCalm(Number.NaN, 900)).toBe(150);
+  });
+
+  it('clears a tall phone dock', () => {
+    // iPhone 15: a 659px canvas with the dock's top edge at 437px.
+    expect(bottomCalm(437, 659)).toBe(234);
+  });
+
+  it('never reserves more than half the screen', () => {
+    expect(bottomCalm(100, 659)).toBe(330);
+  });
+
+  it('never drops below the desktop dock', () => {
+    expect(bottomCalm(820, 900)).toBe(150);
   });
 });
