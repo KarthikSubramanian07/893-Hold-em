@@ -59,15 +59,15 @@ if (await name.isVisible().catch(() => false)) {
 }
 await page.getByText('Start the night').waitFor({ timeout: 30_000 });
 await page.waitForTimeout(2200);
-const regulars = await page.locator('.crew__row .crew__tag', { hasText: 'Regular' }).count();
+const regulars = await page.locator('.crew__row .crew__tag', { hasText: /^bot$/i }).count();
 step(`lobby: ${regulars} regulars seated`);
 if (regulars !== 3) errors.push(`expected 3 regulars, saw ${regulars}`);
 await shot('02-lobby');
 
 // Change the room and the crew before starting, like any host.
 await page.getByText('30s').click();
-await page.getByRole('button', { name: /send one home/i }).click();
-await page.getByRole('button', { name: /seat a regular/i }).click();
+await page.getByRole('button', { name: /remove a bot/i }).click();
+await page.getByRole('button', { name: /add a bot/i }).click();
 await page.waitForTimeout(400);
 await page.getByRole('button', { name: /start the night/i }).click();
 step('night started');
