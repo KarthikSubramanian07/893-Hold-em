@@ -19,7 +19,21 @@ export interface Live {
   surge: number;
   /** World position of the lantern bulb, updated as it sways. */
   lanternPos: THREE.Vector3;
+  /** Clock time the current showdown began, or -1 outside one. */
+  showdownAt: number;
+  /** World position between each mask's eyes, updated as the heads turn. */
+  maskEyes: THREE.Vector3[];
+  /** Clock time each easter egg last fired (see story/eggs.ts), -1e9 if never. */
+  eggs: Record<SceneEgg, number>;
+  /** A push for the lantern (radians per second), consumed by the lantern. */
+  lanternKick: number;
 }
+
+/** The eggs the room itself reacts to. */
+export type SceneEgg = 'neon' | 'lantern' | 'kanpai' | 'cat' | 'konami';
+
+/** How long after the showdown starts the watchers deliver their verdicts, in seconds. */
+export const SEEN_DELAY = 1.5;
 
 export function createLive(targets: SceneTargets, reducedMotion: boolean): Live {
   return {
@@ -32,6 +46,10 @@ export function createLive(targets: SceneTargets, reducedMotion: boolean): Live 
     lantern: targets.lantern,
     surge: 0,
     lanternPos: new THREE.Vector3(0, 2.0, -0.5),
+    showdownAt: -1,
+    maskEyes: Array.from({ length: 6 }, () => new THREE.Vector3(0, 1, -1.9)),
+    eggs: { neon: -1e9, lantern: -1e9, kanpai: -1e9, cat: -1e9, konami: -1e9 },
+    lanternKick: 0,
   };
 }
 

@@ -7,8 +7,15 @@ import { damp, useLive } from './live';
 export function LiveDriver() {
   const live = useLive();
   const lastOutcome = useRef(live.targets.outcome);
-  useFrame((_, dt) => {
+  const lastShowdown = useRef('');
+  useFrame(({ clock }, dt) => {
     const t = live.targets;
+    // One showdown per hand: remember when it began, so the watchers' beats line up.
+    const key = t.phase === 'showdown' ? `${t.code}:${t.hand}` : '';
+    if (key !== lastShowdown.current) {
+      lastShowdown.current = key;
+      live.showdownAt = key ? clock.elapsedTime : -1;
+    }
     if (t.outcome !== lastOutcome.current) {
       if (t.outcome === 'house') live.surge = 1.4;
       lastOutcome.current = t.outcome;
