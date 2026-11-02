@@ -11,3 +11,7 @@
 pub mod card;
 pub mod equity;
 pub mod eval;
+pub mod bot;
+pub mod game;
+pub mod rules;
+pub mod view;
