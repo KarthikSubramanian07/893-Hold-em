@@ -131,7 +131,14 @@ bun run dev                      # builds the wasm engine, then Vite on :5173 + 
 | `bun run e2e` | Two real browsers play a whole night through the UI |
 | `bun run e2e:practice` | One browser plays a practice night through the UI, with no Worker running (`npx vite --port 5213` first) |
 | `cargo run --release -p hachi-sim` | Rebalance the tables |
-| `bun run deploy` | Deploy the rooms Worker and the Pages site |
+| `bun run deploy:rooms` | Deploy the rooms Worker by hand (uses your `wrangler login`) |
+
+## Deploy
+
+Cloudflare builds and deploys both halves on every push to `main`, through the
+Cloudflare GitHub app: Pages for the site, Workers Builds for the rooms Worker.
+There is no API token anywhere in the repo or CI. Settings and the one-time setup
+are in [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## License
 
