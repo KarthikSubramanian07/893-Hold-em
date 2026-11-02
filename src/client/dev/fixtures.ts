@@ -64,6 +64,12 @@ export const FIXTURES: Record<string, GameView> = {
     seats: [seat(0, { cards: [] }), seat(1, { cards: [] }), seat(3, { cards: [], bot: true })],
   },
 
+  /** The host is still drinking alone: the lobby offers the practice table. */
+  'lobby-alone': {
+    ...base,
+    seats: [seat(0, { cards: [] })],
+  },
+
   preflop: {
     ...base,
     phase: 'call',

@@ -5,7 +5,9 @@ import type { GameView } from '../../engine/types';
 import { sfx } from '../audio';
 import { IconCopy, IconSound } from '../ui/icons';
 import { Seal } from '../ui/Seal';
+import { isPracticeCode } from '../net/practice';
 import { copyInvite } from './invite';
+import './practice.css';
 
 export function TopBar({
   view,
@@ -26,10 +28,17 @@ export function TopBar({
         <span className="top__code" aria-label={`Table code ${view.code.split('').join(' ')}`}>
           {view.code}
         </span>
-        <button type="button" className="top__invite" onClick={() => void copyInvite(view.code)} onMouseEnter={() => sfx.hover()}>
-          <IconCopy size={15} />
-          <span>Copy invite link</span>
-        </button>
+        {isPracticeCode(view.code) ? (
+          <span className="top__practice">
+            <b aria-hidden="true">練</b>
+            <span>Practice</span>
+          </span>
+        ) : (
+          <button type="button" className="top__invite" onClick={() => void copyInvite(view.code)} onMouseEnter={() => sfx.hover()}>
+            <IconCopy size={15} />
+            <span>Copy invite link</span>
+          </button>
+        )}
       </div>
 
       {inNight && (
