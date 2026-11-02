@@ -75,9 +75,3 @@
   font: 800 12px/1 var(--serif);
   letter-spacing: 0;
 }
-
-@media (max-width: 640px) {
-  .top__practice span {
-    display: none;
-  }
-}
