@@ -1,6 +1,7 @@
 // Read-only helpers over a GameView. Pure, so the HUD stays thin and testable.
 import type { GameView, HandOutcome, SeatView, Stance, Street, Verdict } from '../../engine/types';
 import type { Reaction } from '../../protocol';
+import { MAX_STAKE } from '../../engine/rules';
 
 export const STREET_NAMES: Record<Street, string> = { 0: 'Pre-flop', 1: 'Flop', 2: 'Turn', 3: 'River' };
 
@@ -48,18 +49,38 @@ export function dockMode(view: GameView, localLocked: boolean): DockMode {
 }
 
 export const OUTCOME_LINE: Record<HandOutcome, string> = {
-  crew: 'Clean.',
+  crew: 'Paid.',
   house: 'Burned.',
-  tie: 'Push.',
+  tie: 'Even.',
   walked: 'Walked.',
 };
 
 export const OUTCOME_SUB: Record<HandOutcome, string> = {
-  crew: 'The crew takes the pot.',
-  house: 'The House wins. The heat climbs.',
-  tie: 'Dead even. Nobody moves.',
-  walked: 'Everyone folded. Somebody noticed.',
+  crew: "The crew's best hand beat the House's. Every bet still in gets paid.",
+  house: "The House's best hand won. Nobody gets paid this hand.",
+  tie: 'The crew and the House tied. Nobody gets paid.',
+  walked: 'Everyone folded. Walking away still adds heat.',
 };
+
+/**
+ * What the hand just did to you, in one plain sentence: whether your bet was
+ * paid, and whether the mask watching you beat you (which is what draws
+ * heat). Null for spectators and before the showdown.
+ */
+export function yourHand(view: GameView): string | null {
+  const r = view.result;
+  const me = mySeat(view);
+  if (!r || !me || view.phase === 'lobby') return null;
+  if (!me.active) return 'You folded, so this hand cost you nothing.';
+  const mult = view.rule === 'homura' ? 2 : 1;
+  const bet = (me.stake ?? 1) * mult;
+  const mine = me.hand?.name ? me.hand.name.charAt(0).toLowerCase() + me.hand.name.slice(1) : 'hand';
+  const paid = r.outcome === 'crew' ? `Your bet of ${bet} was paid` : 'Your bet was not paid';
+  const seen = (r.burned ?? []).includes(me.id);
+  return seen
+    ? `${paid}, and the mask watching you beat your ${mine}: +${bet} heat.`
+    : `${paid}, and your ${mine} held against the mask watching you: no heat.`;
+}
 
 export const VERDICT_LINE: Record<Verdict, string> = {
   clean: 'Clean getaway',
@@ -82,3 +103,10 @@ export function canStart(view: GameView): boolean {
 }
 
 export type { Reaction };
+
+/** What each call does to you, in plain words, given your current bet. */
+export function callHint(stance: Stance, stake: number): string {
+  if (stance === 'fold') return 'Sit this one out';
+  if (stance === 'stay') return `Keep betting ${stake}`;
+  return stake >= MAX_STAKE ? 'At the max' : `Bet ${stake + 1}`;
+}

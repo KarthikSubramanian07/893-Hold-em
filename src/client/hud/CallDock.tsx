@@ -4,15 +4,31 @@ import { MAX_STAKE } from '../../engine/rules';
 import type { GameView, Stance } from '../../engine/types';
 import { sfx } from '../audio';
 import { countdown, ringOffset } from '../lib/countdown';
-import { dockMode, myCall, mySeat, stillDeciding, STREET_NAMES } from '../net/selectors';
+import { callHint, dockMode, myCall, mySeat, stillDeciding, STREET_NAMES } from '../net/selectors';
 import { useTable } from '../net/store';
 import { useNow } from './useNow';
 
-const STAMPS: { stance: Stance; kanji: string; label: string; key: string; hint: string }[] = [
-  { stance: 'fold', kanji: '降', label: 'Fold', key: 'F', hint: 'Step out of this hand' },
-  { stance: 'stay', kanji: '待', label: 'Stay', key: 'S', hint: 'Keep your stake' },
-  { stance: 'raise', kanji: '攻', label: 'Raise', key: 'R', hint: 'Stake up by one' },
+const STAMPS: { stance: Stance; kanji: string; label: string; key: string }[] = [
+  { stance: 'fold', kanji: '降', label: 'Fold', key: 'F' },
+  { stance: 'stay', kanji: '待', label: 'Stay', key: 'S' },
+  { stance: 'raise', kanji: '攻', label: 'Raise', key: 'R' },
 ];
+
+const COACH_KEY = '893:coached';
+function coachedBefore(): boolean {
+  try {
+    return localStorage.getItem(COACH_KEY) === '1';
+  } catch {
+    return true;
+  }
+}
+function markCoached() {
+  try {
+    localStorage.setItem(COACH_KEY, '1');
+  } catch {
+    // private mode: the tip just shows again next time
+  }
+}
 
 export function CallDock({ view }: { view: GameView }) {
   const send = useTable((s) => s.send);
@@ -26,6 +42,8 @@ export function CallDock({ view }: { view: GameView }) {
   const stake = me?.stake ?? 1;
   const canRaise = stake < MAX_STAKE;
 
+  // The first few calls of your first night get one plain-words tip.
+  const [coach] = useState(() => !coachedBefore());
   const totalMs = view.config.timer * 1000;
   const now = useNow(view.deadline != null && mode !== 'none', 200);
   const clock = countdown(view.deadline, now, skew, totalMs);
@@ -38,8 +56,9 @@ export function CallDock({ view }: { view: GameView }) {
       sfx.stamp();
       setLocal({ key: streetKey, stance });
       send({ t: 'call', stance });
+      if (view.hand >= 2) markCoached();
     },
-    [mode, canRaise, streetKey, send],
+    [mode, canRaise, streetKey, send, view.hand],
   );
 
   useEffect(() => {
@@ -93,11 +112,17 @@ export function CallDock({ view }: { view: GameView }) {
     <section className={`dock dock--${mode}`} aria-label={`${street} call`}>
       <div className="dock__meta">
         <p className="label dock__street">
-          {street} <span aria-hidden="true">·</span> call
+          Round {view.street + 1} of 4 <span>{street}</span>
         </p>
         <Stake stake={stake} />
       </div>
 
+      {coach && mode === 'decide' && view.hand <= 1 && (
+        <p className="dock__coach">
+          Everyone picks at the same moment, then all calls turn over. Weak cards? Fold costs nothing. Strong? Raise, and
+          your crew will see it. If the crew&rsquo;s best hand wins, everyone still in gets paid.
+        </p>
+      )}
       <div className="dock__stamps" role="group" aria-label="Choose your call">
         {STAMPS.map((s) => {
           const disabled = mode !== 'decide' || (s.stance === 'raise' && !canRaise);
@@ -110,7 +135,7 @@ export function CallDock({ view }: { view: GameView }) {
               disabled={disabled}
               aria-pressed={mode === 'locked' ? isChosen : undefined}
               aria-keyshortcuts={s.key}
-              title={s.stance === 'raise' && !canRaise ? 'Your stake is at the maximum' : `${s.hint} (${s.key})`}
+              title={`${callHint(s.stance, stake)} (${s.key})`}
               onClick={() => call(s.stance)}
               onMouseEnter={() => !disabled && sfx.hover()}
             >
@@ -123,6 +148,7 @@ export function CallDock({ view }: { view: GameView }) {
                   {s.key}
                 </span>
               </span>
+              <span className="stamp__hint">{callHint(s.stance, stake)}</span>
             </button>
           );
         })}
@@ -159,8 +185,8 @@ export function CallDock({ view }: { view: GameView }) {
 
 function Stake({ stake }: { stake: number }) {
   return (
-    <div className="stake" role="img" aria-label={`Your stake: ${stake} of ${MAX_STAKE}`}>
-      <span className="label">Stake</span>
+    <div className="stake" role="img" aria-label={`Your bet: ${stake} of at most ${MAX_STAKE}`} title="Your bet. Paid to the crew if it wins; drawn as heat if the mask watching you beats you.">
+      <span className="label">Your bet</span>
       <span className="stake__chips" aria-hidden="true">
         {Array.from({ length: MAX_STAKE }, (_, i) => (
           <i key={i} className={i < stake ? 'on' : ''} />
