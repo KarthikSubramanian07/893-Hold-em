@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>893 Hold'em: sound lab</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(ellipse at 30% 0%, #2a1f1a 0%, #141210 60%);
+        color: #e9dfcf;
+        font: 14px/1.5 ui-monospace, 'JetBrains Mono Variable', monospace;
+        padding: 40px;
+        box-sizing: border-box;
+      }
+      h1 { font-weight: 400; letter-spacing: 0.08em; margin: 0 0 4px; }
+      p { color: #a8998a; margin: 0 0 28px; }
+      .grid { display: flex; flex-wrap: wrap; gap: 10px; max-width: 760px; }
+      button {
+        font: inherit;
+        color: inherit;
+        background: #201b17;
+        border: 1px solid #4a3b30;
+        border-radius: 3px;
+        padding: 10px 16px;
+        cursor: pointer;
+      }
+      button:hover { border-color: #c8553d; }
+      button[aria-pressed='true'] { background: #c8553d; border-color: #c8553d; color: #141210; }
+      .row { margin: 0 0 22px; display: flex; gap: 10px; }
+    </style>
+  </head>
+  <body>
+    <h1>音 sound lab</h1>
+    <p>Every sound in the bar, synthesized live. Click once to wake the audio.</p>
+    <div class="row">
+      <button id="ambience" aria-pressed="false">ambience</button>
+      <button id="mute" aria-pressed="false">mute</button>
+      <span id="demo"></span>
+    </div>
+    <div class="grid" id="voices"></div>
+    <script type="module" src="./lab.tsx"></script>
+  </body>
+</html>
