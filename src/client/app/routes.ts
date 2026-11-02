@@ -1,5 +1,6 @@
 // Route matching, kept pure so it can be tested without a browser.
 import { CODE_RE } from '../../protocol';
+import { PRACTICE_CODE, PRACTICE_PATH, isPracticeCode } from '../net/practice';
 
 export type Route =
   | { name: 'landing' }
@@ -9,6 +10,8 @@ export type Route =
 export function matchRoute(pathname: string): Route {
   const path = pathname.replace(/\/{2,}/g, '/').replace(/(.)\/$/, '$1');
   if (path === '/' || path === '' || path === '/index.html') return { name: 'landing' };
+  // The practice table is a table like any other, with a code no server can hand out.
+  if (path.toLowerCase() === PRACTICE_PATH) return { name: 'table', code: PRACTICE_CODE };
   const m = /^\/t\/([^/]+)$/i.exec(path);
   if (m) {
     let raw = m[1]!;
@@ -26,7 +29,7 @@ export function matchRoute(pathname: string): Route {
 /** The canonical path for a route, or null when the URL is already canonical. */
 export function canonicalPath(pathname: string, route: Route): string | null {
   if (route.name === 'table') {
-    const want = `/t/${route.code}`;
+    const want = isPracticeCode(route.code) ? PRACTICE_PATH : `/t/${route.code}`;
     return pathname === want ? null : want;
   }
   return null;
