@@ -197,7 +197,7 @@ export const useTable = create<TableStore>((set, get) => {
         return;
       }
       if (socket?.open) socket.send(JSON.stringify(msg));
-      else flashError('net', 'Lost the line to the bar. Reconnecting.');
+      else flashError('net', 'Lost the line to the bar. Knocking again.');
     },
     leave() {
       current = null;

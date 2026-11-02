@@ -80,7 +80,7 @@ export function CallDock({ view }: { view: GameView }) {
             <span>
               {mode === 'folded'
                 ? 'Sit tight. If the crew wins, they win without you.'
-                : 'Seats open up between nights. Enjoy the show.'}
+                : 'Seats open up between nights. Mind the glass.'}
             </span>
           </span>
         </p>

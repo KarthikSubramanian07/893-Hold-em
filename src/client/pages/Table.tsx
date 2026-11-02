@@ -118,7 +118,7 @@ export function TablePage({ code }: { code: string }) {
     <Narrator lines={doorsOpen ? story.lines : NO_LINES} tone="night" className={`hud__subs hud__subs--${slot}`} />
   );
 
-  const fatal = !view && (status === 'closed' || error) ? bartender(error) ?? 'The line went dead before we found your table.' : null;
+  const fatal = !view && (status === 'closed' || error) ? bartender(error) ?? 'The line went dead on the stairs. The Master never found your table.' : null;
 
   return (
     <div className="table night" data-phase={view?.phase ?? 'none'}>
