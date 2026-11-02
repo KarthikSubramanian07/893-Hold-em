@@ -35,6 +35,13 @@ const phaseOf = () => page.locator('.table').getAttribute('data-phase').catch(()
 
 await page.goto(base);
 await page.waitForLoadState('networkidle');
+// A first visit opens on the cold open; any key comes in, like a person would.
+await page.locator('.cold-open').waitFor({ timeout: 15_000 }).catch(() => {});
+if (await page.locator('.cold-open').count()) {
+  await page.keyboard.press('Enter');
+  await page.locator('.cold-open').waitFor({ state: 'detached' });
+  step('skipped the cold open at the front door');
+}
 await shot('01-landing');
 const heavy = fetched.filter((u) => /\.wasm|hachi_wasm|three|@react-three/.test(u));
 if (heavy.length) errors.push(`landing fetched the engine or 3D before anyone sat down: ${heavy.join(', ')}`);
