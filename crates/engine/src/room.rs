@@ -18,17 +18,33 @@ use crate::rules::Difficulty;
 use crate::view::{GameView, view_for};
 
 pub const NAME_MAX: usize = 16;
-pub const AVATARS: [&str; 8] = ["kitsune", "tanuki", "koi", "tsuru", "tora", "usagi", "karasu", "hebi"];
+pub const AVATARS: [&str; 8] = [
+    "kitsune", "tanuki", "koi", "tsuru", "tora", "usagi", "karasu", "hebi",
+];
 pub const REACTIONS: [&str; 6] = ["clink", "smoke", "nod", "bow", "fire", "ghost"];
 
 /// A validated client message.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ClientMessage {
-    Hello { pid: String, name: String, avatar: String },
-    Rename { name: String, avatar: String },
-    Config { difficulty: Option<Difficulty>, timer: Option<u8> },
-    Bot { add: bool },
-    Kick { seat: String },
+    Hello {
+        pid: String,
+        name: String,
+        avatar: String,
+    },
+    Rename {
+        name: String,
+        avatar: String,
+    },
+    Config {
+        difficulty: Option<Difficulty>,
+        timer: Option<u8>,
+    },
+    Bot {
+        add: bool,
+    },
+    Kick {
+        seat: String,
+    },
     Start,
     Call(Stance),
     Next,
@@ -48,7 +64,11 @@ pub fn clean_name(raw: Option<&str>) -> String {
         .collect::<Vec<_>>()
         .join(" ");
     let s: String = s.chars().take(NAME_MAX).collect();
-    if s.is_empty() { "Stranger".to_string() } else { s }
+    if s.is_empty() {
+        "Stranger".to_string()
+    } else {
+        s
+    }
 }
 
 fn avatar_of(v: &Value) -> String {
@@ -70,7 +90,9 @@ pub fn parse(raw: &str) -> Option<ClientMessage> {
         "hello" => {
             let pid = field("pid").as_str()?;
             let ok = (8..=64).contains(&pid.len())
-                && pid.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-');
+                && pid
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-');
             if !ok {
                 return None;
             }
@@ -80,7 +102,10 @@ pub fn parse(raw: &str) -> Option<ClientMessage> {
                 avatar: avatar_of(field("avatar")),
             }
         }
-        "rename" => ClientMessage::Rename { name: clean_name(field("name").as_str()), avatar: avatar_of(field("avatar")) },
+        "rename" => ClientMessage::Rename {
+            name: clean_name(field("name").as_str()),
+            avatar: avatar_of(field("avatar")),
+        },
         "config" => {
             let c = field("config");
             let difficulty = match c.get("difficulty").and_then(Value::as_str) {
@@ -103,11 +128,15 @@ pub fn parse(raw: &str) -> Option<ClientMessage> {
         },
         "kick" => {
             let seat = field("seat").as_str()?;
-            let ok = seat.len() == 2 && seat.starts_with('s') && matches!(seat.as_bytes()[1], b'0'..=b'5');
+            let ok = seat.len() == 2
+                && seat.starts_with('s')
+                && matches!(seat.as_bytes()[1], b'0'..=b'5');
             if !ok {
                 return None;
             }
-            ClientMessage::Kick { seat: seat.to_string() }
+            ClientMessage::Kick {
+                seat: seat.to_string(),
+            }
         }
         "start" => ClientMessage::Start,
         "call" => ClientMessage::Call(match field("stance").as_str()? {
@@ -205,7 +234,10 @@ impl Room {
         let seat = self.game.join(pid, name, avatar);
         let welcome = serde_json::json!({ "t": "welcome", "seat": seat, "token": "" }).to_string();
         self.after_change(now);
-        Welcome { seat, effects: vec![Effect::Reply { json: welcome }, Effect::Broadcast] }
+        Welcome {
+            seat,
+            effects: vec![Effect::Reply { json: welcome }, Effect::Broadcast],
+        }
     }
 
     /// A socket holding `seat` closed.
@@ -222,7 +254,9 @@ impl Room {
             return vec![Effect::Reply { json }];
         }
         let Some(seat) = seat else {
-            return vec![Effect::Reply { json: error_json("bad-phase", "Spectators watch. That's the deal.") }];
+            return vec![Effect::Reply {
+                json: error_json("bad-phase", "Spectators watch. That's the deal."),
+            }];
         };
         let result = match msg {
             ClientMessage::Hello { .. } | ClientMessage::Ping(_) => Ok(()),
@@ -230,7 +264,9 @@ impl Room {
                 self.game.rename(seat, &name, &avatar);
                 Ok(())
             }
-            ClientMessage::Config { difficulty, timer } => self.game.set_config(seat, difficulty, timer),
+            ClientMessage::Config { difficulty, timer } => {
+                self.game.set_config(seat, difficulty, timer)
+            }
             ClientMessage::Bot { add: true } => self.game.add_bot(seat).map(|_| ()),
             ClientMessage::Bot { add: false } => self.game.remove_bot(seat),
             ClientMessage::Kick { seat: target } => self.game.kick(seat, &target),
@@ -245,7 +281,9 @@ impl Room {
                 self.after_change(now);
                 vec![Effect::Broadcast]
             }
-            Err(e) => vec![Effect::Reply { json: error_json(e.code(), bartender(&e)) }],
+            Err(e) => vec![Effect::Reply {
+                json: error_json(e.code(), bartender(&e)),
+            }],
         }
     }
 
@@ -254,13 +292,18 @@ impl Room {
         if self.game.phase == Phase::Call {
             return Vec::new();
         }
-        let last = self.reacted.iter().find(|(s, _)| s == seat).map(|(_, t)| *t);
+        let last = self
+            .reacted
+            .iter()
+            .find(|(s, _)| s == seat)
+            .map(|(_, t)| *t);
         if last.is_some_and(|t| now < t + 700) {
             return Vec::new();
         }
         self.reacted.retain(|(s, _)| s != seat);
         self.reacted.push((seat.to_string(), now));
-        let json = serde_json::json!({ "t": "react", "seat": seat, "reaction": reaction }).to_string();
+        let json =
+            serde_json::json!({ "t": "react", "seat": seat, "reaction": reaction }).to_string();
         vec![Effect::Shout { json }]
     }
 
@@ -268,10 +311,7 @@ impl Room {
     pub fn wake(&mut self, now: Ms) -> Vec<Effect> {
         let before = self.game.version;
         loop {
-            let due = self
-                .bots
-                .iter()
-                .position(|b| b.at <= now);
+            let due = self.bots.iter().position(|b| b.at <= now);
             let Some(i) = due else { break };
             let b = self.bots.remove(i);
             if self.game.phase != Phase::Call {
@@ -281,7 +321,9 @@ impl Room {
             if !still_owes {
                 continue;
             }
-            let Some(pid) = self.game.seat(&b.seat).map(|s| s.pid.clone()) else { continue };
+            let Some(pid) = self.game.seat(&b.seat).map(|s| s.pid.clone()) else {
+                continue;
+            };
             let view = view_for(&self.game, Some(&b.seat), now);
             let stance = decide(&view, &b.seat, Temperament::for_seat(&pid), &mut self.rng);
             let _ = self.game.call(&b.seat, stance, now);
@@ -289,7 +331,11 @@ impl Room {
         }
         self.game.tick(now);
         self.after_change(now);
-        if self.game.version != before { vec![Effect::Broadcast] } else { Vec::new() }
+        if self.game.version != before {
+            vec![Effect::Broadcast]
+        } else {
+            Vec::new()
+        }
     }
 
     /// After any change: when a new street opens, give each regular a human-ish think time.
@@ -311,7 +357,10 @@ impl Room {
         };
         for seat in self.game.bots_to_act() {
             let think = 900 + u64::from(self.rng.below(budget.saturating_sub(900).max(1) as u32));
-            self.bots.push(BotDue { seat, at: now + think });
+            self.bots.push(BotDue {
+                seat,
+                at: now + think,
+            });
         }
     }
 
@@ -336,7 +385,11 @@ impl Room {
             view: &'a GameView,
         }
         let view = self.view(seat, now);
-        serde_json::to_string(&State { t: "state", view: &view }).expect("views always serialize")
+        serde_json::to_string(&State {
+            t: "state",
+            view: &view,
+        })
+        .expect("views always serialize")
     }
 
     /// True when the table has nobody to play for and can be forgotten.
@@ -357,16 +410,29 @@ mod tests {
     fn parses_the_protocol() {
         assert_eq!(
             msg(r#"{"t":"hello","pid":"abcdefgh12","name":"  Mio \n ","avatar":"koi"}"#),
-            ClientMessage::Hello { pid: "abcdefgh12".into(), name: "Mio".into(), avatar: "koi".into() }
+            ClientMessage::Hello {
+                pid: "abcdefgh12".into(),
+                name: "Mio".into(),
+                avatar: "koi".into()
+            }
         );
-        assert_eq!(msg(r#"{"t":"call","stance":"raise"}"#), ClientMessage::Call(Stance::Raise));
+        assert_eq!(
+            msg(r#"{"t":"call","stance":"raise"}"#),
+            ClientMessage::Call(Stance::Raise)
+        );
         assert_eq!(
             msg(r#"{"t":"config","config":{"difficulty":"oyabun","timer":15}}"#),
-            ClientMessage::Config { difficulty: Some(Difficulty::Oyabun), timer: Some(15) }
+            ClientMessage::Config {
+                difficulty: Some(Difficulty::Oyabun),
+                timer: Some(15)
+            }
         );
         assert_eq!(
             msg(r#"{"t":"config","config":{"timer":17}}"#),
-            ClientMessage::Config { difficulty: None, timer: None }
+            ClientMessage::Config {
+                difficulty: None,
+                timer: None
+            }
         );
     }
 
@@ -385,7 +451,10 @@ mod tests {
         ] {
             assert_eq!(parse(bad), None, "accepted {bad}");
         }
-        assert_eq!(parse(&format!(r#"{{"t":"next","pad":"{}"}}"#, "x".repeat(3000))), None);
+        assert_eq!(
+            parse(&format!(r#"{{"t":"next","pad":"{}"}}"#, "x".repeat(3000))),
+            None
+        );
     }
 
     #[test]
@@ -433,10 +502,20 @@ mod tests {
     #[test]
     fn reactions_are_silenced_during_calls_and_rate_limited() {
         let (mut r, me) = room_with_bots();
-        assert_eq!(r.handle(Some(&me), ClientMessage::React("nod".into()), 0).len(), 1);
-        assert!(r.handle(Some(&me), ClientMessage::React("nod".into()), 100).is_empty());
+        assert_eq!(
+            r.handle(Some(&me), ClientMessage::React("nod".into()), 0)
+                .len(),
+            1
+        );
+        assert!(
+            r.handle(Some(&me), ClientMessage::React("nod".into()), 100)
+                .is_empty()
+        );
         r.handle(Some(&me), ClientMessage::Start, 1_000);
-        assert!(r.handle(Some(&me), ClientMessage::React("nod".into()), 5_000).is_empty());
+        assert!(
+            r.handle(Some(&me), ClientMessage::React("nod".into()), 5_000)
+                .is_empty()
+        );
     }
 
     #[test]
@@ -479,6 +558,9 @@ mod tests {
     fn state_message_wraps_the_view() {
         let (r, me) = room_with_bots();
         let s = r.state_json(Some(&me), 5);
-        assert!(s.starts_with(r#"{"t":"state","view":{"code":"K7QX2""#), "{s}");
+        assert!(
+            s.starts_with(r#"{"t":"state","view":{"code":"K7QX2""#),
+            "{s}"
+        );
     }
 }

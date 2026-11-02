@@ -153,7 +153,13 @@ pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
             cards: h
                 .iter()
                 .enumerate()
-                .map(|(j, &c)| if open || (mirror && j == 0) { Slot::Card(c) } else { Slot::Back })
+                .map(|(j, &c)| {
+                    if open || (mirror && j == 0) {
+                        Slot::Card(c)
+                    } else {
+                        Slot::Back
+                    }
+                })
                 .collect(),
             hand: open.then(|| g.house_value(i)),
             champion: result.is_some_and(|r| r.house_champions.contains(&i)),
@@ -242,7 +248,10 @@ mod tests {
             }
         }
         for c in &g.board {
-            assert!(!text.contains(&format!("\"{c}\"")), "leaked undealt board card {c}");
+            assert!(
+                !text.contains(&format!("\"{c}\"")),
+                "leaked undealt board card {c}"
+            );
         }
     }
 
@@ -250,14 +259,23 @@ mod tests {
     fn spectators_see_no_hole_cards() {
         let g = running(None);
         let v = view_for(&g, None, 5);
-        assert!(v.seats.iter().all(|s| s.cards.iter().all(|c| *c == Slot::Back)));
+        assert!(
+            v.seats
+                .iter()
+                .all(|s| s.cards.iter().all(|c| *c == Slot::Back))
+        );
         assert_eq!(v.you, None);
     }
 
     #[test]
     fn board_reveals_street_by_street_and_fog_hides_the_river() {
         let mut g = running(Some(RuleId::Kiri));
-        let count = |v: &GameView| v.board.iter().filter(|s| matches!(s, Slot::Card(_))).count();
+        let count = |v: &GameView| {
+            v.board
+                .iter()
+                .filter(|s| matches!(s, Slot::Card(_)))
+                .count()
+        };
         assert_eq!(count(&view_for(&g, Some("s0"), 0)), 0);
         for (street, expect) in [(1, 3), (2, 4), (3, 4)] {
             g.street = street;
@@ -321,7 +339,11 @@ mod tests {
         }
         assert!(matches!(g.phase, Phase::Showdown | Phase::Over));
         let v = view_for(&g, None, 2);
-        assert!(v.seats.iter().all(|s| s.hand.is_some() && matches!(s.cards[0], Slot::Card(_))));
+        assert!(
+            v.seats
+                .iter()
+                .all(|s| s.hand.is_some() && matches!(s.cards[0], Slot::Card(_)))
+        );
         assert!(v.house.iter().all(|h| h.hand.is_some()));
         assert!(v.board.iter().all(|s| matches!(s, Slot::Card(_))));
         assert!(v.result.is_some());
@@ -332,7 +354,13 @@ mod tests {
     fn view_json_uses_the_typescript_field_names() {
         let g = running(None);
         let text = json(&view_for(&g, Some("s0"), 0));
-        for key in ["\"heatLimit\"", "\"you\":\"s0\"", "\"phase\":\"call\"", "\"difficulty\":\"kabukicho\"", "\"board\":[null,null,null,null,null]"] {
+        for key in [
+            "\"heatLimit\"",
+            "\"you\":\"s0\"",
+            "\"phase\":\"call\"",
+            "\"difficulty\":\"kabukicho\"",
+            "\"board\":[null,null,null,null,null]",
+        ] {
             assert!(text.contains(key), "missing {key} in {text}");
         }
     }

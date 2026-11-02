@@ -24,9 +24,14 @@ pub struct Temperament {
 impl Temperament {
     /// A stable temperament per seat, so each regular has a consistent style.
     pub fn for_seat(pid: &str) -> Temperament {
-        let h = pid.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3));
+        let h = pid.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| {
+            (h ^ u64::from(b)).wrapping_mul(0x100_0000_01b3)
+        });
         let boldness = ((h % 1000) as f64 / 1000.0 - 0.5) * 0.5;
-        Temperament { boldness, samples: 600 }
+        Temperament {
+            boldness,
+            samples: 600,
+        }
     }
 }
 
@@ -60,7 +65,12 @@ pub fn read(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Option<
     let house: Vec<[Option<Card>; 2]> = view
         .house
         .iter()
-        .map(|h| [h.cards.first().and_then(card), h.cards.get(1).and_then(card)])
+        .map(|h| {
+            [
+                h.cards.first().and_then(card),
+                h.cards.get(1).and_then(card),
+            ]
+        })
         .collect();
     let dead: Vec<Card> = view
         .seats
@@ -101,7 +111,14 @@ pub fn read(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Option<
         // A face-up hand (Fox) is not a guess.
         let known: Vec<Card> = s.cards.iter().filter_map(card).collect();
         if let [x, y] = known[..] {
-            let spot = Spot { hole: [x, y], board: &board, board_total: 5, house: &house, dead: &hole, lowball };
+            let spot = Spot {
+                hole: [x, y],
+                board: &board,
+                board_total: 5,
+                house: &house,
+                dead: &hole,
+                lowball,
+            };
             let o = estimate(&spot, t.samples / 2, rng);
             q = o.win + o.tie * 0.5;
         }
@@ -114,18 +131,34 @@ pub fn read(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Option<
     let streets_left = 3.0 - f64::from(view.street);
     // Staying keeps the option to fold later; that is worth a little early on.
     let option = 0.12 * streets_left;
-    let fold = if others_in == 0 { -1.0 } else { value(others, other_stakes) };
+    let fold = if others_in == 0 {
+        -1.0
+    } else {
+        value(others, other_stakes)
+    };
     let stay = value(with_me, other_stakes + stake) + option;
     let raise = (seat.stake.unwrap_or(1) < MAX_STAKE).then(|| {
-        let lift = if view.rule == Some(RuleId::Kizuna) { f64::from(others_in + 1) } else { 1.0 };
+        let lift = if view.rule == Some(RuleId::Kizuna) {
+            f64::from(others_in + 1)
+        } else {
+            1.0
+        };
         value(with_me, other_stakes + stake + lift) + option * 0.5 + t.boldness * lift
     });
-    Some(Read { mine, others, fold, stay, raise })
+    Some(Read {
+        mine,
+        others,
+        fold,
+        stay,
+        raise,
+    })
 }
 
 /// Pick a call for seat `me`.
 pub fn decide(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Stance {
-    let Some(r) = read(view, me, t, rng) else { return Stance::Stay };
+    let Some(r) = read(view, me, t, rng) else {
+        return Stance::Stay;
+    };
     // A little noise so regulars are not perfectly predictable.
     let jitter = |rng: &mut Rng| (rng.unit() - 0.5) * 0.1;
     let fold = r.fold + jitter(rng) - t.boldness * 0.5;
@@ -155,7 +188,10 @@ mod tests {
         // Make sure the forced hole cards are not also elsewhere.
         let s = g.seats.iter_mut().find(|s| s.id == "s1").unwrap();
         s.hole = hole.clone();
-        let mut deck: Vec<Card> = crate::card::full_deck().into_iter().filter(|c| !hole.contains(c)).collect();
+        let mut deck: Vec<Card> = crate::card::full_deck()
+            .into_iter()
+            .filter(|c| !hole.contains(c))
+            .collect();
         let mut rng = Rng::seeded(5);
         rng.shuffle(&mut deck);
         g.seats[0].hole = vec![deck.pop().unwrap(), deck.pop().unwrap()];
@@ -166,7 +202,10 @@ mod tests {
         (g, v)
     }
 
-    const CALM: Temperament = Temperament { boldness: 0.0, samples: 3000 };
+    const CALM: Temperament = Temperament {
+        boldness: 0.0,
+        samples: 3000,
+    };
 
     #[test]
     fn aces_raise() {
@@ -181,7 +220,11 @@ mod tests {
         let r = read(&v, "s1", CALM, &mut Rng::seeded(1)).unwrap();
         assert!((0.0..=1.0).contains(&r.mine));
         assert!((0.0..=1.0).contains(&r.others));
-        assert!(r.mine < 0.45, "seven-deuce should be an underdog: {}", r.mine);
+        assert!(
+            r.mine < 0.45,
+            "seven-deuce should be an underdog: {}",
+            r.mine
+        );
     }
 
     #[test]
@@ -193,7 +236,10 @@ mod tests {
         g.street = 2;
         let v = view_for(&g, Some("s1"), 0);
         let r = read(&v, "s1", CALM, &mut Rng::seeded(2)).unwrap();
-        assert!(r.stay > r.fold, "riding a strong teammate should beat folding: {r:?}");
+        assert!(
+            r.stay > r.fold,
+            "riding a strong teammate should beat folding: {r:?}"
+        );
     }
 
     #[test]
@@ -201,7 +247,10 @@ mod tests {
         // decide() only receives a GameView; this guards the contract.
         let (g, v) = heads_up("As Ah", 0);
         let other = &g.seats[0].hole;
-        assert!(v.seats[0].cards.iter().all(|c| *c == Slot::Back), "{other:?} leaked into the bot's view");
+        assert!(
+            v.seats[0].cards.iter().all(|c| *c == Slot::Back),
+            "{other:?} leaked into the bot's view"
+        );
         assert!(v.house[0].cards.iter().all(|c| *c == Slot::Back));
     }
 

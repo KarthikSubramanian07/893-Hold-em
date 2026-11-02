@@ -39,7 +39,10 @@ fn play(d: Difficulty, crew: usize, seed: u64, samples: u32) -> Night {
             Phase::Call => {
                 for id in g.bots_to_act() {
                     let pid = g.seat(&id).map(|s| s.pid.clone()).unwrap_or_default();
-                    let t = Temperament { samples, ..Temperament::for_seat(&pid) };
+                    let t = Temperament {
+                        samples,
+                        ..Temperament::for_seat(&pid)
+                    };
                     let stance = decide(&view_for(&g, Some(&id), now), &id, t, &mut rng);
                     // Every bot decides from the same street view, simultaneously.
                     g.call(&id, stance, now).expect("legal call");
@@ -51,29 +54,53 @@ fn play(d: Difficulty, crew: usize, seed: u64, samples: u32) -> Night {
     }
     let verdict = g.verdict.expect("over");
     // Take a raided crew would have finished with is unknown; record what it had.
-    Night { verdict, take: g.take, raided: verdict == Verdict::Raid }
+    Night {
+        verdict,
+        take: g.take,
+        raided: verdict == Verdict::Raid,
+    }
 }
 
 fn main() {
-    let args: Vec<u64> = std::env::args().skip(1).filter_map(|a| a.parse().ok()).collect();
+    let args: Vec<u64> = std::env::args()
+        .skip(1)
+        .filter_map(|a| a.parse().ok())
+        .collect();
     let nights = *args.first().unwrap_or(&2000);
     let samples = *args.get(1).unwrap_or(&400) as u32;
-    let goals = [(Difficulty::Shitamachi, 0.70), (Difficulty::Kabukicho, 0.50), (Difficulty::Oyabun, 0.30)];
+    let goals = [
+        (Difficulty::Shitamachi, 0.70),
+        (Difficulty::Kabukicho, 0.50),
+        (Difficulty::Oyabun, 0.30),
+    ];
 
     println!("{nights} nights per cell, {samples} Monte Carlo samples per decision\n");
-    println!("{:<11} {:>4} {:>7} {:>7} {:>7} {:>8} {:>9}", "table", "crew", "clean", "raid", "short", "target", "suggest");
+    println!(
+        "{:<11} {:>4} {:>7} {:>7} {:>7} {:>8} {:>9}",
+        "table", "crew", "clean", "raid", "short", "target", "suggest"
+    );
     for (d, goal) in goals {
         let spec = table(d);
         let mut per_seat_suggestions = Vec::new();
         for crew in 2..=6 {
-            let results: Vec<Night> = (0..nights).map(|i| play(d, crew, i * 7919 + crew as u64, samples)).collect();
+            let results: Vec<Night> = (0..nights)
+                .map(|i| play(d, crew, i * 7919 + crew as u64, samples))
+                .collect();
             let n = results.len() as f64;
-            let clean = results.iter().filter(|r| r.verdict == Verdict::Clean).count() as f64 / n;
+            let clean = results
+                .iter()
+                .filter(|r| r.verdict == Verdict::Clean)
+                .count() as f64
+                / n;
             let raid = results.iter().filter(|r| r.raided).count() as f64 / n;
             let short = 1.0 - clean - raid;
             let target = hachi_engine::rules::target_for(d, crew);
             // Highest target that still lets `goal` of all nights get away clean.
-            let mut takes: Vec<u32> = results.iter().filter(|r| !r.raided).map(|r| r.take).collect();
+            let mut takes: Vec<u32> = results
+                .iter()
+                .filter(|r| !r.raided)
+                .map(|r| r.take)
+                .collect();
             takes.sort_unstable_by(|a, b| b.cmp(a));
             let k = (goal * n).ceil() as usize;
             let suggest = takes.get(k.saturating_sub(1)).copied().unwrap_or(0);

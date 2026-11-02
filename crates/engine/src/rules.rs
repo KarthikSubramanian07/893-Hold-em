@@ -69,7 +69,12 @@ pub const MAX_CREW: usize = 6;
 /// Seconds the showdown waits for "next" before dealing on.
 pub const SHOWDOWN_SECONDS: u64 = 12;
 
-const SHITAMACHI_DECK: [RuleId; 4] = [RuleId::Kagami, RuleId::Kitsune, RuleId::Homura, RuleId::Kiri];
+const SHITAMACHI_DECK: [RuleId; 4] = [
+    RuleId::Kagami,
+    RuleId::Kitsune,
+    RuleId::Homura,
+    RuleId::Kiri,
+];
 const KABUKICHO_DECK: [RuleId; 8] = [
     RuleId::Kiri,
     RuleId::Kagami,
@@ -141,7 +146,13 @@ mod tests {
 
     #[test]
     fn rule_ids_serialize_like_typescript() {
-        assert_eq!(serde_json::to_string(&RuleId::Shizuka).unwrap(), "\"shizuka\"");
-        assert_eq!(serde_json::to_string(&Difficulty::Kabukicho).unwrap(), "\"kabukicho\"");
+        assert_eq!(
+            serde_json::to_string(&RuleId::Shizuka).unwrap(),
+            "\"shizuka\""
+        );
+        assert_eq!(
+            serde_json::to_string(&Difficulty::Kabukicho).unwrap(),
+            "\"kabukicho\""
+        );
     }
 }

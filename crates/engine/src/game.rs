@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 use crate::card::{Card, Rng, full_deck};
 use crate::eval::{HandValue, evaluate};
 use crate::rules::{
-    Difficulty, HANDS_PER_NIGHT, MAX_CREW, MAX_STAKE, MIN_CREW, RuleId, SHOWDOWN_SECONDS, house_hands,
-    table, target_for,
+    Difficulty, HANDS_PER_NIGHT, MAX_CREW, MAX_STAKE, MIN_CREW, RuleId, SHOWDOWN_SECONDS,
+    house_hands, table, target_for,
 };
 
 pub type Ms = u64;
@@ -63,7 +63,10 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Config { difficulty: Difficulty::Kabukicho, timer: 30 }
+        Config {
+            difficulty: Difficulty::Kabukicho,
+            timer: 30,
+        }
     }
 }
 
@@ -172,7 +175,9 @@ pub struct Game {
 const BOT_NAMES: [&str; 12] = [
     "Tetsu", "Okami", "Hana", "Gin", "Kuro", "Sumi", "Rin", "Jun", "Mame", "Taka", "Nao", "Fuji",
 ];
-const AVATARS: [&str; 8] = ["kitsune", "tanuki", "koi", "tsuru", "tora", "usagi", "karasu", "hebi"];
+const AVATARS: [&str; 8] = [
+    "kitsune", "tanuki", "koi", "tsuru", "tora", "usagi", "karasu", "hebi",
+];
 
 impl Game {
     pub fn new(code: &str, seed: u64) -> Game {
@@ -349,7 +354,10 @@ impl Game {
             .find(|n| !taken.contains(n))
             .unwrap_or("Regular");
         let used: Vec<&str> = self.seats.iter().map(|s| s.avatar.as_str()).collect();
-        let avatar = AVATARS.iter().find(|a| !used.contains(a)).unwrap_or(&AVATARS[0]);
+        let avatar = AVATARS
+            .iter()
+            .find(|a| !used.contains(a))
+            .unwrap_or(&AVATARS[0]);
         self.bots_made += 1;
         self.seats.push(Seat {
             id: id.clone(),
@@ -501,7 +509,10 @@ impl Game {
         self.rule = self.draw_rule();
         let mut deck = full_deck();
         self.rng.shuffle(&mut deck);
-        let mut draw = || deck.pop().expect("52 cards cover 6 seats, 4 masks, and a board");
+        let mut draw = || {
+            deck.pop()
+                .expect("52 cards cover 6 seats, 4 masks, and a board")
+        };
 
         for i in 0..self.seats.len() {
             let hole = vec![draw(), draw()];
@@ -539,7 +550,10 @@ impl Game {
         if self.phase != Phase::Call {
             return Vec::new();
         }
-        self.seats.iter().filter(|s| s.active && s.locked.is_none()).collect()
+        self.seats
+            .iter()
+            .filter(|s| s.active && s.locked.is_none())
+            .collect()
     }
 
     pub fn call(&mut self, seat: &str, stance: Stance, now: Ms) -> Result<(), GameError> {
@@ -617,7 +631,17 @@ impl Game {
         let house_values: Vec<HandValue> = self
             .house
             .iter()
-            .map(|h| evaluate(&[h[0], h[1], self.board[0], self.board[1], self.board[2], self.board[3], self.board[4]]))
+            .map(|h| {
+                evaluate(&[
+                    h[0],
+                    h[1],
+                    self.board[0],
+                    self.board[1],
+                    self.board[2],
+                    self.board[3],
+                    self.board[4],
+                ])
+            })
             .collect();
         let house_top = house_values
             .iter()
@@ -640,13 +664,28 @@ impl Game {
             .map(|(_, v)| v.score)
             .reduce(|a, b| if better(a, b) { a } else { b });
         let crew_champions: Vec<String> = match crew_top {
-            Some(top) => crew.iter().filter(|(_, v)| v.score == top).map(|(id, _)| id.clone()).collect(),
+            Some(top) => crew
+                .iter()
+                .filter(|(_, v)| v.score == top)
+                .map(|(id, _)| id.clone())
+                .collect(),
             None => Vec::new(),
         };
-        let crew_best = crew_top.and_then(|top| crew.iter().find(|(_, v)| v.score == top)).map(|(_, v)| v.clone());
+        let crew_best = crew_top
+            .and_then(|top| crew.iter().find(|(_, v)| v.score == top))
+            .map(|(_, v)| v.clone());
 
-        let stakes: u32 = self.seats.iter().filter(|s| s.active).map(|s| u32::from(s.stake)).sum();
-        let mult = if self.rule == Some(RuleId::Homura) { 2 } else { 1 };
+        let stakes: u32 = self
+            .seats
+            .iter()
+            .filter(|s| s.active)
+            .map(|s| u32::from(s.stake))
+            .sum();
+        let mult = if self.rule == Some(RuleId::Homura) {
+            2
+        } else {
+            1
+        };
         let outcome = match crew_top {
             None => Outcome::Walked,
             Some(c) if better(c, house_top) => Outcome::Crew,
@@ -684,7 +723,11 @@ impl Game {
         if self.heat >= self.heat_limit {
             self.finish(Verdict::Raid);
         } else if self.hand >= HANDS_PER_NIGHT {
-            self.finish(if self.take >= self.target { Verdict::Clean } else { Verdict::Short });
+            self.finish(if self.take >= self.target {
+                Verdict::Clean
+            } else {
+                Verdict::Short
+            });
         } else {
             self.phase = Phase::Showdown;
             self.deadline = Some(now + SHOWDOWN_SECONDS * 1000);
@@ -742,7 +785,9 @@ impl Game {
 
     /// Timer wake-up. Expired calls count as Stay; an expired showdown deals on.
     pub fn tick(&mut self, now: Ms) {
-        let Some(deadline) = self.deadline else { return };
+        let Some(deadline) = self.deadline else {
+            return;
+        };
         if now < deadline {
             return;
         }
@@ -769,7 +814,11 @@ impl Game {
 
     /// Bots that still owe a call this street.
     pub fn bots_to_act(&self) -> Vec<String> {
-        self.awaiting().into_iter().filter(|s| s.bot).map(|s| s.id.clone()).collect()
+        self.awaiting()
+            .into_iter()
+            .filter(|s| s.bot)
+            .map(|s| s.id.clone())
+            .collect()
     }
 }
 
@@ -781,7 +830,10 @@ mod tests {
         let mut g = Game::new("K7QX2", 1);
         let mut ids = Vec::new();
         for i in 0..humans {
-            ids.push(g.join(&format!("pid-{i:08}"), &format!("P{i}"), "koi").unwrap());
+            ids.push(
+                g.join(&format!("pid-{i:08}"), &format!("P{i}"), "koi")
+                    .unwrap(),
+            );
         }
         for _ in 0..bots {
             ids.push(g.add_bot(&ids[0]).unwrap());
@@ -809,7 +861,10 @@ mod tests {
         let (mut g, ids) = table_of(2, 0);
         g.start(&ids[0], 0).unwrap();
         g.set_connected(&ids[1], false, 10);
-        assert_eq!(g.join("pid-00000001", "Back", "tora"), Some("s1".to_string()));
+        assert_eq!(
+            g.join("pid-00000001", "Back", "tora"),
+            Some("s1".to_string())
+        );
         assert!(g.seat("s1").unwrap().connected);
         // A stranger mid-night spectates.
         assert_eq!(g.join("pid-stranger", "X", "koi"), None);
@@ -864,7 +919,10 @@ mod tests {
         g.call(&ids[0], Stance::Raise, 1).unwrap();
         g.call(&ids[1], Stance::Stay, 1).unwrap();
         assert_eq!(g.street, 0);
-        assert_eq!(g.call(&ids[0], Stance::Stay, 1), Err(GameError::AlreadyLocked));
+        assert_eq!(
+            g.call(&ids[0], Stance::Stay, 1),
+            Err(GameError::AlreadyLocked)
+        );
         g.call(&ids[2], Stance::Fold, 1).unwrap();
         assert_eq!(g.street, 1);
         assert_eq!(g.seat("s0").unwrap().stake, 2);
@@ -881,7 +939,10 @@ mod tests {
             all_call(&mut g, &ids, Stance::Raise, 1);
         }
         assert_eq!(g.seat("s0").unwrap().stake, 3);
-        assert_eq!(g.call(&ids[0], Stance::Raise, 2), Err(GameError::StakeCapped));
+        assert_eq!(
+            g.call(&ids[0], Stance::Raise, 2),
+            Err(GameError::StakeCapped)
+        );
     }
 
     #[test]
@@ -945,7 +1006,10 @@ mod tests {
                 Outcome::Tie => assert_eq!((r.take, r.heat), (0, 0)),
                 Outcome::Walked => unreachable!(),
             }
-            assert!(!r.crew_champions.contains(&c), "folded seats never carry the crew");
+            assert!(
+                !r.crew_champions.contains(&c),
+                "folded seats never carry the crew"
+            );
         }
     }
 
