@@ -10,6 +10,7 @@ import { Receipt } from '../hud/Receipt';
 import { Showdown } from '../hud/Showdown';
 import { TopBar } from '../hud/TopBar';
 import { loadMuted, loadProfile, saveMuted, saveProfile } from '../lib/profile';
+import { isPracticeCode } from '../net/practice';
 import { useTable, type Profile } from '../net/store';
 import { ProfileForm } from '../profile/ProfileForm';
 import { TableScene } from '../scene';
@@ -38,10 +39,11 @@ export function TablePage({ code }: { code: string }) {
   const status = useTable((s) => s.status);
   const error = useTable((s) => s.error);
   const reduced = useReducedMotion();
+  const practice = isPracticeCode(code);
 
   useEffect(() => {
-    document.title = `Table ${code} · 893 Hold'em`;
-  }, [code]);
+    document.title = practice ? "Practice with the regulars · 893 Hold'em" : `Table ${code} · 893 Hold'em`;
+  }, [code, practice]);
 
   // Connect once we know who's sitting down; leave when the page goes.
   const profileReady = profile !== null;
@@ -134,7 +136,7 @@ export function TablePage({ code }: { code: string }) {
         ) : (
           <div className="shoji__msg" role="status">
             <Seal chars="八九三" shape="tall" size={40} seed={4} />
-            <p className="shoji__title">Finding table {code}.</p>
+            <p className="shoji__title">{practice ? 'Pouring for the regulars.' : `Finding table ${code}.`}</p>
             <p className="label shoji__sub">{status === 'reconnecting' ? 'Knocking again' : 'The lantern is warming up'}</p>
           </div>
         )}

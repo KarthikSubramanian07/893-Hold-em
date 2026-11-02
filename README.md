@@ -92,6 +92,22 @@ to the wire. Tests serialize views and assert that no other seat's hole cards, n
 and no undealt board card appear in the JSON; the rooms smoke test checks every view two live
 clients receive over a whole night.
 
+### Practice, alone
+
+`/practice` (or **Sit with the regulars** on the landing page) opens a table that never
+touches the network: the same wasm `Table` the Durable Object runs, hosted in the tab by
+`src/client/net/local.ts`. It mirrors `worker/index.ts` step for step (hello first, effects
+carried out the same way, `wake()` driven from `nextWake()` with `setTimeout` instead of an
+alarm), so the store just gets a different line to talk to. The table seats you as host with
+three regulars at Shitamachi on a 60-second fuse, and you can change all of it in the lobby.
+The game lives in `sessionStorage`, so a reload picks the night back up.
+
+Its code is `ALONE`. There's an O in it, which the room alphabet never uses, so no server
+table can share it. The engine is fetched only when you sit down, so the landing page carries
+no wasm and no three.js. The page still only ever receives `stateFor(you)`; a Vitest suite
+plays whole nights on the real engine with fake timers and checks every view for other seats'
+cards.
+
 ## Run it
 
 Needs Node 22+, Rust (stable) with the `wasm32-unknown-unknown` target, and `wasm-pack`.
@@ -108,6 +124,7 @@ npm run dev                      # builds the wasm engine, then Vite on :5173 + 
 | `cargo test --release -p hachi-engine -- --ignored` | All 133,784,560 seven-card hands |
 | `npm run smoke:rooms` | Two WebSocket clients play a whole night against `wrangler dev`, checking every view for leaks |
 | `npm run e2e` | Two real browsers play a whole night through the UI |
+| `npm run e2e:practice` | One browser plays a practice night through the UI, with no Worker running (`npx vite --port 5213` first) |
 | `cargo run --release -p hachi-sim` | Rebalance the tables |
 | `npm run deploy` | Deploy the rooms Worker and the Pages site |
 

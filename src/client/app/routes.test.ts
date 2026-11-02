@@ -19,6 +19,14 @@ describe('matchRoute', () => {
     expect(matchRoute('/t/%E0%A4%A')).toEqual({ name: 'notfound', reason: 'code' });
   });
 
+  it('opens the practice table at /practice, and only there', () => {
+    expect(matchRoute('/practice')).toEqual({ name: 'table', code: 'ALONE' });
+    expect(matchRoute('/Practice/')).toEqual({ name: 'table', code: 'ALONE' });
+    expect(matchRoute('/t/ALONE')).toEqual({ name: 'notfound', reason: 'code' });
+    expect(canonicalPath('/practice', matchRoute('/practice'))).toBeNull();
+    expect(canonicalPath('/Practice', matchRoute('/Practice'))).toBe('/practice');
+  });
+
   it('closes unknown paths', () => {
     expect(matchRoute('/about')).toEqual({ name: 'notfound', reason: 'path' });
     expect(matchRoute('/t')).toEqual({ name: 'notfound', reason: 'path' });

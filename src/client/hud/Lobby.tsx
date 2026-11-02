@@ -2,12 +2,14 @@
 import { MAX_CREW, MIN_CREW, TABLES } from '../../engine/rules';
 import type { Difficulty, GameView, SeatView, TimerSetting } from '../../engine/types';
 import { sfx } from '../audio';
+import { isPracticeCode } from '../net/practice';
 import { amHost, canStart } from '../net/selectors';
 import { useTable } from '../net/store';
 import { AvatarSeal } from '../ui/avatars';
 import { IconClose, IconCopy } from '../ui/icons';
 import { Seal } from '../ui/Seal';
 import { copyInvite } from './invite';
+import { PracticeNote, PracticeOffer } from './Practice';
 
 const TIMERS: { v: TimerSetting; label: string }[] = [
   { v: 15, label: '15s' },
@@ -34,12 +36,17 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
             <span key={i}>{ch}</span>
           ))}
         </h1>
-        <div className="lobby__invite">
-          <button type="button" className="btn btn--sm" onClick={() => void copyInvite(view.code)}>
-            <IconCopy size={15} /> Copy invite link
-          </button>
-          <p className="lobby__invite-hint">Anyone with the link sits down. No sign-up.</p>
-        </div>
+        {isPracticeCode(view.code) ? (
+          <PracticeNote />
+        ) : (
+          <div className="lobby__invite">
+            <button type="button" className="btn btn--sm" onClick={() => void copyInvite(view.code)}>
+              <IconCopy size={15} /> Copy invite link
+            </button>
+            <p className="lobby__invite-hint">Anyone with the link sits down. No sign-up.</p>
+            {seats.length === 1 && <PracticeOffer />}
+          </div>
+        )}
 
         <div className="lobby__crewhead">
           <h2 className="label">

@@ -1,12 +1,17 @@
 // The table connection, as a zustand store. Components read `view` and call
 // `send`. One WebSocket per table to `/room/<code>` on our own origin (a Pages
-// Function forwards it to the rooms Worker; in dev, Vite proxies it).
+// Function forwards it to the rooms Worker; in dev, Vite proxies it). The
+// practice table (`PRACTICE_CODE`) gets a line to the engine in this tab
+// instead; everything above the line is the same.
 // With `?fixture=<name>` in the URL the store serves a static mock view
 // instead, for UI work and screenshots.
 import { create } from 'zustand';
 import type { Avatar, GameView } from '../../engine/types';
 import type { ClientMessage, ErrorCode, Reaction, ServerMessage } from '../../protocol';
 import { FIXTURES } from '../dev/fixtures';
+import { dialSocket, type Line, type LineHandlers } from './line';
+import { dialPractice } from './local';
+import { isPracticeCode } from './practice';
 
 export type NetStatus = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed';
 
@@ -65,7 +70,7 @@ export function backoff(n: number, rand: () => number = Math.random): number {
   return Math.round(base * (0.75 + rand() * 0.5));
 }
 
-let socket: WebSocket | null = null;
+let socket: Line | null = null;
 let retry = 0;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 let pingTimer: ReturnType<typeof setInterval> | null = null;
@@ -122,29 +127,31 @@ export const useTable = create<TableStore>((set, get) => {
   const open = () => {
     if (!current) return;
     const { code, profile } = current;
-    const ws = new WebSocket(socketUrl(code));
-    socket = ws;
+    const handlers: LineHandlers = {
+      onOpen() {
+        set({ status: 'open' });
+        line.send(JSON.stringify({ t: 'hello', pid: browserId(), name: profile.name, avatar: profile.avatar } satisfies ClientMessage));
+        line.send(JSON.stringify({ t: 'ping', at: Date.now() } satisfies ClientMessage));
+        pingTimer = setInterval(() => {
+          if (line.open) line.send(JSON.stringify({ t: 'ping', at: Date.now() } satisfies ClientMessage));
+        }, 20_000);
+      },
+      onMessage,
+      onClose() {
+        if (socket !== line) return;
+        clearTimers();
+        socket = null;
+        if (!current) {
+          set({ status: 'closed' });
+          return;
+        }
+        set({ status: 'reconnecting' });
+        retryTimer = setTimeout(open, backoff(retry++));
+      },
+    };
+    const line = isPracticeCode(code) ? dialPractice(handlers, { code }) : dialSocket(socketUrl(code), handlers);
+    socket = line;
     set({ status: retry === 0 ? 'connecting' : 'reconnecting' });
-    ws.onopen = () => {
-      set({ status: 'open' });
-      ws.send(JSON.stringify({ t: 'hello', pid: browserId(), name: profile.name, avatar: profile.avatar } satisfies ClientMessage));
-      ws.send(JSON.stringify({ t: 'ping', at: Date.now() } satisfies ClientMessage));
-      pingTimer = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: 'ping', at: Date.now() }));
-      }, 20_000);
-    };
-    ws.onmessage = (e) => onMessage(typeof e.data === 'string' ? e.data : '');
-    ws.onclose = () => {
-      if (socket !== ws) return;
-      clearTimers();
-      socket = null;
-      if (!current) {
-        set({ status: 'closed' });
-        return;
-      }
-      set({ status: 'reconnecting' });
-      retryTimer = setTimeout(open, backoff(retry++));
-    };
   };
 
   // A tab coming back to the foreground should reconnect at once, not after the backoff.
@@ -189,15 +196,15 @@ export const useTable = create<TableStore>((set, get) => {
         console.info('[fixture] send', msg);
         return;
       }
-      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(msg));
+      if (socket?.open) socket.send(JSON.stringify(msg));
       else flashError('net', 'Lost the line to the bar. Reconnecting.');
     },
     leave() {
       current = null;
       clearTimers();
-      const ws = socket;
+      const line = socket;
       socket = null;
-      ws?.close();
+      line?.close();
       set({ status: 'idle', code: null, view: null, error: null, reactions: [] });
     },
   };

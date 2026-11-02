@@ -1,0 +1,83 @@
+/* Practice mode bits on the lobby menu card and the top strip. */
+
+.practice-note {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: start;
+}
+
+.practice-note__line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+.practice-note__k {
+  flex: none;
+  padding: 0.2rem 0.35rem 0.15rem;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  color: var(--shu);
+  font: 800 12px/1 var(--serif);
+  letter-spacing: 0.05em;
+  transform: rotate(-3deg);
+}
+
+.practice-note__out,
+.practice-offer a {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sumi);
+  font: 600 11px/1.4 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-decoration-color: var(--shu);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+.practice-note__out:hover,
+.practice-offer a:hover {
+  color: var(--shu-deep);
+}
+
+.practice-offer {
+  flex-basis: 100%;
+  margin-top: 0.2rem;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-faint);
+}
+
+/* Top strip: a stamp where the invite button would be. */
+.top__practice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 32px;
+  padding: 0 0.7rem;
+  border: 1px dashed var(--night-hair-strong);
+  border-radius: var(--radius);
+  color: var(--night-ink-soft);
+  font: 600 10px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.top__practice b {
+  color: var(--shu);
+  font: 800 12px/1 var(--serif);
+  letter-spacing: 0;
+}
+
+@media (max-width: 640px) {
+  .top__practice span {
+    display: none;
+  }
+}
