@@ -93,7 +93,7 @@ export const RULES: Record<RuleId, RuleInfo> = {
     kanji: '逆',
     romaji: 'Gyaku',
     name: 'Reversal',
-    text: 'Lowball: the weakest hand wins.',
+    text: "Lowball: the weaker hand wins. The crew's weakest active hand faces the House's weakest.",
     flavor: 'Upside down, the way the boss likes it.',
     kind: 'wild',
   },

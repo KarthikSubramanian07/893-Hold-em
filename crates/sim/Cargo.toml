@@ -1,0 +1,11 @@
+[package]
+name = "hachi-sim"
+version = "0.1.0"
+description = "Balancing simulator for 893 Hold'em: plays thousands of all-regular nights and tunes the take targets."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+hachi-engine = { path = "../engine" }

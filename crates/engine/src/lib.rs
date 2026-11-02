@@ -8,6 +8,11 @@
 //! The crate compiles natively (tests, the balancing simulator) and to
 //! `wasm32-unknown-unknown` (the rooms Worker and the browser).
 
+pub mod bot;
 pub mod card;
 pub mod equity;
 pub mod eval;
+pub mod game;
+pub mod room;
+pub mod rules;
+pub mod view;

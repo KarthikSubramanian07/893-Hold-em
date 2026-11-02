@@ -9,7 +9,9 @@ use std::fmt;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-pub const RANK_CHARS: [char; 13] = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+pub const RANK_CHARS: [char; 13] = [
+    '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A',
+];
 pub const SUIT_CHARS: [char; 4] = ['s', 'h', 'd', 'c'];
 
 /// Rank index of an ace.
@@ -52,15 +54,24 @@ impl Card {
         if it.next().is_some() {
             return None;
         }
-        let rank = RANK_CHARS.iter().position(|&c| c == r.to_ascii_uppercase())?;
-        let suit = SUIT_CHARS.iter().position(|&c| c == su.to_ascii_lowercase())?;
+        let rank = RANK_CHARS
+            .iter()
+            .position(|&c| c == r.to_ascii_uppercase())?;
+        let suit = SUIT_CHARS
+            .iter()
+            .position(|&c| c == su.to_ascii_lowercase())?;
         Some(Card::new(rank as u8, suit as u8))
     }
 }
 
 impl fmt::Display for Card {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", RANK_CHARS[self.rank() as usize], SUIT_CHARS[self.suit() as usize])
+        write!(
+            f,
+            "{}{}",
+            RANK_CHARS[self.rank() as usize],
+            SUIT_CHARS[self.suit() as usize]
+        )
     }
 }
 
@@ -121,7 +132,10 @@ impl CardSet {
     }
     /// Every card not in the set.
     pub fn remaining(self) -> Vec<Card> {
-        (0..52).map(Card::from_index).filter(|&c| !self.contains(c)).collect()
+        (0..52)
+            .map(Card::from_index)
+            .filter(|&c| !self.contains(c))
+            .collect()
     }
 }
 
@@ -142,7 +156,9 @@ impl Rng {
             z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
             z ^ (z >> 31)
         };
-        Rng { s: [next(), next(), next(), next()] }
+        Rng {
+            s: [next(), next(), next(), next()],
+        }
     }
 
     pub fn next_u64(&mut self) -> u64 {

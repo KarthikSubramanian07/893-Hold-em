@@ -1,9 +1,11 @@
 // The table connection, as a zustand store. Components read `view` and call
-// `send`. The real WebSocket transport is wired in here; with `?fixture=<name>`
-// in the URL the store serves a static mock view instead, for UI work.
+// `send`. One WebSocket per table to `/room/<code>` on our own origin (a Pages
+// Function forwards it to the rooms Worker; in dev, Vite proxies it).
+// With `?fixture=<name>` in the URL the store serves a static mock view
+// instead, for UI work and screenshots.
 import { create } from 'zustand';
 import type { Avatar, GameView } from '../../engine/types';
-import type { ClientMessage, ErrorCode, Reaction } from '../../protocol';
+import type { ClientMessage, ErrorCode, Reaction, ServerMessage } from '../../protocol';
 import { FIXTURES } from '../dev/fixtures';
 
 export type NetStatus = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed';
@@ -38,27 +40,165 @@ export function fixtureName(): string | null {
   return new URLSearchParams(location.search).get('fixture');
 }
 
-export const useTable = create<TableStore>((set) => ({
-  status: 'idle',
-  code: null,
-  view: null,
-  skew: 0,
-  error: null,
-  reactions: [],
-  connect(code) {
-    const f = fixtureName();
-    const view = f ? FIXTURES[f] : undefined;
-    if (view) {
-      set({ status: 'open', code, view: { ...view, code, now: Date.now() } });
+/** A stable, secret-ish id for this browser. Reclaims your seat after a reload or a dropped connection. */
+export function browserId(): string {
+  const key = '893:pid';
+  try {
+    const existing = localStorage.getItem(key);
+    if (existing && /^[A-Za-z0-9_-]{8,64}$/.test(existing)) return existing;
+    const id = crypto.randomUUID().replace(/-/g, '');
+    localStorage.setItem(key, id);
+    return id;
+  } catch {
+    return crypto.randomUUID().replace(/-/g, '');
+  }
+}
+
+export function socketUrl(code: string, loc: Pick<Location, 'protocol' | 'host'> = location): string {
+  const scheme = loc.protocol === 'https:' ? 'wss' : 'ws';
+  return `${scheme}://${loc.host}/room/${code}`;
+}
+
+/** Backoff for reconnect attempt n (0-based): 0.4s, 0.8s, 1.6s … capped at 8s, with jitter. */
+export function backoff(n: number, rand: () => number = Math.random): number {
+  const base = Math.min(8000, 400 * 2 ** n);
+  return Math.round(base * (0.75 + rand() * 0.5));
+}
+
+let socket: WebSocket | null = null;
+let retry = 0;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
+let pingTimer: ReturnType<typeof setInterval> | null = null;
+let errorTimer: ReturnType<typeof setTimeout> | null = null;
+let reactionId = 0;
+let current: { code: string; profile: Profile } | null = null;
+
+function clearTimers() {
+  if (retryTimer) clearTimeout(retryTimer);
+  if (pingTimer) clearInterval(pingTimer);
+  retryTimer = null;
+  pingTimer = null;
+}
+
+export const useTable = create<TableStore>((set, get) => {
+  const flashError = (code: ErrorCode | 'net', message: string) => {
+    set({ error: { code, message } });
+    if (errorTimer) clearTimeout(errorTimer);
+    errorTimer = setTimeout(() => set({ error: null }), 4500);
+  };
+
+  const onMessage = (raw: string) => {
+    let msg: ServerMessage;
+    try {
+      msg = JSON.parse(raw) as ServerMessage;
+    } catch {
       return;
     }
-    // Real transport lands with the rooms server.
-    set({ status: 'connecting', code });
-  },
-  send(msg) {
-    if (fixtureName()) console.info('[fixture] send', msg);
-  },
-  leave() {
-    set({ status: 'idle', code: null, view: null, error: null, reactions: [] });
-  },
-}));
+    switch (msg.t) {
+      case 'welcome':
+        retry = 0;
+        break;
+      case 'state':
+        set({ view: msg.view, skew: msg.view.now - Date.now() });
+        break;
+      case 'react': {
+        const now = Date.now();
+        const fresh = get().reactions.filter((r) => now - r.at < 4000);
+        set({ reactions: [...fresh, { id: ++reactionId, seat: msg.seat, reaction: msg.reaction, at: now }] });
+        break;
+      }
+      case 'error':
+        flashError(msg.code, msg.message);
+        break;
+      case 'pong': {
+        // Midpoint estimate: the server stamped `now` about half a round trip ago.
+        const rtt = Date.now() - msg.at;
+        set({ skew: msg.now + rtt / 2 - Date.now() });
+        break;
+      }
+    }
+  };
+
+  const open = () => {
+    if (!current) return;
+    const { code, profile } = current;
+    const ws = new WebSocket(socketUrl(code));
+    socket = ws;
+    set({ status: retry === 0 ? 'connecting' : 'reconnecting' });
+    ws.onopen = () => {
+      set({ status: 'open' });
+      ws.send(JSON.stringify({ t: 'hello', pid: browserId(), name: profile.name, avatar: profile.avatar } satisfies ClientMessage));
+      ws.send(JSON.stringify({ t: 'ping', at: Date.now() } satisfies ClientMessage));
+      pingTimer = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: 'ping', at: Date.now() }));
+      }, 20_000);
+    };
+    ws.onmessage = (e) => onMessage(typeof e.data === 'string' ? e.data : '');
+    ws.onclose = () => {
+      if (socket !== ws) return;
+      clearTimers();
+      socket = null;
+      if (!current) {
+        set({ status: 'closed' });
+        return;
+      }
+      set({ status: 'reconnecting' });
+      retryTimer = setTimeout(open, backoff(retry++));
+    };
+  };
+
+  // A tab coming back to the foreground should reconnect at once, not after the backoff.
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && current && !socket) {
+        clearTimers();
+        retry = 0;
+        open();
+      }
+    });
+  }
+
+  return {
+    status: 'idle',
+    code: null,
+    view: null,
+    skew: 0,
+    error: null,
+    reactions: [],
+    connect(code, profile) {
+      const f = fixtureName();
+      const fixture = f ? FIXTURES[f] : undefined;
+      if (fixture) {
+        set({ status: 'open', code, view: { ...fixture, code, now: Date.now() } });
+        return;
+      }
+      if (current?.code === code && socket) {
+        // Same table: just update the name and seal.
+        current.profile = profile;
+        get().send({ t: 'rename', name: profile.name, avatar: profile.avatar });
+        return;
+      }
+      get().leave();
+      current = { code, profile };
+      retry = 0;
+      set({ code, view: null, error: null, reactions: [] });
+      open();
+    },
+    send(msg) {
+      if (fixtureName()) {
+        console.info('[fixture] send', msg);
+        return;
+      }
+      if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(msg));
+      else flashError('net', 'Lost the line to the bar. Reconnecting.');
+    },
+    leave() {
+      current = null;
+      clearTimers();
+      const ws = socket;
+      socket = null;
+      ws?.close();
+      set({ status: 'idle', code: null, view: null, error: null, reactions: [] });
+    },
+  };
+});

@@ -56,15 +56,17 @@ The night ends with one of three verdicts:
    That simultaneous flip is the only conversation the crew gets.
 4. **The showdown.** The crew's **best** active hand faces the House's **best** hand
    (best 5 of 7 across all masks).
-   - Crew wins: **take += sum of every active stake**. Everyone who stayed in gets paid,
-     even if their own cards were trash. That's riding the champion.
-   - House wins: **heat += sum of every active stake**.
-   - Tie: nothing happens. Nobody gets paid and nobody gets burned.
+   - **Take**: if the crew's champion wins, **take += every active stake**. Everyone who
+     stayed in gets paid, even with trash cards. That's riding the champion.
+   - **Heat**: separately, **every active player whose own hand loses to the House
+     draws heat equal to their stake**, even when the crew wins. You were seen at the table.
+   - Ties pay nothing and burn nothing (except under Serpent).
    - Everybody folded: **heat += 1**. Walking away from a job still gets noticed.
 
-The tension comes from the simultaneous flip. A raise says "I'm carrying this
-one, pile in." Weak hands should ride a strong raise to multiply the take. And
-if the only strong hand folds, the whole crew is exposed.
+The tension is the flip, and the trade. A raise says "I'm carrying this one."
+Riding a teammate's raise turns your heat into the crew's take. Whether that's
+a good deal depends on the night: far from the target with room to burn, ride;
+one step from a raid, fold and let the champion carry it alone.
 
 ### House Rules
 
@@ -80,19 +82,22 @@ Each hand after the first draws one card. The difficulty decides which cards are
 | `kizuna` | 絆 | Bond | Stakes are shared. Every raise raises every active stake. |
 | `hebi` | 蛇 | Serpent | Ties go to the House. |
 | `kitsune` | 狐 | Fox | One random crew member's hole cards are dealt face up for all to see. |
-| `gyaku` | 逆 | Reversal | Lowball. The *weakest* hand wins. Oyabun table only. |
+| `gyaku` | 逆 | Reversal | Lowball. Every hand is still its best five, but the *weaker* one wins: the crew's weakest active hand faces the House's weakest. Oyabun table only. |
 
 ### Difficulty ("tables")
 
-| Table | Rules deck | Rule from hand | Heat limit | Target |
-| --- | --- | --- | --- | --- |
-| **Shitamachi** (下町): the corner bar | kagami, kitsune, homura, kiri | 2 | 9 | tuned by sim |
-| **Kabukichō** (歌舞伎町) | all except gyaku | 2 | 8 | tuned by sim |
-| **Oyabun** (親分): the boss's room | everything | 1 | 7 | tuned by sim |
+| Table | Rules deck | Rule from hand | Goal clean rate |
+| --- | --- | --- | --- |
+| **Shitamachi** (下町): the corner bar | kagami, kitsune, homura, kiri | 2 | ~70% |
+| **Kabukichō** (歌舞伎町) | all except gyaku | 2 | ~50% |
+| **Oyabun** (親分): the boss's room | everything | 1 | ~30% |
 
-Targets scale with crew size: `target = round(perSeat × crew)`. `perSeat` is
-tuned in `scripts/simulate.ts` so that a crew of competent bots gets away clean
-about 70% of the time on Shitamachi, 50% on Kabukichō, and 30% on Oyabun.
+Heat limits and take targets depend on the table **and** the crew size, because
+heat grows with every stake that loses. They live in `BALANCE` in
+`crates/engine/src/rules.rs`, tuned by the simulator (`crates/sim`). The
+simulator plays thousands of nights with regulars in every chair, lets the bots
+adapt to the numbers and the numbers to the bots, and picks values that hit the
+goal rate with raids and coming up short about equally likely.
 
 ### Timing
 
