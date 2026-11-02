@@ -6,9 +6,10 @@
 
 import { Environment, Lightformer, PerformanceMonitor } from '@react-three/drei';
 import { Canvas, useThree } from '@react-three/fiber';
-import { Suspense, use, useEffect, useMemo, useState } from 'react';
+import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react';
 import type { GameView } from '../../engine/types';
 import { AnchorTracker } from './AnchorTracker';
+import { Prewarm } from './Prewarm';
 import { CameraRig } from './CameraRig';
 import { deriveTargets, type SceneTargets } from './derive';
 import { EggListener } from './EggListener';
@@ -107,6 +108,37 @@ export function TableScene({ view, quality = 'high', cat }: TableSceneProps) {
   live.reducedMotion = reduced;
   const [dpr, setDpr] = useState(() => Math.min(1.75, Math.max(1, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)));
   const [degraded, setDegraded] = useState(false);
+  const swings = useRef(0);
+  const full = Math.min(1.75, Math.max(1, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1));
+  /** Move between full and 1x sharpness; after four real swings, settle at 1x for good. */
+  const sharpen = (up: boolean, fps = 60) => {
+    if (swings.current >= 4) return;
+    if (up) {
+      setDegraded(false);
+      setDpr((d) => {
+        if (d < full) swings.current++;
+        return full;
+      });
+    } else {
+      // Only drop the post stack when the machine truly can't keep up.
+      if (fps < 20) setDegraded(true);
+      setDpr((d) => {
+        if (d > 1) swings.current++;
+        return 1;
+      });
+    }
+  };
+  // The deal builds the masks, cards, and their shaders, which stalls a few
+  // frames on every device. Judge performance only once that has settled,
+  // counted from the start of each night, so a phone isn't marked slow
+  // (blurry, no bloom) for the whole night by its first seconds.
+  const [watching, setWatching] = useState(false);
+  const settleKey = view.phase === 'lobby' ? 'lobby' : `night-${view.night}`;
+  useEffect(() => {
+    setWatching(false);
+    const t = setTimeout(() => setWatching(true), 6000);
+    return () => clearTimeout(t);
+  }, [settleKey]);
   const high = quality === 'high' && !degraded;
   const initial = useMemo(() => cameraFrame(typeof window === 'undefined' ? 1.6 : window.innerWidth / Math.max(1, window.innerHeight)), []);
 
@@ -120,21 +152,25 @@ export function TableScene({ view, quality = 'high', cat }: TableSceneProps) {
         aria-label="The table"
       >
         <LiveContext.Provider value={live}>
-          <PerformanceMonitor
-            bounds={() => [45, 59]}
-            flipflops={3}
-            onIncline={() => setDpr(Math.min(1.75, Math.max(1, window.devicePixelRatio || 1)))}
-            onDecline={({ fps }) => {
-              setDpr(1);
-              // Only drop the post stack when the machine truly can't keep up.
-              if (fps < 24) setDegraded(true);
-            }}
-            onFallback={() => setDpr(1)}
-          />
+          {watching && (
+            <PerformanceMonitor
+              // Judge against the screen's real rate (drei takes the best rate it
+              // has seen): iPhones in Low Power Mode and many tablets run the
+              // page at 30fps by design, and frame rates jitter, so only a
+              // sustained slump below 60% of that rate counts as struggling.
+              bounds={(refresh) => [Math.min(40, refresh * 0.6), Math.min(57, refresh * 0.85)]}
+              // drei counts every incline as a flip, even when the scene is
+              // already at full sharpness, and gives up after a few. A steady,
+              // healthy phone would end up locked blurry; count real changes.
+              onIncline={() => sharpen(true)}
+              onDecline={({ fps }) => sharpen(false, fps)}
+            />
+          )}
           <color attach="background" args={['#070606']} />
           <fog attach="fog" args={['#0a0807', 7, 18]} />
           <ambientLight intensity={0.05} color="#8aa0c8" />
           <hemisphereLight args={['#2a3a5a', '#1a0f08', 0.12]} />
+          <Prewarm table={view.config.difficulty} />
           <LiveDriver />
           <EggListener />
           <CameraRig />
