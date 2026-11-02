@@ -6,6 +6,7 @@ import { makeRoomCode } from '../../protocol';
 import { sfx } from '../audio';
 import { Link, navigate } from '../app/router';
 import { normalizeCode, parseCode } from '../lib/code';
+import { PRACTICE_PATH } from '../net/practice';
 import { HandArrow, IconArrow } from '../ui/icons';
 import { RulesDrawer } from '../ui/RulesDrawer';
 import { Seal } from '../ui/Seal';
@@ -153,6 +154,13 @@ function Hero() {
             </p>
           </form>
         </div>
+
+        <p className="hero__solo">
+          <Link to={PRACTICE_PATH} className="hero__solo-go" onClick={() => (sfx.unlock(), sfx.click())} onMouseEnter={() => sfx.hover()}>
+            Sit with the regulars <IconArrow size={14} />
+          </Link>
+          <span className="hero__solo-note">No crew tonight? Learn the calls alone. It all runs in your browser.</span>
+        </p>
 
         <ul className="hero__facts label" aria-label="At a glance">
           <li>2 to 6 players</li>
