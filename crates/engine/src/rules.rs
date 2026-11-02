@@ -109,16 +109,18 @@ pub fn house_hands(crew: usize, rule: Option<RuleId>) -> usize {
 
 /// (heat limit, take target) for crews of 2 through 6, per table. Heat grows
 /// with every stake that loses on its own, so both numbers scale with the crew.
-/// Heat limits are set by design (about half of what a crew that never folds
-/// would draw); targets are tuned by `crates/sim` toward 70% / 50% / 30% clean
-/// getaways for crews that play well.
+/// Heat limits are anchored to autopilot (a crew that always stays gets raided
+/// about 45% / 60% / 75% of nights), with one extra point for the two smallest
+/// Oyabun crews; targets are tuned by `crates/sim` so the regulars get away
+/// clean 66-75% / 52-56% / 31-37% of nights (goals 70 / 50 / 30), measured at
+/// 150 nights per cell. Autopilot manages 24-45% / 7-31% / 1-6%.
 pub const BALANCE: [[(u32, u32); 5]; 3] = [
     // Shitamachi
     [(7, 8), (11, 13), (14, 20), (18, 24), (21, 27)],
     // Kabukicho
-    [(6, 9), (9, 14), (12, 21), (15, 27), (18, 27)],
+    [(6, 9), (9, 16), (12, 21), (15, 25), (18, 31)],
     // Oyabun
-    [(5, 13), (8, 20), (10, 26), (14, 30), (17, 38)],
+    [(6, 13), (9, 20), (10, 26), (14, 30), (17, 41)],
 ];
 
 fn balance(d: Difficulty, crew: usize) -> (u32, u32) {
