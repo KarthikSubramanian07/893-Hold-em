@@ -190,12 +190,16 @@ pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
         hands: HANDS_PER_NIGHT,
         take: g.take,
         heat: g.heat,
-        target: if g.target > 0 {
+        target: if g.target > 0 && g.phase != Phase::Lobby {
             g.target
         } else {
             crate::rules::target_for(g.config.difficulty, g.seats.len().max(2))
         },
-        heat_limit: g.heat_limit,
+        heat_limit: if g.phase == Phase::Lobby {
+            crate::rules::heat_limit_for(g.config.difficulty, g.seats.len().max(2))
+        } else {
+            g.heat_limit
+        },
         rule: g.rule,
         deadline: g.deadline,
         result: g.result.clone(),

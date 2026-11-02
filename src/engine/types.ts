@@ -125,6 +125,12 @@ export interface HandResult {
   heat: number;
   crewBest: HandValue | null;
   houseBest: HandValue;
+  /** Seat ids whose hand was the crew's best (several on a tie). */
+  crewChampions: string[];
+  /** Indexes into `house` of the House's best hand(s). */
+  houseChampions: number[];
+  /** Seat ids that stayed in, lost to the House on their own, and drew heat. */
+  burned: string[];
 }
 
 export interface HistoryEntry {

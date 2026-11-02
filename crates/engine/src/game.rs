@@ -14,7 +14,7 @@ use crate::card::{Card, Rng, full_deck};
 use crate::eval::{HandValue, evaluate};
 use crate::rules::{
     Difficulty, HANDS_PER_NIGHT, MAX_CREW, MAX_STAKE, MIN_CREW, RuleId, SHOWDOWN_SECONDS,
-    house_hands, table, target_for,
+    heat_limit_for, house_hands, table, target_for,
 };
 
 pub type Ms = u64;
@@ -101,6 +101,8 @@ pub struct HandResult {
     pub crew_champions: Vec<String>,
     /// Indexes into `house` of the House's best hand(s).
     pub house_champions: Vec<usize>,
+    /// Seat ids that stayed in, lost to the House on their own, and drew heat.
+    pub burned: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -170,6 +172,10 @@ pub struct Game {
     pub bots_made: u32,
     /// Bumps on every change, so clients and the room can drop stale work.
     pub version: u64,
+    /// Simulator only: play all six hands even past the heat limit, so a
+    /// night's whole trajectory can be measured.
+    #[serde(default)]
+    pub endless: bool,
 }
 
 const BOT_NAMES: [&str; 12] = [
@@ -182,7 +188,7 @@ const AVATARS: [&str; 8] = [
 impl Game {
     pub fn new(code: &str, seed: u64) -> Game {
         let config = Config::default();
-        let spec = table(config.difficulty);
+        let heat_limit = heat_limit_for(config.difficulty, MIN_CREW);
         Game {
             code: code.to_string(),
             phase: Phase::Lobby,
@@ -197,7 +203,8 @@ impl Game {
             take: 0,
             heat: 0,
             target: 0,
-            heat_limit: spec.heat_limit,
+            heat_limit,
+            endless: false,
             rule: None,
             rule_pile: Vec::new(),
             fox: None,
@@ -413,7 +420,7 @@ impl Game {
         if let Some(t) = timer.filter(|t| matches!(t, 0 | 15 | 30 | 60)) {
             self.config.timer = t;
         }
-        self.heat_limit = table(self.config.difficulty).heat_limit;
+        self.heat_limit = heat_limit_for(self.config.difficulty, self.seats.len());
         self.touch();
         Ok(())
     }
@@ -430,11 +437,10 @@ impl Game {
         if self.seats.len() < MIN_CREW {
             return Err(GameError::TooFew);
         }
-        let spec = table(self.config.difficulty);
         self.take = 0;
         self.heat = 0;
         self.hand = 0;
-        self.heat_limit = spec.heat_limit;
+        self.heat_limit = heat_limit_for(self.config.difficulty, self.seats.len());
         self.target = target_for(self.config.difficulty, self.seats.len());
         self.history.clear();
         self.verdict = None;
@@ -675,29 +681,45 @@ impl Game {
             .and_then(|top| crew.iter().find(|(_, v)| v.score == top))
             .map(|(_, v)| v.clone());
 
+        let mult = if self.rule == Some(RuleId::Homura) {
+            2
+        } else {
+            1
+        };
+        let serpent = self.rule == Some(RuleId::Hebi);
+        let outcome = match crew_top {
+            None => Outcome::Walked,
+            Some(c) if better(c, house_top) => Outcome::Crew,
+            Some(c) if c == house_top && !serpent => Outcome::Tie,
+            Some(_) => Outcome::House,
+        };
+        // Take: when the champion wins, every stake still in gets paid.
         let stakes: u32 = self
             .seats
             .iter()
             .filter(|s| s.active)
             .map(|s| u32::from(s.stake))
             .sum();
-        let mult = if self.rule == Some(RuleId::Homura) {
-            2
+        // Heat: anyone still in whose own hand lost to the House was seen,
+        // even if the champion carried the hand. Under Serpent a tie is a loss.
+        let burned: Vec<(String, u32)> = crew
+            .iter()
+            .filter(|(_, v)| better(house_top, v.score) || (serpent && v.score == house_top))
+            .map(|(id, _)| {
+                let stake = self.seat(id).map_or(1, |s| u32::from(s.stake));
+                (id.clone(), stake)
+            })
+            .collect();
+        let take = if outcome == Outcome::Crew {
+            stakes * mult
         } else {
-            1
+            0
         };
-        let outcome = match crew_top {
-            None => Outcome::Walked,
-            Some(c) if better(c, house_top) => Outcome::Crew,
-            Some(c) if c == house_top && self.rule != Some(RuleId::Hebi) => Outcome::Tie,
-            Some(_) => Outcome::House,
+        let heat = match outcome {
+            Outcome::Walked => mult,
+            _ => burned.iter().map(|(_, s)| s).sum::<u32>() * mult,
         };
-        let (take, heat) = match outcome {
-            Outcome::Crew => (stakes * mult, 0),
-            Outcome::House => (0, stakes * mult),
-            Outcome::Tie => (0, 0),
-            Outcome::Walked => (0, mult),
-        };
+        let burned: Vec<String> = burned.into_iter().map(|(id, _)| id).collect();
         self.take += take;
         self.heat += heat;
         self.history.push(HistoryEntry {
@@ -717,10 +739,11 @@ impl Game {
             house_best,
             crew_champions,
             house_champions,
+            burned,
         });
         self.ready.clear();
 
-        if self.heat >= self.heat_limit {
+        if self.heat >= self.heat_limit && !self.endless {
             self.finish(Verdict::Raid);
         } else if self.hand >= HANDS_PER_NIGHT {
             self.finish(if self.take >= self.target {
@@ -999,12 +1022,26 @@ mod tests {
             }
             let r = g.result.clone().unwrap();
             let mult = if g.rule == Some(RuleId::Homura) { 2 } else { 1 };
-            let stakes = 3 * mult; // A at 2, B at 1, C folded.
-            match r.outcome {
-                Outcome::Crew => assert_eq!((r.take, r.heat), (stakes, 0)),
-                Outcome::House => assert_eq!((r.take, r.heat), (0, stakes)),
-                Outcome::Tie => assert_eq!((r.take, r.heat), (0, 0)),
-                Outcome::Walked => unreachable!(),
+            let stake = |id: &str| u32::from(g.seat(id).unwrap().stake);
+            // A at 2, B at 1, C folded.
+            let paid = if r.outcome == Outcome::Crew {
+                3 * mult
+            } else {
+                0
+            };
+            let burned: u32 = r.burned.iter().map(|id| stake(id)).sum::<u32>() * mult;
+            assert_eq!(r.take, paid, "{r:?}");
+            assert_eq!(r.heat, burned, "{r:?}");
+            assert!(!r.burned.contains(&c), "folded seats never draw heat");
+            if r.outcome == Outcome::House {
+                assert_eq!(
+                    r.burned.len(),
+                    2,
+                    "on a loss every active seat lost on its own"
+                );
+            }
+            if r.outcome == Outcome::Crew {
+                assert!(r.burned.len() <= 1, "the champion never burns on a win");
             }
             assert!(
                 !r.crew_champions.contains(&c),

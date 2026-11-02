@@ -148,9 +148,12 @@ export const FIXTURES: Record<string, GameView> = {
     result: {
       outcome: 'crew',
       take: 6,
-      heat: 0,
+      heat: 1,
       crewBest: hv(7_000_000, 'full-house', 'Full house, sevens full of queens', ['7h', '7s', '7d', 'Qs', 'Qh']),
       houseBest: hv(3_200_000, 'two-pair', 'Two pair, kings and sevens', ['Kh', 'Kc', '7s', '7d', 'Qh']),
+      crewChampions: ['s1'],
+      houseChampions: [1],
+      burned: ['s3'],
     },
     ready: ['s1'],
   },

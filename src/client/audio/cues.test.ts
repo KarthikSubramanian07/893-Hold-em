@@ -26,7 +26,16 @@ function seat(i: number, over: Partial<SeatView> = {}): SeatView {
 
 const NO_BOARD: Slot[] = [null, null, null, null, null];
 const hv: HandValue = { score: 1, category: 'pair', name: 'Pair of twos', best: ['2s', '2d', '9c', '8h', '4s'] };
-const result = (outcome: HandResult['outcome']): HandResult => ({ outcome, take: 0, heat: 0, crewBest: hv, houseBest: hv });
+const result = (outcome: HandResult['outcome']): HandResult => ({
+  outcome,
+  take: 0,
+  heat: 0,
+  crewBest: hv,
+  houseBest: hv,
+  crewChampions: [],
+  houseChampions: [],
+  burned: [],
+});
 
 function view(over: Partial<GameView> = {}): GameView {
   return {

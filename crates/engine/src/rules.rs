@@ -56,10 +56,6 @@ pub struct TableSpec {
     pub deck: &'static [RuleId],
     /// First hand (1-based) that draws a House Rule.
     pub rule_from: u8,
-    pub heat_limit: u32,
-    /// Target take per crew seat, in tenths, so the night's target is
-    /// `round(per_seat_tenths × crew / 10)`. Tuned by the simulator.
-    pub per_seat_tenths: u32,
 }
 
 pub const HANDS_PER_NIGHT: u8 = 6;
@@ -92,22 +88,16 @@ pub fn table(d: Difficulty) -> TableSpec {
             id: d,
             deck: &SHITAMACHI_DECK,
             rule_from: 2,
-            heat_limit: 9,
-            per_seat_tenths: 40,
         },
         Difficulty::Kabukicho => TableSpec {
             id: d,
             deck: &KABUKICHO_DECK,
             rule_from: 2,
-            heat_limit: 8,
-            per_seat_tenths: 50,
         },
         Difficulty::Oyabun => TableSpec {
             id: d,
             deck: &ALL_RULES,
             rule_from: 1,
-            heat_limit: 7,
-            per_seat_tenths: 60,
         },
     }
 }
@@ -117,9 +107,35 @@ pub fn house_hands(crew: usize, rule: Option<RuleId>) -> usize {
     crew.div_ceil(2) + usize::from(rule == Some(RuleId::Oni))
 }
 
+/// (heat limit, take target) for crews of 2 through 6, per table. Heat grows
+/// with every stake that loses on its own, so both numbers scale with the crew.
+/// Heat limits are set by design (about half of what a crew that never folds
+/// would draw); targets are tuned by `crates/sim` toward 70% / 50% / 30% clean
+/// getaways for crews that play well.
+pub const BALANCE: [[(u32, u32); 5]; 3] = [
+    // Shitamachi: heat limit 2n + 4
+    [(8, 10), (10, 14), (12, 18), (14, 22), (16, 26)],
+    // Kabukicho: heat limit 2n + 2
+    [(6, 11), (8, 15), (10, 19), (12, 24), (14, 28)],
+    // Oyabun: heat limit 2n + 1
+    [(5, 12), (7, 16), (9, 21), (11, 26), (13, 31)],
+];
+
+fn balance(d: Difficulty, crew: usize) -> (u32, u32) {
+    let row = match d {
+        Difficulty::Shitamachi => 0,
+        Difficulty::Kabukicho => 1,
+        Difficulty::Oyabun => 2,
+    };
+    BALANCE[row][crew.clamp(MIN_CREW, MAX_CREW) - MIN_CREW]
+}
+
 pub fn target_for(d: Difficulty, crew: usize) -> u32 {
-    let tenths = table(d).per_seat_tenths * crew as u32;
-    (tenths + 5) / 10
+    balance(d, crew).1
+}
+
+pub fn heat_limit_for(d: Difficulty, crew: usize) -> u32 {
+    balance(d, crew).0
 }
 
 #[cfg(test)]
