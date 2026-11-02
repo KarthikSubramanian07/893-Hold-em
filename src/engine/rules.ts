@@ -107,9 +107,12 @@ export interface TableInfo {
   deck: RuleId[];
   /** First hand (1-based) that draws a House Rule. */
   ruleFrom: number;
-  heatLimit: number;
-  /** Take target per crew seat; the night's target is round(perSeat × crew). Tuned by scripts/simulate.ts. */
-  perSeat: number;
+  /**
+   * How often a crew that plays well gets away clean: the design goal the
+   * simulator tunes toward. The real heat limit and take target depend on the
+   * crew size and come from the engine (`view.heatLimit`, `view.target`).
+   */
+  odds: string;
 }
 
 export const TABLES: Record<Difficulty, TableInfo> = {
@@ -120,8 +123,7 @@ export const TABLES: Record<Difficulty, TableInfo> = {
     blurb: 'The corner bar. Forgiving, mostly.',
     deck: ['kagami', 'kitsune', 'homura', 'kiri'],
     ruleFrom: 2,
-    heatLimit: 9,
-    perSeat: 4,
+    odds: '7 in 10',
   },
   kabukicho: {
     id: 'kabukicho',
@@ -130,8 +132,7 @@ export const TABLES: Record<Difficulty, TableInfo> = {
     blurb: 'Neon, noise, and a House that pays attention.',
     deck: ['kiri', 'kagami', 'oni', 'shizuka', 'homura', 'kizuna', 'hebi', 'kitsune'],
     ruleFrom: 2,
-    heatLimit: 8,
-    perSeat: 5,
+    odds: '1 in 2',
   },
   oyabun: {
     id: 'oyabun',
@@ -140,8 +141,7 @@ export const TABLES: Record<Difficulty, TableInfo> = {
     blurb: "The boss's room. Every hand has a catch.",
     deck: ['kiri', 'kagami', 'oni', 'shizuka', 'homura', 'kizuna', 'hebi', 'kitsune', 'gyaku'],
     ruleFrom: 1,
-    heatLimit: 7,
-    perSeat: 6,
+    odds: '3 in 10',
   },
 };
 
@@ -152,8 +152,4 @@ export const MAX_CREW = 6;
 
 export function houseHandCount(crew: number, rule: RuleId | null): number {
   return Math.ceil(crew / 2) + (rule === 'oni' ? 1 : 0);
-}
-
-export function targetFor(difficulty: Difficulty, crew: number): number {
-  return Math.round(TABLES[difficulty].perSeat * crew);
 }

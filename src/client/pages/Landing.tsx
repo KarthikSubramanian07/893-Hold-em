@@ -218,7 +218,7 @@ const BEATS = [
   {
     n: '四',
     title: 'The showdown',
-    body: "The crew's best hand faces the House's best. Win and every stake still in pays. Lose and the heat climbs.",
+    body: "The crew's best hand faces the House's best: win, and every stake still in gets paid. But each mask watches two seats. Lose to yours and you draw heat anyway.",
     art: <ArtShowdown />,
   },
 ];
@@ -337,8 +337,8 @@ function Tables() {
                 <p className="plaque__blurb">{t.blurb}</p>
                 <dl className="plaque__stats">
                   <div>
-                    <dt>Heat limit</dt>
-                    <dd>{t.heatLimit}</dd>
+                    <dt>Clean odds</dt>
+                    <dd>{t.odds}</dd>
                   </div>
                   <div>
                     <dt>Rules deck</dt>

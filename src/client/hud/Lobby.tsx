@@ -125,7 +125,7 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
                         <i key={p} className={p <= i ? 'on' : ''} />
                       ))}
                     </span>
-                    Heat {t.heatLimit}
+                    {on ? `Heat ${view.heatLimit} · Take ${view.target}` : `${t.odds} clean`}
                   </span>
                 </label>
               );

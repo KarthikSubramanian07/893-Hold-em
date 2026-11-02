@@ -14,11 +14,11 @@ export const hv = (score: number, category: HandValue['category'], name: string,
 
 /** A copy of a dev fixture with overrides; seats and house are deep enough copies to mutate. */
 export function fixture(name: keyof typeof FIXTURES, over: Partial<GameView> = {}): GameView {
-  const base = FIXTURES[name]!;
-  return {
-    ...structuredClone(base),
-    ...over,
-  };
+  const copy = structuredClone(FIXTURES[name]!);
+  // Story tests start from "nobody was seen" and add `burned` where they mean it;
+  // the field is treated as optional, as it was before the engine sent it.
+  if (copy.result) delete (copy.result as Partial<HandResult>).burned;
+  return { ...copy, ...over };
 }
 
 export function seatOver(view: GameView, id: string, over: Partial<SeatView>): GameView {
@@ -111,6 +111,9 @@ export function scriptedNight(): Step[] {
       heat: 0,
       crewBest: hv(2_800_000, 'pair', 'Pair of eights', ['8c', '8d', 'Jc', 'Td', '9h']),
       houseBest: hv(1_090_000, 'high', 'King high', ['Kc', 'Jc', 'Td', '9h', '6d']),
+      crewChampions: ['s2'],
+      houseChampions: [0],
+      burned: [],
     },
     history: [H(1, 'crew', 5, 0)],
   });

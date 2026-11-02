@@ -9,7 +9,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/room': { target: 'ws://127.0.0.1:8787', ws: true },
+      '/room': { target: `ws://127.0.0.1:${process.env.ROOMS_PORT ?? 8787}`, ws: true },
     },
   },
   build: {
