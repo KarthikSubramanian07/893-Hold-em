@@ -1,153 +1,350 @@
 // The House: one masked figure per hand, floating in the dark against the
-// rainy window. Masks are built from a displaced half-sphere and a painted
-// face; the eyes glow, and flare red when the House takes a hand.
+// rainy window. Each mask is the one maskFor() names for this table (Okame,
+// Kitsune, the Okina, the Oni…), carved from its height field in maskShapes.ts
+// and painted to match. Masks slowly turn to look at the two seats they watch,
+// and at the showdown the one who saw you turns and flares.
 
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import type { MaskId } from '../../story/types';
 import type { HouseTarget, MaskMood } from '../derive';
-import { houseCardSpots, maskLayout, type Vec3 } from '../layout';
-import { damp, useLive } from '../live';
+import { houseCardSpots, type Vec3 } from '../layout';
+import { damp, dampAngle, SEEN_DELAY, useLive } from '../live';
+import { MASK_SHAPES, surfacePoint, type MaskShape } from '../maskShapes';
 import { PALETTE } from '../palette';
 import { softDot } from '../textures/canvas';
-import { MASK_EYES, MASK_ORDER, maskTexture, type MaskKind } from '../textures/masks';
+import { maskTexture } from '../textures/masks';
+import { gazeIndex } from '../watch';
 import { Card } from './Card';
 
-const MR = 0.33;
-const ZS = 0.62;
-/** Masks are ovals, not balls. */
-const XS = 0.84;
-const THETA0 = 0.1 * Math.PI;
-const THETA_L = 0.8 * Math.PI;
+// ---------------------------------------------------------------------------
+// Geometry
+// ---------------------------------------------------------------------------
 
-function gauss(x: number, y: number, cx: number, cy: number, sx: number, sy: number): number {
-  return Math.exp(-((x - cx) ** 2) / (sx * sx) - ((y - cy) ** 2) / (sy * sy));
-}
-
-/** Surface point of the mask for a face UV (v from top). */
-function facePoint(u: number, v: number): THREE.Vector3 {
-  const phi = u * Math.PI;
-  const theta = THETA0 + v * THETA_L;
-  return new THREE.Vector3(-MR * XS * Math.cos(phi) * Math.sin(theta), MR * Math.cos(theta), MR * Math.sin(phi) * Math.sin(theta) * ZS);
-}
-
-function maskGeometry(kind: MaskKind): THREE.BufferGeometry {
-  const g = new THREE.SphereGeometry(MR, 72, 56, 0, Math.PI, THETA0, THETA_L);
-  const p = g.attributes.position!;
-  const eye = MASK_EYES[kind];
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i) / MR;
-    const y = p.getY(i) / MR;
-    let z = p.getZ(i) * ZS;
-    const ey = Math.cos(THETA0 + eye.v * THETA_L);
-    const ex = Math.sin(eye.u * Math.PI);
-    // Eye sockets.
-    z -= 0.035 * (gauss(x, y, -ex, ey, 0.13, 0.08) + gauss(x, y, ex, ey, 0.13, 0.08));
-    // Brow ridge and nose.
-    z += 0.03 * gauss(x, y, 0, ey + 0.12, 0.45, 0.07);
-    switch (kind) {
-      case 'kitsune':
-        z += 0.22 * gauss(x, y, 0, -0.18, 0.16, 0.3) + 0.05 * gauss(x, y, 0, -0.05, 0.3, 0.3);
-        break;
-      case 'hannya':
-        z += 0.07 * gauss(x, y, 0, -0.05, 0.12, 0.18) - 0.04 * gauss(x, y, 0, -0.42, 0.25, 0.1);
-        z += 0.04 * (gauss(x, y, -0.32, -0.15, 0.15, 0.2) + gauss(x, y, 0.32, -0.15, 0.15, 0.2));
-        break;
-      case 'okame':
-        z += 0.045 * (gauss(x, y, -0.38, -0.2, 0.22, 0.22) + gauss(x, y, 0.38, -0.2, 0.22, 0.22));
-        z += 0.03 * gauss(x, y, 0, -0.05, 0.1, 0.12);
-        break;
-      case 'tengu':
-        z += 0.05 * gauss(x, y, 0, -0.05, 0.14, 0.2);
-        break;
+/** The carved face: a grid over face coordinates, clipped to the outline. */
+export function faceGeometry(shape: MaskShape, cols = 72, rows = 90): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const uv: number[] = [];
+  const idx: number[] = [];
+  for (let j = 0; j <= rows; j++) {
+    // Denser rows toward the crown and chin, where the outline turns fastest.
+    const v = j / rows;
+    const y = Math.cos(v * Math.PI) * 0.995;
+    const w = shape.width(y);
+    for (let i = 0; i <= cols; i++) {
+      const s = (i / cols) * 2 - 1;
+      const x = s * w;
+      const p = surfacePoint(shape, x, y);
+      pos.push(p.x, p.y, p.z);
+      uv.push((x + 1) / 2, (y + 1) / 2);
     }
-    p.setZ(i, z * MR);
   }
-  g.scale(XS, 1, 1);
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      const a = j * (cols + 1) + i;
+      const b = a + cols + 1;
+      idx.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
   g.computeVertexNormals();
   return g;
 }
 
-function Ears({ kind, mat }: { kind: MaskKind; mat: THREE.Material }) {
-  if (kind === 'kitsune') {
-    return (
-      <>
-        {[-1, 1].map((s) => (
-          <mesh key={s} material={mat} position={[s * 0.15, 0.3, -0.02]} rotation={[0.15, 0, -s * 0.4]} castShadow>
-            <coneGeometry args={[0.075, 0.24, 4, 1]} />
-          </mesh>
-        ))}
-      </>
-    );
+/** A tube along a curve that tapers from r0 to r1, closed with a round tip. */
+function taperTube(points: THREE.Vector3[], r0: number, r1: number, tubular = 28, radial = 14): THREE.BufferGeometry {
+  const curve = new THREE.CatmullRomCurve3(points);
+  const g = new THREE.TubeGeometry(curve, tubular, 1, radial, false);
+  const p = g.attributes.position!;
+  const c = new THREE.Vector3();
+  const v = new THREE.Vector3();
+  for (let i = 0; i <= tubular; i++) {
+    const t = i / tubular;
+    curve.getPointAt(t, c);
+    const r = THREE.MathUtils.lerp(r0, r1, Math.pow(t, 0.9)) * (t > 0.92 ? Math.sqrt(Math.max(0, 1 - ((t - 0.92) / 0.08) ** 2)) * 0.9 + 0.1 : 1);
+    for (let k = 0; k <= radial; k++) {
+      const n = i * (radial + 1) + k;
+      v.fromBufferAttribute(p, n).sub(c).multiplyScalar(r);
+      p.setXYZ(n, c.x + v.x, c.y + v.y, c.z + v.z);
+    }
   }
-  if (kind === 'hannya') {
-    return (
-      <>
-        {[-1, 1].map((s) => (
-          <mesh key={s} position={[s * 0.14, 0.26, 0.02]} rotation={[0.4, 0, -s * 0.55]} castShadow>
-            <coneGeometry args={[0.032, 0.26, 16, 1]} />
-            <meshStandardMaterial color={PALETTE.kin} metalness={1} roughness={0.3} />
-          </mesh>
-        ))}
-      </>
-    );
-  }
-  if (kind === 'tengu') {
-    return (
-      <mesh material={mat} position={[0, -0.02, 0.19 + 0.13]} rotation={[Math.PI / 2 - 0.12, 0, 0]} castShadow>
-        <coneGeometry args={[0.042, 0.32, 20, 1]} />
-      </mesh>
-    );
-  }
-  return null;
+  g.computeVertexNormals();
+  return g;
 }
 
-/** A shrouded figure: shoulders and a hood, nearly black, catching only rim light. */
-function Figure() {
-  const geo = useMemo(() => {
-    const pts: THREE.Vector2[] = [];
-    const prof: [number, number][] = [
-      [0.0, -1.5],
-      [0.62, -1.5],
-      [0.6, -0.85],
-      [0.52, -0.5],
-      [0.38, -0.33],
-      [0.27, -0.24],
-      [0.29, -0.05],
-      [0.3, 0.12],
-      [0.27, 0.27],
-      [0.19, 0.37],
-      [0.08, 0.41],
-      [0.0, 0.42],
-    ];
-    for (const [r, y] of prof) pts.push(new THREE.Vector2(r, y));
-    const g = new THREE.LatheGeometry(pts, 40);
-    g.scale(1, 1, 0.7);
-    return g;
-  }, []);
-  return (
-    <mesh geometry={geo} position={[0, 0, -0.12]}>
-      <meshStandardMaterial color="#070606" roughness={0.9} metalness={0.0} />
-    </mesh>
-  );
+const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
+
+/** A point on the face, nudged out along z. */
+function on(shape: MaskShape, x: number, y: number, dz = 0): THREE.Vector3 {
+  const p = surfacePoint(shape, x, y);
+  return V(p.x, p.y, p.z + dz);
 }
+
+function fuzzBall(r: number, seed: number): THREE.BufferGeometry {
+  const g = new THREE.IcosahedronGeometry(r, 4);
+  const p = g.attributes.position!;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const n = Math.sin(v.x * 211 + seed) * Math.sin(v.y * 173 + seed * 2) * Math.sin(v.z * 197 + seed * 3);
+    v.multiplyScalar(1 + 0.09 * n);
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+function earGeometry(): THREE.BufferGeometry {
+  const s = new THREE.Shape();
+  s.moveTo(-0.085, 0);
+  s.quadraticCurveTo(-0.07, 0.17, 0, 0.3);
+  s.quadraticCurveTo(0.07, 0.17, 0.085, 0);
+  s.quadraticCurveTo(0, -0.02, -0.085, 0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.022, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 3, curveSegments: 14 });
+  g.translate(0, 0, -0.011);
+  g.computeVertexNormals();
+  return g;
+}
+
+function innerEarGeometry(): THREE.BufferGeometry {
+  const s = new THREE.Shape();
+  s.moveTo(-0.05, 0.03);
+  s.quadraticCurveTo(-0.04, 0.15, 0, 0.24);
+  s.quadraticCurveTo(0.04, 0.15, 0.05, 0.03);
+  s.quadraticCurveTo(0, 0.015, -0.05, 0.03);
+  return new THREE.ShapeGeometry(s, 12);
+}
+
+/** Ebisu's tall folded eboshi, seen side-on and extruded across the head. */
+function eboshiGeometry(): THREE.BufferGeometry {
+  const s = new THREE.Shape();
+  // (x here is world z: + toward the viewer.)
+  s.moveTo(0.16, 0);
+  s.quadraticCurveTo(0.05, 0.02, -0.2, 0.0);
+  s.quadraticCurveTo(-0.3, 0.2, -0.26, 0.42);
+  s.quadraticCurveTo(-0.2, 0.56, -0.02, 0.58);
+  s.quadraticCurveTo(0.12, 0.57, 0.16, 0.48);
+  s.quadraticCurveTo(0.06, 0.5, -0.04, 0.44);
+  s.quadraticCurveTo(-0.1, 0.28, 0.0, 0.12);
+  s.quadraticCurveTo(0.08, 0.06, 0.16, 0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.44, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.015, bevelSegments: 3, curveSegments: 16 });
+  g.rotateY(-Math.PI / 2);
+  g.translate(0.22, 0, 0);
+  g.computeVertexNormals();
+  return g;
+}
+
+interface Part {
+  geo: THREE.BufferGeometry;
+  mat: 'face' | 'gold' | 'ivory' | 'black' | 'white' | 'red' | 'indigo' | 'inner' | 'hole';
+  position?: THREE.Vector3;
+  rotation?: [number, number, number];
+  scale?: [number, number, number];
+}
+
+/** Everything that is not a height field. */
+function maskParts(id: MaskId, shape: MaskShape): Part[] {
+  const parts: Part[] = [];
+  switch (id) {
+    case 'kitsune': {
+      const ear = earGeometry();
+      const inner = innerEarGeometry();
+      for (const s of [-1, 1]) {
+        const base = on(shape, s * 0.5, 0.78, -0.04);
+        const rot: [number, number, number] = [-0.28, s * 0.12, -s * 0.32];
+        parts.push({ geo: ear, mat: 'face', position: base, rotation: rot });
+        parts.push({ geo: inner, mat: 'inner', position: base.clone().add(V(0, 0, 0.026)), rotation: rot });
+      }
+      break;
+    }
+    case 'tengu': {
+      const b = on(shape, 0, 0.02, -0.03);
+      parts.push({
+        geo: taperTube([b, b.clone().add(V(0, -0.035, 0.16)), b.clone().add(V(0, -0.045, 0.32)), b.clone().add(V(0, -0.01, 0.46))], 0.078, 0.034, 36, 18),
+        mat: 'red',
+      });
+      // A small black tokin cap on the brow.
+      parts.push({ geo: new THREE.DodecahedronGeometry(0.07, 0), mat: 'black', position: on(shape, 0, 0.84, -0.01), scale: [1, 0.8, 0.9] });
+      break;
+    }
+    case 'hannya': {
+      for (const s of [-1, 1]) {
+        const b = on(shape, s * 0.42, 0.74, -0.05);
+        parts.push({
+          geo: taperTube([b, b.clone().add(V(s * 0.05, 0.12, -0.02)), b.clone().add(V(s * 0.14, 0.24, -0.04)), b.clone().add(V(s * 0.2, 0.34, 0.02))], 0.05, 0.01),
+          mat: 'gold',
+        });
+      }
+      break;
+    }
+    case 'oni': {
+      for (const s of [-1, 1]) {
+        const b = on(shape, s * 0.38, 0.82, -0.04);
+        parts.push({ geo: taperTube([b, b.clone().add(V(s * 0.04, 0.1, 0.01)), b.clone().add(V(s * 0.1, 0.19, 0.04))], 0.06, 0.012), mat: 'ivory' });
+        const t = on(shape, s * 0.3, -0.6, -0.01);
+        parts.push({ geo: taperTube([t, t.clone().add(V(0, 0.06, 0.03)), t.clone().add(V(s * 0.015, 0.13, 0.03))], 0.026, 0.005, 16, 10), mat: 'ivory' });
+      }
+      break;
+    }
+    case 'okina': {
+      for (const s of [-1, 1]) {
+        parts.push({ geo: fuzzBall(0.058, s + 2), mat: 'white', position: on(shape, s * 0.3, 0.43, 0.01), scale: [1.15, 0.85, 0.8] });
+      }
+      // The beard: tufts of white hair hanging from the cut jaw.
+      for (let k = 0; k < 13; k++) {
+        const u = k / 12 - 0.5;
+        const b = on(shape, u * 0.7, -0.66 - 0.14 * (1 - Math.abs(u * 2) ** 2), -0.02);
+        const len = 0.36 + 0.14 * Math.cos(u * Math.PI);
+        const sway = u * 0.14;
+        // It falls forward over the robe, the way a long beard rests on a chest.
+        parts.push({
+          geo: taperTube(
+            [b, b.clone().add(V(sway * 0.5, -len * 0.3, 0.12)), b.clone().add(V(sway, -len * 0.62, 0.21)), b.clone().add(V(sway * 1.4, -len, 0.26))],
+            0.036 - Math.abs(u) * 0.02,
+            0.004,
+            20,
+            8,
+          ),
+          mat: 'white',
+        });
+      }
+      break;
+    }
+    case 'ebisu': {
+      parts.push({ geo: eboshiGeometry(), mat: 'black', position: on(shape, 0, 0.76, -0.16), rotation: [-0.12, 0, 0] });
+      break;
+    }
+    case 'hyottoko': {
+      const m = on(shape, 0.22, -0.48, -0.02);
+      parts.push({ geo: taperTube([m, m.clone().add(V(0.02, -0.004, 0.05)), m.clone().add(V(0.05, -0.006, 0.09))], 0.052, 0.04, 12, 18), mat: 'red' });
+      parts.push({
+        geo: new THREE.CircleGeometry(0.026, 18),
+        mat: 'hole',
+        position: m.clone().add(V(0.052, -0.006, 0.093)),
+        rotation: [0, 0.5, 0],
+      });
+      // The knot of the tenugui on the brow.
+      for (const s of [-1, 1]) {
+        parts.push({
+          geo: new THREE.SphereGeometry(0.06, 18, 12),
+          mat: 'indigo',
+          position: on(shape, s * 0.07, 0.86, 0.02),
+          rotation: [0, 0, s * 0.7],
+          scale: [1.3, 0.7, 0.6],
+        });
+      }
+      break;
+    }
+    case 'okame':
+      break;
+  }
+  return parts;
+}
+
+// ---------------------------------------------------------------------------
+// One figure
+// ---------------------------------------------------------------------------
+
+/** Shoulders under a dark robe; static. */
+const BODY = (() => {
+  const prof: [number, number][] = [
+    [0.0, -1.55],
+    [0.64, -1.55],
+    [0.62, -0.88],
+    [0.54, -0.52],
+    [0.4, -0.35],
+    [0.26, -0.26],
+    [0.0, -0.24],
+  ];
+  const g = new THREE.LatheGeometry(
+    prof.map(([r, y]) => new THREE.Vector2(r, y)),
+    40,
+  );
+  g.scale(1, 1, 0.7);
+  return g;
+})();
+
+/** The hood behind the mask; turns with the head. */
+const HOOD = (() => {
+  const prof: [number, number][] = [
+    [0.0, -0.36],
+    [0.25, -0.34],
+    [0.3, -0.1],
+    [0.32, 0.12],
+    [0.3, 0.3],
+    [0.21, 0.42],
+    [0.09, 0.47],
+    [0.0, 0.48],
+  ];
+  const g = new THREE.LatheGeometry(
+    prof.map(([r, y]) => new THREE.Vector2(r, y)),
+    40,
+  );
+  g.scale(1.05, 1, 0.72);
+  return g;
+})();
+
+const ROBE = new THREE.MeshStandardMaterial({ color: '#080707', roughness: 0.92 });
 
 const EYE_IDLE = new THREE.Color('#ffb46a');
 const EYE_FLARE = new THREE.Color('#ff1e2e');
 
-function Mask({ kind, spot, target, index }: { kind: MaskKind; spot: Vec3; target: HouseTarget; index: number }) {
+interface MaskProps {
+  id: MaskId;
+  spot: Vec3;
+  scale: number;
+  target: HouseTarget;
+  index: number;
+  /** World anchors of the seats this mask watches. */
+  gaze: Vec3[];
+  /** World anchor of the first seat it saw at the showdown, if any. */
+  sawAt: Vec3 | null;
+}
+
+function Mask({ id, spot, scale, target, index, gaze, sawAt }: MaskProps) {
   const live = useLive();
+  const root = useRef<THREE.Group>(null);
   const head = useRef<THREE.Group>(null);
-  const st = useRef({ lean: 0, tilt: 0, eye: 0.4, red: 0, appear: 0 });
-  const geo = useMemo(() => maskGeometry(kind), [kind]);
-  const mat = useMemo(
-    () => new THREE.MeshStandardMaterial({ map: maskTexture(kind), roughness: 0.42, metalness: 0.05, side: THREE.DoubleSide }),
-    [kind],
-  );
+  const eyeAnchor = useRef<THREE.Object3D>(null);
+  const st = useRef({ lean: 0, eye: 0.4, red: 0, appear: 0, yaw: 0, pitch: 0.12, snap: 0 });
+  const shape = MASK_SHAPES[id];
+  const geo = useMemo(() => faceGeometry(shape), [shape]);
+  const parts = useMemo(() => maskParts(id, shape), [id, shape]);
+  const mats = useMemo(() => {
+    const gloss = { okame: 0.55, hyottoko: 0.3, ebisu: 0.7, kitsune: 0.75, tengu: 0.9, hannya: 0.85, okina: 0.55, oni: 0.8 }[id];
+    const face = new THREE.MeshPhysicalMaterial({
+      map: maskTexture(id),
+      roughness: 0.62 - gloss * 0.3,
+      metalness: 0.02,
+      clearcoat: gloss,
+      clearcoatRoughness: 0.32,
+      // A whisper of self-light so the paint reads at the dark ends of the row.
+      emissive: new THREE.Color('#ffffff'),
+      emissiveMap: maskTexture(id),
+      emissiveIntensity: 0.16,
+      side: THREE.DoubleSide,
+    });
+    const tone = { tengu: '#c23a25', hyottoko: '#c4473a' }[id as 'tengu' | 'hyottoko'] ?? '#c23a25';
+    return {
+      face,
+      gold: new THREE.MeshStandardMaterial({ color: PALETTE.kin, metalness: 1, roughness: 0.28 }),
+      ivory: new THREE.MeshPhysicalMaterial({ color: '#efe4c8', roughness: 0.35, clearcoat: 0.6 }),
+      black: new THREE.MeshPhysicalMaterial({ color: '#0b0908', roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.15 }),
+      white: new THREE.MeshStandardMaterial({ color: '#fbf8f2', roughness: 0.95, emissive: '#fbf3e4', emissiveIntensity: 0.12 }),
+      red: new THREE.MeshPhysicalMaterial({ color: tone, roughness: 0.32, clearcoat: 0.9, clearcoatRoughness: 0.2 }),
+      indigo: new THREE.MeshStandardMaterial({ color: '#284a86', roughness: 0.85 }),
+      inner: new THREE.MeshStandardMaterial({ color: '#c8321f', roughness: 0.6, side: THREE.DoubleSide }),
+      hole: new THREE.MeshBasicMaterial({ color: '#120705' }),
+    } satisfies Record<Part['mat'], THREE.Material>;
+  }, [id]);
   const eyeMat = useMemo(
     () =>
       new THREE.MeshBasicMaterial({
-        map: softDot(64, 1.4),
+        map: softDot(64, 1.6),
         color: EYE_IDLE.clone(),
         transparent: true,
         blending: THREE.AdditiveBlending,
@@ -156,41 +353,81 @@ function Mask({ kind, spot, target, index }: { kind: MaskKind; spot: Vec3; targe
       }),
     [],
   );
-  const eyes = useMemo(() => {
-    const e = MASK_EYES[kind];
-    return [facePoint(0.5 - e.u, e.v), facePoint(0.5 + e.u, e.v)];
-  }, [kind]);
+  // Open eyes smoulder a little at rest; eyes carved shut only burn when they flare.
+  const idleGlow = shape.eyes[0].r >= 0.75 ? 0.16 : 0;
+  const eyes = useMemo(() => shape.eyes.map((e) => ({ p: on(shape, e.x, e.y, 0.012), r: e.r })), [shape]);
+  const eyeMid = useMemo(() => eyes[0]!.p.clone().add(eyes[1]!.p).multiplyScalar(0.5), [eyes]);
 
   useFrame(({ clock }, dt) => {
-    const g = head.current;
-    if (!g) return;
-    const t = clock.elapsedTime + index * 1.7;
+    const g = root.current;
+    const h = head.current;
+    if (!g || !h) return;
+    const now = clock.elapsedTime;
+    const t = now + index * 1.7;
     const s = st.current;
+    const still = live.reducedMotion;
     const mood: MaskMood = target.mood;
+    const sinceShow = live.showdownAt >= 0 ? now - live.showdownAt : -1;
+    // The moment it delivers its verdict on the seats it watches.
+    const seeing = !!sawAt && sinceShow >= SEEN_DELAY;
+    const flash = seeing ? Math.max(0, 1 - (sinceShow - SEEN_DELAY) / 2.2) : 0;
+
     const leanT = mood === 'flare' ? 1 : mood === 'lean' ? 0.45 : mood === 'retreat' ? -0.7 : 0;
-    s.lean = damp(s.lean, leanT, 2.2, dt);
-    s.eye = damp(s.eye, mood === 'flare' ? 3.2 : mood === 'retreat' ? 0.08 : mood === 'lean' ? 1.1 : 0.55, 2.5, dt);
-    s.red = damp(s.red, mood === 'flare' ? 1 : mood === 'lean' && live.targets.outcome === 'house' ? 0.6 : 0, 3, dt);
+    s.lean = damp(s.lean, leanT + (seeing ? 0.35 * (0.4 + flash) : 0), 2.2, dt);
+    const eyeT = mood === 'flare' ? 3.2 : mood === 'retreat' ? 0.02 : mood === 'lean' ? 1.0 : idleGlow;
+    s.eye = damp(s.eye, seeing ? Math.max(eyeT, 1.4 + 2.6 * flash) : eyeT, seeing ? 6 : 2.5, dt);
+    const redT = mood === 'flare' ? 1 : mood === 'lean' && live.targets.outcome === 'house' ? 0.6 : 0;
+    s.red = damp(s.red, seeing ? 1 : redT, seeing ? 8 : 3, dt);
     s.appear = damp(s.appear, 1, 1.5, dt);
-    const bob = live.reducedMotion ? 0 : Math.sin(t * 0.7) * 0.025;
-    g.position.set(spot.x, spot.y + bob - (1 - s.appear) * 0.6 - s.lean * 0.12, spot.z + s.lean * 0.42);
-    g.rotation.set(s.lean * 0.38 + (live.reducedMotion ? 0 : Math.sin(t * 0.45) * 0.03), Math.sin(t * 0.31) * 0.06 - spot.x * 0.1, (s.lean < 0 ? -s.lean * 0.18 : 0) + Math.sin(t * 0.23) * 0.02);
-    const flicker = 0.9 + 0.1 * Math.sin(t * 13.0) * Math.sin(t * 2.1);
-    eyeMat.color.copy(EYE_IDLE).lerp(EYE_FLARE, s.red).multiplyScalar(s.eye * flicker * 2.2);
-    mat.color.setScalar(mood === 'retreat' ? 0.5 + 0.5 * (1 + s.lean / 0.7) : 1);
+
+    // Where it looks: the seat it saw, or a slow glance between its two seats.
+    let look: Vec3 | null = null;
+    if (seeing) look = sawAt;
+    else if (gaze.length) look = gaze[still ? 0 : gazeIndex(now, gaze.length, index * 2.3)]!;
+    let yawT = 0;
+    let pitchT = 0.1;
+    if (look) {
+      const dx = look.x - spot.x;
+      const dz = look.z - spot.z;
+      yawT = Math.max(-0.36, Math.min(0.36, Math.atan2(dx, dz) * 0.5));
+      pitchT = Math.max(0, Math.min(0.32, Math.atan2(spot.y - look.y, Math.hypot(dx, dz)) * 0.4));
+    }
+    if (still && !seeing && gaze.length > 1) {
+      // Reduced motion: settle between the two seats instead of glancing.
+      const a = gaze[0]!;
+      const b = gaze[1]!;
+      yawT = Math.max(-0.36, Math.min(0.36, Math.atan2((a.x + b.x) / 2 - spot.x, (a.z + b.z) / 2 - spot.z) * 0.5));
+    }
+    s.yaw = dampAngle(s.yaw, yawT, seeing ? 7 : 1.1, dt);
+    s.pitch = damp(s.pitch, pitchT, seeing ? 7 : 1.1, dt);
+
+    const bob = still ? 0 : Math.sin(t * 0.7) * 0.02;
+    g.position.set(spot.x, spot.y + bob - (1 - s.appear) * 0.6 - s.lean * 0.1, spot.z + s.lean * 0.38);
+    g.rotation.set(s.lean * 0.18, 0, still ? 0 : Math.sin(t * 0.23) * 0.015);
+    h.rotation.set(s.pitch + s.lean * 0.2 + (still ? 0 : Math.sin(t * 0.45) * 0.02), s.yaw, s.lean < 0 ? -s.lean * 0.15 : 0);
+
+    const flicker = still ? 1 : 0.92 + 0.08 * Math.sin(t * 13.0) * Math.sin(t * 2.1);
+    eyeMat.color.copy(EYE_IDLE).lerp(EYE_FLARE, s.red).multiplyScalar(s.eye * flicker * 2.0);
+    const dim = mood === 'retreat' ? 0.5 + 0.5 * (1 + s.lean / 0.7) : 1;
+    mats.face.color.setScalar(dim);
+    eyeAnchor.current?.getWorldPosition(live.maskEyes[index] ?? (live.maskEyes[index] = new THREE.Vector3()));
   });
 
   return (
-    <group ref={head}>
-      <Figure />
-      <group position={[0, 0, 0.02]}>
-        <mesh geometry={geo} material={mat} castShadow />
-        <Ears kind={kind} mat={mat} />
-        {eyes.map((p, i) => (
-          <mesh key={i} position={[p.x, p.y, p.z - 0.01]} material={eyeMat}>
-            <planeGeometry args={[0.1, 0.07]} />
+    <group ref={root} scale={scale}>
+      <mesh geometry={BODY} material={ROBE} position={[0, 0, -0.12]} />
+      <group ref={head}>
+        <mesh geometry={HOOD} material={ROBE} position={[0, 0, -0.14]} />
+        <mesh geometry={geo} material={mats.face} castShadow />
+        {parts.map((p, i) => (
+          <mesh key={i} geometry={p.geo} material={mats[p.mat]} position={p.position} rotation={p.rotation} scale={p.scale} castShadow={p.mat !== 'hole' && p.mat !== 'inner'} />
+        ))}
+        {eyes.map((e, i) => (
+          <mesh key={i} position={e.p} material={eyeMat} scale={[0.11 * e.r, 0.075 * e.r, 1]}>
+            <planeGeometry args={[1, 1]} />
           </mesh>
         ))}
+        <object3D ref={eyeAnchor} position={eyeMid} />
       </group>
     </group>
   );
@@ -206,23 +443,31 @@ function MaskKey() {
   return (
     <>
       <primitive object={target} />
-      <spotLight color="#ffc58a" position={[0, 2.0, -0.45]} target={target} angle={0.95} penumbra={0.9} intensity={13} decay={2} distance={5} />
+      <spotLight color="#ffc58a" position={[0, 2.1, -0.2]} target={target} angle={1.0} penumbra={0.9} intensity={15} decay={2} distance={5.5} />
     </>
   );
 }
 
-export function House({ house, aspect }: { house: HouseTarget[]; aspect: number }) {
-  const spots = maskLayout(house.length, aspect);
+export interface HouseProps {
+  house: HouseTarget[];
+  spots: Vec3[];
+  scale: number;
+  /** World anchor of every seat by id. */
+  anchors: ReadonlyMap<string, Vec3>;
+}
+
+export function House({ house, spots, scale, anchors }: HouseProps) {
   return (
     <group>
       <MaskKey />
       {house.map((h, i) => {
         const spot = spots[i]!;
-        const kind = MASK_ORDER[i % MASK_ORDER.length]!;
         const cards = houseCardSpots(spot);
+        const gaze = h.watches.map((id) => anchors.get(id)).filter((v): v is Vec3 => !!v);
+        const sawAt = h.saw.length ? (anchors.get(h.saw[0]!) ?? null) : null;
         return (
-          <group key={i}>
-            <Mask kind={kind} spot={spot} target={h} index={i} />
+          <group key={`${i}:${h.mask}`}>
+            <Mask id={h.mask} spot={spot} scale={scale} target={h} index={i} gaze={gaze} sawAt={sawAt} />
             {h.cards.map((slot, k) => {
               const c = cards[k] ?? cards[0];
               const lift = h.glow[k] ? 0.16 : 0;
