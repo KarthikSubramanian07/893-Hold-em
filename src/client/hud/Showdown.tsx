@@ -1,7 +1,7 @@
 // The flip is done. One word for how it went, then the numbers.
 import type { GameView } from '../../engine/types';
 import { sfx } from '../audio';
-import { OUTCOME_LINE, OUTCOME_SUB, readyQuorum } from '../net/selectors';
+import { OUTCOME_LINE, OUTCOME_SUB, readyQuorum, yourHand } from '../net/selectors';
 import { useTable } from '../net/store';
 
 export function Showdown({ view }: { view: GameView }) {
@@ -25,6 +25,7 @@ export function Showdown({ view }: { view: GameView }) {
           {OUTCOME_LINE[r.outcome]}
         </h2>
         <p className="sd__sub">{OUTCOME_SUB[r.outcome]}</p>
+        {yourHand(view) && <p className="sd__you">{yourHand(view)}</p>}
       </div>
 
       <dl className="sd__hands">
@@ -45,6 +46,7 @@ export function Showdown({ view }: { view: GameView }) {
 
       <div className="sd__foot">
         <p className="sd__deltas">
+          <span className="label sd__deltas-k">Crew total</span>
           <span className={`sd__delta sd__delta--take${r.take ? ' is-on' : ''}`}>
             +{r.take} <span>円 take</span>
           </span>
