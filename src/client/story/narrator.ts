@@ -13,11 +13,9 @@ import type { GameView, SeatView } from '../../engine/types';
 import { RULES, TABLES } from '../../engine/rules';
 import {
   burned,
-  championSeat,
   classifyShowdown,
   foxSeat,
   heatCrossed,
-  houseChampionIndex,
   is893Code,
   nameEgg,
 } from './analysis';
@@ -26,7 +24,6 @@ import {
   CHAPTERS,
   CLEAN_SWEEP,
   CLOSE_CALL,
-  HAND,
   HEAT,
   IDLE,
   IDLE_CAT,
@@ -121,10 +118,6 @@ export function narrate(prev: GameView | null, next: GameView, you: string | nul
   if (nightStart) {
     const ch = CHAPTERS[table];
     out.push(line(next, `night:${table}`, { speaker: 'master', text: choose(next, ch.intro, `night:${table}`), kanji: ch.kanji, mood: 'calm', hold: 5200 }));
-    if (next.rule !== 'oni') {
-      const lead = maskFor(table, 0, next.rule, Math.max(1, next.house.length));
-      out.push(line(next, `mask:${lead.id}`, { speaker: lead.id, text: choose(next, lead.lines.intro, `mask:${lead.id}`), kanji: lead.kanji, mood: 'cold' }));
-    }
   }
 
   // A new hand after the first.
@@ -140,7 +133,10 @@ export function narrate(prev: GameView | null, next: GameView, you: string | nul
 
   // The showdown.
   const resolved = next.result !== null && (prev.result === null || prev.hand !== next.hand);
-  if (resolved) out.push(showdownLine(next));
+  if (resolved) {
+    const said = showdownLine(next);
+    if (said) out.push(said);
+  }
 
   // The verdict ends the night; it speaks for the counters too.
   const verdict = next.verdict !== null && (prev.verdict === null || prev.phase !== 'over');
@@ -220,9 +216,8 @@ function handLine(view: GameView): Line | null {
       mood: hot ? 'danger' : 'calm',
     });
   }
-  // A House Rule speaks for every other hand; only a bare hand gets a line of its own.
-  if (view.rule) return null;
-  return line(view, 'hand', { speaker: 'master', text: choose(view, HAND, 'hand'), mood: 'calm' });
+  // Any other hand speaks only through its House Rule, if it has one.
+  return null;
 }
 
 function ruleLine(view: GameView): Line {
@@ -261,7 +256,8 @@ const SHOWDOWN_STYLE: Record<ShowdownKind, { mood: Mood; kanji?: string }> = {
   seen: { mood: 'wry', kanji: '見' },
 };
 
-function showdownLine(view: GameView): Line {
+/** A line for the rare showdowns only; the panel already covers the ordinary ones. */
+function showdownLine(view: GameView): Line | null {
   const { kind, seat } = classifyShowdown(view);
   const r = view.result!;
   const event = `showdown:${kind}`;
@@ -284,37 +280,39 @@ function showdownLine(view: GameView): Line {
     }
     return master();
   }
-  if (kind === 'walked') {
+  if (kind === 'walked' && SHOWDOWN.walked.length) {
     const mame = regularMoment(view, 'walked');
     if (mame && chance(0.5, seedOf(view), view.hand, 'walked:who')) {
       return line(view, event, { speaker: mame.who, text: choose(view, mame.bank, 'walked:regular'), mood: 'hush' });
     }
     return master();
   }
-  if (kind !== 'crew' && kind !== 'house' && kind !== 'tie') return master();
-
-  // The ordinary outcomes: sometimes the Master, sometimes the mask across the table.
-  const mask = maskFor(view.config.difficulty, houseChampionIndex(view), view.rule, view.house.length);
-  if (kind === 'crew') {
-    const champ = championSeat(view);
-    const regular = champ?.bot ? regularFor(champ.name) : null;
-    const roll = pick([0, 1, 2], view.code, view.hand, 'showdown:who');
-    if (regular && roll === 0) {
-      return line(view, event, { speaker: regular.name, text: choose(view, regular.carried, `carried:${regular.name}`), mood: 'gold' });
-    }
-    if (roll === 1) return line(view, event, { speaker: mask.id, text: choose(view, mask.lines.lose, `mask:${mask.id}:lose`), mood: 'cold' });
-    return master();
+  if (kind === 'crew' || kind === 'house') {
+    const said = regularAfterHand(view, kind);
+    if (said) return said;
   }
-  if (kind === 'house') {
-    if (chance(0.6, seedOf(view), view.hand, 'showdown:who')) {
-      return line(view, event, { speaker: mask.id, text: choose(view, mask.lines.win, `mask:${mask.id}:win`), mood: 'danger' });
-    }
-    return master();
-  }
-  if (chance(0.5, seedOf(view), view.hand, 'showdown:who')) {
-    return line(view, event, { speaker: mask.id, text: choose(view, mask.lines.tie, `mask:${mask.id}:tie`), mood: 'hush' });
-  }
+  if (SHOWDOWN[kind].length === 0) return null;
   return master();
+}
+
+/**
+ * Now and then, a bot regular has a word about an ordinary hand: the one whose
+ * cards carried the crew, or one the House just burned. About one hand in three,
+ * so the table has voices without turning into chatter.
+ */
+function regularAfterHand(view: GameView, kind: 'crew' | 'house'): Line | null {
+  const r = view.result!;
+  const ids = (kind === 'crew' ? r.crewChampions : burned(view)) ?? [];
+  const event = `regular:${kind}`;
+  if (!chance(0.35, seedOf(view), view.hand, event)) return null;
+  for (const id of ids) {
+    const seat = view.seats.find((s) => s.id === id);
+    const regular = seat?.bot ? regularFor(seat.name) : null;
+    if (!regular) continue;
+    const bank = kind === 'crew' ? regular.carried : regular.lost;
+    return line(view, event, { speaker: regular.name, text: choose(view, bank, event), kanji: regular.kanji, mood: kind === 'crew' ? 'warm' : 'wry' });
+  }
+  return null;
 }
 
 /** "Full house, sevens full of queens" → "full house, sevens full of queens". */
