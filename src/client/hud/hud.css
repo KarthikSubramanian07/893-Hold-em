@@ -415,7 +415,6 @@
   align-items: center;
   gap: 1.5rem;
   width: min(100%, 900px);
-  max-height: 150px;
   padding: 1rem 1.4rem;
   background: var(--night-panel);
   border: 1px solid var(--night-hair-strong);
@@ -449,6 +448,12 @@
 .dock__street {
   color: var(--kin);
   white-space: nowrap;
+  line-height: 1.5;
+}
+
+.dock__street span {
+  display: block;
+  color: var(--night-ink-faint);
 }
 
 .stake {
@@ -486,7 +491,7 @@
 .dock__stamps {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 98px);
+  grid-template-columns: repeat(3, 118px);
   gap: 12px;
 }
 
@@ -498,8 +503,8 @@
   justify-items: center;
   align-content: center;
   gap: 0.4rem;
-  height: 104px;
-  padding: 0;
+  height: 120px;
+  padding: 0 0.4rem;
   border: 1.5px solid var(--c);
   border-radius: 3px;
   background: transparent;
@@ -542,6 +547,32 @@
 
 .stamp .kbd {
   font-size: 9px;
+}
+
+/* What the call does to you, in plain words, under its name. */
+.stamp__hint {
+  font: 12.5px/1.25 var(--serif);
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: center;
+  opacity: 0.82;
+}
+
+/* One plain-words tip on your first night, across the top of the dock; the
+   bet, the three calls, and the clock keep their row beneath it. */
+.dock:has(> .dock__coach) > :not(.dock__coach) {
+  grid-row: 2;
+}
+
+.dock__coach {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border-left: 2px solid var(--kin);
+  background: rgb(201 164 92 / 0.08);
+  font: 14px/1.5 var(--serif);
+  color: var(--night-ink);
 }
 
 .stamp:hover:not(:disabled) {
@@ -1286,6 +1317,7 @@
 
 .sd__deltas {
   display: flex;
+  align-items: baseline;
   gap: 1.4rem;
 }
 
@@ -1806,14 +1838,16 @@
     height: 10px;
   }
 
-  .meter .top__k {
-    font-size: 0;
-    letter-spacing: 0;
+  /* On a phone the words win over the ornaments: "Take 3/20", "Heat 1/14",
+     no kanji and no tiny gauges to decode. */
+  .meter__kanji,
+  .meter__track,
+  .heat {
+    display: none;
   }
 
-  .meter__kanji {
-    font-size: 13px;
-    margin: 0;
+  .meter .top__k {
+    font-size: 9.5px;
   }
 
   .rule__pop {
@@ -1878,7 +1912,15 @@
   }
 
   .stamp {
-    height: 86px;
+    height: 100px;
+  }
+
+  .stamp__hint {
+    font-size: 11.5px;
+  }
+
+  .dock__coach {
+    font-size: 13px;
   }
 
   .stamp__kanji {
@@ -2201,3 +2243,27 @@
     mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
   }
 }
+
+/* The one line about you at the showdown: paid or not, seen or not. */
+.sd__you {
+  margin: 0.55rem 0 0;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--night-hair);
+  font: 14px/1.45 var(--serif);
+  color: var(--night-ink);
+}
+
+/* The deltas are the crew's; your own share is the line above them. */
+.sd__deltas-k {
+  color: var(--night-ink-faint);
+  font-size: 9.5px;
+}
+
+/* On a phone the showdown panel owns the screen; the personal line carries
+   what the subtitle would, so the subtitle steps aside until the next hand. */
+@media (max-width: 760px) {
+  .table[data-phase='showdown'] .hud__subs--float {
+    display: none;
+  }
+}
+

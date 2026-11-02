@@ -66,7 +66,7 @@ const html = (status = 200, headers: Record<string, string> = {}) => async () =>
   new Response('<!doctype html><h1>page</h1>', { status, headers: { 'Content-Type': 'text/html; charset=utf-8', ...headers } });
 
 const get = (path: string, accept?: string, init: RequestInit = {}) =>
-  new Request(`https://holdem893.pages.dev${path}`, { ...init, headers: { ...(accept ? { Accept: accept } : {}), ...(init.headers ?? {}) } });
+  new Request(`https://holdem893.pages.dev${path}`, { ...init, headers: { ...(accept ? { Accept: accept } : {}), ...(init.headers as Record<string, string> | undefined) } });
 
 describe('answer', () => {
   it('serves the homepage as Markdown to an agent that asks', async () => {

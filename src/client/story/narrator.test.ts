@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { RULES } from '../../engine/rules';
 import type { GameView } from '../../engine/types';
 import { classifyShowdown, heatCrossed, playedYakuza } from './analysis';
 import { fixture, hv, scriptedNight, seatOver, withResult } from './fixtures';
 import { CHAPTERS } from './lines';
 import { idleLine, narrate } from './narrator';
+import { REGULARS } from './regulars';
 
 const EVENING = new Date(2026, 10, 1, 21, 15);
 const ctx = { now: EVENING };
@@ -38,24 +40,20 @@ describe('determinism', () => {
     }
   });
 
-  it('varies the line between tables', () => {
+  it('varies the welcome between tables', () => {
     const texts = new Set<string>();
     for (const code of ['AAAAA', 'BBBBB', 'CCCCC', 'DDDDD', 'EEEEE', 'FFFFF', 'GGGGG', 'HHHHH']) {
-      const lobby = fixture('lobby', { code });
-      const start = fixture('preflop', { code });
-      texts.add(narrate(lobby, start, 's0', ctx)[0]!.text);
+      texts.add(narrate(null, fixture('lobby', { code }), 's0', { ...ctx, returning: false })[0]!.text);
     }
     expect(texts.size).toBeGreaterThan(1);
   });
 
-  it('does not repeat a rule line within a night until the bank runs out', () => {
-    const seen = new Set<string>();
-    for (let hand = 2; hand <= 4; hand++) {
-      const prev = fixture('river', { hand: hand - 1, rule: 'kiri' });
-      const next = fixture('preflop', { hand, rule: 'kiri' });
-      seen.add(narrate(prev, next, 's0', ctx).find((l) => l.id.endsWith('rule:kiri'))!.text);
+  it('says what each House Rule does, in plain words, when it turns over', () => {
+    for (const rule of ['kiri', 'kagami', 'shizuka', 'homura', 'kizuna', 'hebi', 'gyaku'] as const) {
+      const out = narrate(fixture('river', { hand: 1 }), fixture('preflop', { hand: 2, rule }), 's0', ctx);
+      const l = out.find((x) => x.id.endsWith(`rule:${rule}`))!;
+      expect(l.text.startsWith(`${RULES[rule].name}:`), rule).toBe(true);
     }
-    expect(seen.size).toBe(3);
   });
 
   it('says nothing when nothing changed', () => {
@@ -143,12 +141,11 @@ describe('joins', () => {
 });
 
 describe('the night and its hands', () => {
-  it('opens the chapter and sits the lead mask for each table', () => {
-    const lead = { shitamachi: 'okame', kabukicho: 'kitsune', oyabun: 'okina' } as const;
+  it('opens the night with one line about the table', () => {
     for (const table of ['shitamachi', 'kabukicho'] as const) {
       const config = { difficulty: table, timer: 30 as const };
       const out = narrate(fixture('lobby', { config }), fixture('preflop', { config }), 's0', ctx);
-      expect(ids(out)).toEqual([`night:${table}`, `mask:${lead[table]}`]);
+      expect(ids(out)).toEqual([`night:${table}`]);
       expect(out[0]!.kanji).toBe(CHAPTERS[table].kanji);
       expect(CHAPTERS[table].intro).toContain(out[0]!.text);
     }
@@ -157,7 +154,7 @@ describe('the night and its hands', () => {
   it('turns the first House Rule at the boss’s table', () => {
     const config = { difficulty: 'oyabun' as const, timer: 30 as const };
     const out = narrate(fixture('lobby', { config }), fixture('preflop', { config, rule: 'hebi' }), 's0', ctx);
-    expect(ids(out)).toEqual(['night:oyabun', 'mask:okina', 'rule:hebi']);
+    expect(ids(out)).toEqual(['night:oyabun', 'rule:hebi']);
   });
 
   it('lets the Oni introduce himself under his own rule', () => {
@@ -167,7 +164,7 @@ describe('the night and its hands', () => {
   });
 
   it('starts a second night in the same room', () => {
-    expect(ids(narrate(fixture('over'), fixture('preflop'), 's0', ctx))).toEqual(['night:kabukicho', 'mask:kitsune']);
+    expect(ids(narrate(fixture('over'), fixture('preflop'), 's0', ctx))).toEqual(['night:kabukicho']);
   });
 
   it('lets the House Rule speak for an ordinary hand', () => {
@@ -281,11 +278,10 @@ describe('the showdown', () => {
     expect(narrate(fixture('river'), sd, 's0', ctx)[0]!.text).toContain('Daichi');
   });
 
-  it('names the players who were seen on a winning hand', () => {
+  it('leaves a seen-but-paid hand to the showdown panel', () => {
     const [, sd] = showdown((v) => withResult(v, { burned: ['s0', 's3'] }));
     expect(classifyShowdown(sd).kind).toBe('seen');
-    const [l] = narrate(fixture('river'), sd, 's0', ctx);
-    expect(l!.text).toContain('Karthik and Daichi');
+    expect(narrate(fixture('river'), sd, 's0', ctx)).toEqual([]);
   });
 
   it('treats a missing burned list as nobody seen', () => {
@@ -294,10 +290,34 @@ describe('the showdown', () => {
     expect(classifyShowdown(sd).kind).toBe('crew');
   });
 
-  it('speaks exactly once per showdown', () => {
+  it('stays quiet on an ordinary showdown, and never repeats itself', () => {
     const [prev, next] = showdown();
-    expect(ids(narrate(prev, next, 's0', ctx))).toEqual(['showdown:crew']);
+    expect(narrate(prev, next, 's0', ctx)).toEqual([]);
     expect(narrate(next, { ...next, ready: ['s0', 's1'] }, 's0', ctx)).toEqual([]);
+  });
+});
+
+describe('the regulars', () => {
+  it('sometimes lets a bot regular who carried the hand say a word, and only from their own lines', () => {
+    let spoke = 0;
+    for (let i = 0; i < 40; i++) {
+      const code = `Q${String(i).padStart(4, '0')}`;
+      const asTetsu = (v: GameView) => ({
+        ...v,
+        code,
+        seats: v.seats.map((s) => (s.id === 's1' ? { ...s, name: 'Tetsu', bot: true } : s)),
+      });
+      const [prev, next] = showdown(asTetsu);
+      const out = narrate({ ...prev, code }, next, 's0', ctx);
+      expect(out.length).toBeLessThanOrEqual(1);
+      if (out.length) {
+        spoke++;
+        expect(out[0]!.speaker).toBe('Tetsu');
+        expect(REGULARS.Tetsu.carried).toContain(out[0]!.text);
+      }
+    }
+    expect(spoke).toBeGreaterThan(4);
+    expect(spoke).toBeLessThan(30);
   });
 });
 
@@ -310,7 +330,7 @@ describe('the verdict', () => {
         const next = fixture('over', { config, verdict, heat: 2, history: fixture('over').history });
         const out = narrate(prev, next, 's0', ctx);
         const epilogue = out.filter((l) => l.id.includes(`verdict:${table}:${verdict}`));
-        expect(epilogue.length).toBeGreaterThanOrEqual(2);
+        expect(epilogue.length).toBeGreaterThanOrEqual(1);
         expect(CHAPTERS[table].epilogue[verdict].some((run) => run[0] === epilogue[0]!.text)).toBe(true);
         expect(epilogue[0]!.kanji).toBe(CHAPTERS[table].kanji);
       }

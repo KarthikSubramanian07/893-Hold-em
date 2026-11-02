@@ -74,7 +74,7 @@ export function TopBar({
 
 function HandPips({ hand, hands }: { hand: number; hands: number }) {
   return (
-    <div className="pips" role="img" aria-label={`Hand ${hand} of ${hands}`}>
+    <div className="pips" role="img" aria-label={`Hand ${hand} of ${hands}`} title={`Hand ${hand} of ${hands} tonight`}>
       <span className="top__k">Hand</span>
       <span className="pips__row" aria-hidden="true">
         {Array.from({ length: hands }, (_, i) => (
@@ -92,7 +92,16 @@ function HandPips({ hand, hands }: { hand: number; hands: number }) {
 function TakeMeter({ take, target }: { take: number; target: number }) {
   const pct = target > 0 ? Math.min(100, (take / target) * 100) : 0;
   return (
-    <div className="meter meter--take" role="meter" aria-label="Take" aria-valuemin={0} aria-valuemax={target} aria-valuenow={take} aria-valuetext={`${take} of ${target} yen target`}>
+    <div
+      className="meter meter--take"
+      role="meter"
+      aria-label="Take"
+      aria-valuemin={0}
+      aria-valuemax={target}
+      aria-valuenow={take}
+      aria-valuetext={`${take} of ${target}. Reach ${target} by the last hand to get away clean.`}
+      title={`Take: money the crew has won. Reach ${target} by the end of hand 6 to get away clean.`}
+    >
       <span className="top__k">
         Take <span className="meter__kanji">円</span>
       </span>
@@ -117,7 +126,8 @@ function HeatMeter({ heat, limit }: { heat: number; limit: number }) {
       aria-valuemin={0}
       aria-valuemax={limit}
       aria-valuenow={heat}
-      aria-valuetext={`${heat} of ${limit}. ${hot ? 'Close to a raid.' : ''}`}
+      aria-valuetext={`${heat} of ${limit}. ${hot ? 'Close to a raid.' : `The bar is raided at ${limit}.`}`}
+      title={`Heat: police attention. At ${limit} the bar is raided and the night ends.`}
     >
       <span className="top__k">
         Heat <span className="meter__kanji">熱</span>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FIXTURES } from '../dev/fixtures';
-import { amHost, canReact, canStart, dockMode, myCall, mySeat, readyQuorum, stillDeciding } from './selectors';
+import { amHost, callHint, canReact, canStart, dockMode, myCall, mySeat, OUTCOME_LINE, readyQuorum, stillDeciding, yourHand } from './selectors';
 
 const f = (name: string) => structuredClone(FIXTURES[name]!);
 
@@ -57,3 +57,58 @@ describe('selectors', () => {
     expect(canStart(guest)).toBe(false);
   });
 });
+
+describe('callHint', () => {
+  it('says what each call does to your bet', () => {
+    expect(callHint('fold', 1)).toBe('Sit this one out');
+    expect(callHint('stay', 2)).toBe('Keep betting 2');
+    expect(callHint('raise', 1)).toBe('Bet 2');
+    expect(callHint('raise', 3)).toBe('At the max');
+  });
+});
+
+describe('showdown wording', () => {
+  it('never reuses the end-of-night words for a single hand', () => {
+    expect(Object.values(OUTCOME_LINE)).not.toContain('Clean.');
+    expect(OUTCOME_LINE.crew).toBe('Paid.');
+  });
+});
+
+describe('yourHand', () => {
+  const sd = FIXTURES.showdown!;
+  const as = (you: string, over: Partial<typeof sd> = {}) => ({ ...sd, you, ...over });
+
+  it('tells a paid player who was not seen', () => {
+    // s0 stayed in at stake 2, the crew won, and s0 is not in burned.
+    expect(yourHand(as('s0'))).toBe(
+      'Your bet of 2 was paid, and your two pair, kings and sevens held against the mask watching you: no heat.',
+    );
+  });
+
+  it('tells a paid player who was seen', () => {
+    // s3 is in burned in the fixture.
+    expect(yourHand(as('s3'))).toBe(
+      'Your bet of 1 was paid, and the mask watching you beat your pair of sevens: +1 heat.',
+    );
+  });
+
+  it('doubles both under Blaze', () => {
+    expect(yourHand(as('s3', { rule: 'homura' }))).toContain('Your bet of 2 was paid');
+    expect(yourHand(as('s3', { rule: 'homura' }))).toContain('+2 heat');
+  });
+
+  it('reassures a player who folded', () => {
+    expect(yourHand(as('s2'))).toBe('You folded, so this hand cost you nothing.');
+  });
+
+  it('says when the bet was not paid', () => {
+    const lost = as('s0', { result: { ...sd.result!, outcome: 'house', burned: ['s0'] } });
+    expect(yourHand(lost)).toBe('Your bet was not paid, and the mask watching you beat your two pair, kings and sevens: +2 heat.');
+  });
+
+  it('stays quiet for spectators and outside the showdown', () => {
+    expect(yourHand(as(null as unknown as string))).toBeNull();
+    expect(yourHand({ ...FIXTURES.lobby!, you: 's0' })).toBeNull();
+  });
+});
+

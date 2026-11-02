@@ -12,6 +12,17 @@ const RULE_ORDER: RuleId[] = ['kiri', 'kagami', 'oni', 'shizuka', 'homura', 'kiz
 export function RulesContent() {
   return (
     <div className="rules">
+      <section className="rules__quick">
+        <h3 className="rules__h">The game in 30 seconds</h3>
+        <ol>
+          <li>You and your crew play poker hands together, against the masked House.</li>
+          <li>Each round, everyone secretly picks Fold, Stay, or Raise. All picks turn over at once. That is the only talking allowed.</li>
+          <li>If the crew&rsquo;s best hand beats the House&rsquo;s best, everyone still in gets paid their bet (take).</li>
+          <li>But the mask watching you checks your own hand. If it beats you, you add your bet as heat.</li>
+          <li>Reach the take target in six hands without hitting the heat limit, and you get away clean.</li>
+        </ol>
+      </section>
+
       <section>
         <h3 className="rules__h">The crew</h3>
         <p>

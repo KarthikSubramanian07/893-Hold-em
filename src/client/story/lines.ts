@@ -35,43 +35,23 @@ export const CAT = { name: 'Kyū', kanji: '九', story: 'A black cat with one wh
 
 export const WELCOME = {
   first: [
-    'Mind the stairs. Sit anywhere. The House sits across.',
-    'First time. Coat on the hook. Don’t touch the cat.',
-    'Come in out of the rain. Everyone here owes something. You’ll fit right in.',
-    'Six stools, one table, one way to pay. Sit down.',
+    'Sit anywhere. Send the link to fill the stools, or add bots. The bots don’t tip.',
+    'Six stools, one table, one cat. The House sits across. The cat sits wherever she likes.',
+    'Send the link to bring your crew. Strangers welcome. Everyone here was a stranger once, and owed money twice.',
   ],
-  returning: [
-    'Back again. Same stool.',
-    'The usual. I’ll put it on your tab. You don’t have a tab.',
-    'I kept your seat dry.',
-    'You came back. They always do. I don’t know why.',
-  ],
-  rejoin: ['Your stool’s still warm. Sit.', 'They dealt you in while you were gone. Catch up.'],
-  spectator: ['Standing room only. Don’t lean on the glass.', 'Watch if you like. Don’t breathe on the cards.'],
-  code893: [
-    'Table eight-nine-three. Somebody upstairs is laughing.',
-    'Eight, nine, three. Of all the tables in this city.',
-  ],
-  oyabun: [
-    'You wrote “Oyabun” on the board. He’s going to see that.',
-    'Bold name. He’s sat in that chair longer than you’ve been alive.',
-  ],
+  returning: ['Back again. Same stool. I didn’t dust it.', 'Welcome back. Your tab is still zero. Let’s keep it that way.'],
+  rejoin: ['Your seat held. You were dealt in while you were gone.'],
+  spectator: ['The table is full tonight. You can watch.'],
+  code893: ['Table eight-nine-three. Somebody upstairs is laughing.'],
+  oyabun: ['You wrote “Oyabun” on the board. He’s going to see that.'],
   master: ['There’s only one Master in here. Pick another name. Or don’t, and confuse everyone.'],
   cat: ['That’s the cat’s name. She’ll allow it, this once.'],
-  threeAm: [
-    'It really is three. Even I’m usually closing by now.',
-    'Three in the morning. The only honest hour in Shinjuku.',
-  ],
+  threeAm: ['It really is three in the morning. Good hour for it.'],
 } as const;
 
 export const JOIN_OYABUN: Bank = ['{name}. Bold name. He’s going to see that.', 'Somebody calling themselves {name}. He’ll enjoy that. Briefly.'];
 
-export const JOIN: Bank = [
-  '{name} came up the stairs.',
-  'A new face. {name}. Mind the cat.',
-  '{name}. Shake off the rain.',
-  'The door again. {name}, this time.',
-];
+export const JOIN: Bank = ['{name} sat down.', '{name} made it up the stairs. Most do.', '{name} joined. Mind the cat.', '{name} is here. Somebody pour.'];
 
 // ---------------------------------------------------------------------------
 // Chapters: the three tables, and how each night can end
@@ -100,23 +80,13 @@ export const CHAPTERS: Record<Difficulty, Chapter> = {
     synopsis:
       'The corner table, the low end of the debt. The family sends its collectors: Okame who smiles, Hyottoko who sweats, and Ebisu who writes it all down.',
     intro: [
-      'The corner table tonight. The collectors. They smile a lot. Don’t smile back.',
-      'Shitamachi. Low ceiling, low stakes, low men. Keep your heads down.',
-      'The first debt is the small one. They send their smallest masks for it.',
+      'Shitamachi, the forgiving table. House Rules start on hand two. The masks here are mostly bark.',
+      'The corner table. Small debts, House Rules from hand two. Okame smiles at everyone. Don’t take it personally.',
     ],
     epilogue: {
-      clean: [
-        ['That’s the corner debt paid. Okame will tell them you were polite.', 'Kabukichō will want to meet you now. That isn’t a compliment.'],
-        ['Ebisu crossed you out. In ink.', 'Go home. Next time the masks are taller.'],
-      ],
-      raid: [
-        ['Sirens on the stairs. Out the back, past the bins. You know the way now.', 'The corner table will still be here. So will the debt.'],
-        ['Hyottoko ran first. I’ll give him that.', 'Tomorrow, then. Quieter.'],
-      ],
-      short: [
-        ['Close isn’t money. Okame smiled the whole way down the stairs.', 'Come back tomorrow. It’ll be raining.'],
-        ['Ebisu wrote it in pencil. That’s mercy, for him.', 'The debt keeps. Debts always keep.'],
-      ],
+      clean: [['Clean getaway. The corner debt is paid. Okame is still smiling, which is either good or terrible.']],
+      raid: [['Raided. Out the back, past the bins. Fold the weak hands sooner next time.']],
+      short: [['Came up short. Close isn’t money. Raise the strong hands sooner.']],
     },
   },
   kabukicho: {
@@ -128,23 +98,13 @@ export const CHAPTERS: Record<Difficulty, Chapter> = {
     synopsis:
       'The lieutenants come down from the fourth floor: Kitsune the dealer, Tengu the purist, and Hannya, who only comes when something needs breaking.',
     intro: [
-      'Kabukichō. Every sign out there is lying to you, in neon.',
-      'The lieutenants came down from the fourth floor for this. They never come down.',
-      'The fox is dealing tonight. Count your cards. Then count them again.',
+      'Kabukichō. Eight House Rules in the deck, from hand two. Every sign outside is lying. So is the fox.',
+      'The lieutenants came down for this. Eight House Rules, from hand two. They took the stairs. That’s serious.',
     ],
     epilogue: {
-      clean: [
-        ['You walked out of Kabukichō with money. People don’t, usually.', 'There’s a car downstairs. The boss wants a word. Not tonight.'],
-        ['The Tengu said “luck” all the way to the door.', 'Upstairs has heard your names now. Sleep with the light on.'],
-      ],
-      raid: [
-        ['Blue light through the rain. The Tengu was out the window before the first knock.', 'Nobody’s surprised. That’s the worst part.'],
-        ['Hannya didn’t run. She just left. There’s a difference.', 'Lie low. The neon stays on without you.'],
-      ],
-      short: [
-        ['The fox counted twice and smiled once. You owe what you owed.', 'The neon doesn’t care. It stays on.'],
-        ['Kitsune bowed, briefly. That means you’ll be back.', 'Rest. Kabukichō never does.'],
-      ],
+      clean: [['Clean getaway from Kabukichō. Few crews manage it. The boss has heard your names. Congratulations, I think.']],
+      raid: [['Raided. The Tengu was out the window before the first knock. Fold the weak hands sooner next time.']],
+      short: [['Came up short. The fox counted twice and smiled once. Raise the strong hands sooner.']],
     },
   },
   oyabun: {
@@ -156,126 +116,77 @@ export const CHAPTERS: Record<Difficulty, Chapter> = {
     synopsis:
       'The room at the top of the stairs, with tatami and the one good chair. The Oyabun sits behind the Okina mask and plays the first hand himself.',
     intro: [
-      'Top of the stairs. The room with the tatami and the one good chair. He’s already sitting.',
-      'The Oyabun plays the first hand himself. He always has.',
-      'Shoes off. Voices down. Every hand in this room has a catch.',
+      'The boss’s table. A House Rule every hand, starting now. Shoes off. He notices.',
+      'Top of the stairs. House Rules from the first hand. He drinks only water, which is somehow more frightening.',
     ],
     epilogue: {
-      clean: [
-        ['He bowed. I’ve poured for him for thirty years. He has never bowed.', 'The debt is paid. Go home. Come back only if you want to.'],
-        ['He laughed. Once, softly, like a door closing.', 'You’re free. That has never meant what people think.'],
-      ],
-      raid: [
-        ['Even the boss’s room gets raided. He finished his tea first.', 'He’ll forgive the police. He won’t forget you.'],
-        ['Hannya held the door for him. Nobody held it for you.', 'Rest. He doesn’t hurry. Neither should you.'],
-      ],
-      short: [
-        ['He said nothing. He poured you a drink himself. That’s worse.', 'Same time tomorrow. The rain will keep.'],
-        ['“Patience,” he said. He has more of it than you have nights.', 'Come back when you’re ready. He’ll be sitting.'],
-      ],
+      clean: [['Clean getaway from the boss’s table. He bowed. I’ve poured for him thirty years. He has never bowed.']],
+      raid: [['Raided, even up here. He finished his tea first. Fold the weak hands sooner next time.']],
+      short: [['Came up short. He poured you a drink himself. That’s worse than shouting.']],
     },
   },
 };
 
 /** Said once at the end of any clean night when heat was one from the limit. */
-export const CLOSE_CALL: Bank = ['One more mark and you’d have met the police on the stairs. Breathe.', 'That close. I had the back door open.'];
+export const CLOSE_CALL: Bank = ['One heat from a raid, and still clean. I’m going to need a minute.'];
 
 /** Said once at the end of a night where the crew took all six. */
-export const CLEAN_SWEEP: Bank = ['Six for six. I’ve seen it once before. He doesn’t drink here anymore.', 'Six hands, six wins. Don’t tell anyone. Really.'];
+export const CLEAN_SWEEP: Bank = ['Six hands, six wins. I’m checking the deck.'];
 
 // ---------------------------------------------------------------------------
 // Hands and rules
 // ---------------------------------------------------------------------------
 
 export const LAST_HAND = {
-  short: ['Last hand. You need {need}. I’ve seen it done. Once.', 'Sixth hand. {need} short. Make it count.'],
-  made: ['Last hand. You’ve got what you came for. Don’t get greedy. Or do.', 'Last one. The debt’s covered. Now it’s only pride.'],
-  hot: ['Last hand, and the street is listening. Fold if you must.', 'One more hand. One more mark and they come up the stairs.'],
+  short: ['Last hand. You need {need} more take. No pressure. Some pressure.'],
+  made: ['Last hand. Target met. Only a raid can ruin this now, so fold anything ugly.'],
+  hot: ['Last hand, one heat from a raid. If your cards look like a bus timetable, fold.'],
 } as const;
 
-/** Only used if a hand starts with no House Rule. */
-export const HAND: Bank = ['Next hand. Same rain.', 'Fresh cards. Old debts.', 'Deal.', 'Again.'];
-
 /** The Fox, when the narrator can't tell whose cards are up. */
-export const KITSUNE_ANON: Bank = ['One of you has no secrets this hand.', 'Somebody’s cards are face up. Play around them.'];
+export const KITSUNE_ANON: Bank = ['Fox: one crew member’s cards are face up this hand. Somebody wave.'];
 
 export const RULE_LINES: Record<RuleId, Bank> = {
-  kiri: ['Window’s fogged. So’s the river.', 'Fog off the canal. You’ll see the last card when it’s too late.', 'Play what you can see. Pray about the rest.'],
-  kagami: ['The masks are showing a card each. Generous. Suspicious.', 'Mirror on the table. Look, but don’t believe it.', 'A little honesty from the House. Don’t get used to it.'],
-  oni: ['Somebody else came up the stairs. He doesn’t knock.', 'There’s a red mask in the doorway. Make room.', 'One more seat across. Count them.'],
-  shizuka: ['Quiet now. Nobody shows their calls.', 'Hush. Even the rain is listening.', 'Keep your hands still. Keep your faces stiller.'],
-  homura: ['Everything burns double this hand. Money too.', 'Somebody turned the charcoal up. Take and heat, doubled.', 'Big pot, big fire. Mind your sleeves.'],
-  kizuna: ['One raise lifts everyone. Choose like family.', 'Bond. If one of you goes up, you all do.', 'Tied together this hand. Don’t pull.'],
-  hebi: ['The snake’s on the table. A tie is a loss.', 'Serpent. Close isn’t enough. Win it outright.', 'Ties go to the House. They always did, really.'],
-  kitsune: ['{name}’s cards are face up. Nothing to hide, nowhere to hide it.', 'The fox turned {name}’s cards over. Play around it.', 'Everyone can see what {name} holds. Including the House.'],
-  gyaku: ['Upside down. The worst hand wins. Trust your trash.', 'Reversal. In here, low is high and the boss is smiling.', 'Lowball. Throw away your pride first.'],
+  kiri: ['Fog: the river is dealt face down until the showdown. Bet on vibes.', 'Fog: you won’t see the river until the showdown. Neither will they, allegedly.'],
+  kagami: ['Mirror: each mask shows one of its two cards. The House calls this transparency.', 'Mirror: one card per mask, face up. Look closely. They want you to.'],
+  oni: ['Oni: the House plays an extra hand this time. He didn’t knock. He never knocks.', 'Oni: one more mask across, so the House’s best gets stronger. Make room.'],
+  shizuka: ['Hush: you’ll see who folds, but not who stays or raises. Poker faces, everyone.', 'Hush: calls stay hidden until the showdown, except folds. Eyebrows are now a strategy.'],
+  homura: ['Blaze: take and heat both count double. Big swing. Keep your sleeves clear of the charcoal.', 'Blaze: everything doubles this hand. The money and the trouble.'],
+  kizuna: ['Bond: any raise raises everyone still in. Choose like family. Or don’t, like most families.', 'Bond: one raise lifts every bet at the table. Nobody raises alone.'],
+  hebi: ['Serpent: ties go to the House this hand. The House calls this tradition.', 'Serpent: a tie counts as a loss. Win it outright or don’t bother.'],
+  kitsune: ['Fox: {name}’s cards are face up for everyone, the House included. Wave, {name}.', 'Fox: {name} is playing with the cards showing. Very brave. Not voluntary.'],
+  gyaku: ['Reversal: the weaker hand wins this one. Finally, a use for your cards.', 'Reversal: low is high. Whoever’s been dealt garbage all night, this is your moment.'],
 };
 
 // ---------------------------------------------------------------------------
 // The showdown
 // ---------------------------------------------------------------------------
 
+/**
+ * Only the rare moments get a line; the showdown panel already says who won,
+ * what was paid, and who was seen.
+ */
 export const SHOWDOWN: Record<ShowdownKind, Bank> = {
-  crew: ['Paid.', 'That one’s yours. All of it.', 'Everyone who stayed gets paid. That’s the deal.', 'Good. Pour another.', 'The House pays. It hates that.'],
-  house: ['The House takes it.', 'That’s heat. The street noticed.', 'Not this one.', 'They were holding. They usually are.'],
-  tie: ['Dead even. Nobody pays, nobody bleeds.', 'A draw. The rain doesn’t care either.', 'Even. Let’s pretend that didn’t happen.'],
-  walked: [
-    'Everybody walked. The street still noticed.',
-    'Every hand on the felt, face down. Somebody downstairs writes that down.',
-    'Walking away is a choice. It isn’t free.',
-  ],
-  royal: [
-    'A royal flush. In thirty years I’ve poured for two. Now three.',
-    'Ten to the ace, one suit. Even the masks went quiet.',
-  ],
-  yakuza: [
-    'Eight, nine, three. Ya, ku, za. The worst hand there is, and here it is.',
-    'Eight, nine, three on the table. In the old game that’s nothing. In this room it’s a name.',
-    'Ya-ku-za. Twenty, which counts as zero. Everybody here was dealt it once.',
-  ],
-  'bad-beat': [
-    '{Hand}, and it still lost. Some nights are like that. Most, actually.',
-    'That was {hand}. That should have been enough. I’m sorry.',
-  ],
-  serpent: ['Dead even, and the snake bites. Ties belong to the House.', 'A tie, under the Serpent. That’s a loss with good manners.'],
-  reversal: ['The worst hand won. The boss likes it upside down. Tonight, so do you.', 'Lowball, and you went lower. Well done.'],
-  'quiet-champion': [
-    '{name} never raised once. Look who carried it.',
-    'Nobody bet on {name}. Not even {name}. And yet.',
-  ],
-  'trash-rider': [
-    '{name} rode in on nothing and got paid all the same. That’s the crew.',
-    '{name} had {hand}. {name} gets paid anyway. Never forget that.',
-  ],
-  seen: [
-    'Paid. But {names} got seen. The street remembers faces.',
-    'The crew takes it. {names} lost to the masks, and the street noticed.',
-    'Money in. Heat on {names}. Both count.',
-  ],
+  crew: [],
+  house: [],
+  tie: [],
+  walked: ['Everybody folded. Even the cat looked disappointed.', 'All folded. Walking away still costs heat. The street saw you leave.'],
+  seen: [],
+  royal: ['A royal flush. I’ve poured for two in thirty years. I’m framing this one.'],
+  yakuza: ['Eight, nine, three: ya-ku-za, the worst hand in the old game. Naming a bar after it seemed funny at the time.'],
+  'bad-beat': ['{Hand}, and it still lost. I’ll get you a towel.', '{Hand}. Lost. Some nights the cards just want to see you suffer.'],
+  serpent: ['A tie under the Serpent. The House wins on a technicality. It loves those.'],
+  reversal: ['Reversal, and the crew’s worse hand won. I’ve never been prouder of bad cards.'],
+  'quiet-champion': ['{name} never raised and carried the whole hand. Watch the quiet ones.', 'Nobody bet on {name}. Not even {name}. And yet.'],
+  'trash-rider': ['{name} got paid holding {hand}. That’s the crew. That’s the whole idea.', '{name} rode in on {hand} and left with money. I respect it.'],
 };
 
-export const TAKE: Bank = [
-  'That’s the debt. Everything after this is yours.',
-  'You can stop here. Nobody ever stops here.',
-  'Enough to pay them. Now keep it.',
-];
+export const TAKE: Bank = ['That’s the target. Only heat can stop you now. Don’t do anything a cop would find interesting.'];
 
 export const HEAT: Record<HeatMark, Bank> = {
-  half: [
-    'Half the street knows your faces now.',
-    'Somebody downstairs just made a phone call.',
-    'The yakitori man stopped fanning his coals to look up. Keep it down.',
-  ],
-  'three-quarters': [
-    'That’s a patrol car idling at the corner. Probably nothing.',
-    'I’ve moved the good bottles under the counter. No reason.',
-    'The neon across the alley went off. It never goes off.',
-  ],
-  'one-away': [
-    'One more and they come up the stairs.',
-    'I’ve put the back door on the latch. Just in case.',
-    'Footsteps in the rain. Not yet. One more mark.',
-  ],
+  half: ['Heat at half. Somebody downstairs is pretending not to listen.', 'Halfway to a raid. The yakitori man stopped fanning his coals to look up.'],
+  'three-quarters': ['Heat at three-quarters. I’ve moved the good bottles under the counter. Fold the weak hands.', 'Three-quarters of the way to a raid. There’s a patrol car idling at the corner. Probably nothing.'],
+  'one-away': ['One more heat and they come up the stairs. I’ve unlocked the back door. No reason.', 'One heat from a raid. Fold anything you wouldn’t defend in court.'],
 };
 
 // ---------------------------------------------------------------------------
@@ -283,11 +194,9 @@ export const HEAT: Record<HeatMark, Bank> = {
 // ---------------------------------------------------------------------------
 
 export const REGULAR_MOMENTS: Partial<Record<RegularName, Partial<Record<'heat' | 'last' | 'take' | 'walked' | 'yakuza', Bank>>>> = {
-  Taka: { heat: ['I know that engine. Unmarked. Two blocks.', 'Shift change at the kōban. We have ten minutes.'] },
-  Nao: { last: ['Meter’s at eleven thousand. Just saying.', 'Last one. I can get us to Nakano in twelve.'] },
-  Gin: { take: ['Counted. That’s enough.', 'That’s the number. I checked twice.'] },
-  Mame: { walked: ['Even the ghosts here owe money.', 'Everybody out. Like the oden cart at closing.'] },
-  Sumi: { yakuza: ['Eight, nine, three. I carved that seal once. For a man who isn’t alive.'] },
+  Gin: { take: ['Counted. Twice. That’s the target.'] },
+  Nao: { last: ['Meter’s running downstairs. Last one, please.'] },
+  Taka: { heat: ['That engine’s unmarked. Two blocks out. Just saying.'] },
 };
 
 // ---------------------------------------------------------------------------
@@ -295,18 +204,16 @@ export const REGULAR_MOMENTS: Partial<Record<RegularName, Partial<Record<'heat' 
 // ---------------------------------------------------------------------------
 
 export const IDLE: Bank = [
-  'The ice machine does that. Ignore it.',
-  'Somebody left an umbrella here in 1994. I’m still holding it for them.',
-  'Rain’s heavier. Good for business. Bad for umbrellas.',
-  'Send the link. I’ll pour while we wait.',
-  'Six stools. Bring friends, or I’ll seat the regulars.',
-  'The lantern flickers on the hour. It isn’t a ghost. Probably.',
-  'Same record for eleven years. Nobody’s asked me to change it.',
-  'Last train left at 12:38. Nobody here was on it.',
-  'They say the Oyabun drinks only water. They say a lot of things.',
-];
+  'Send the link to fill the stools, or add bots. The bots never complain about the music.',
+  'Each round, everyone picks at once. No talking about your cards. Eyebrows are a gray area.',
+  'Folding costs nothing. Staying in with junk can cost heat. Ask anyone at this bar.',
+  'If the crew’s best hand wins, everyone still in gets paid. Even whoever’s holding seven-deuce.',
+  'New here? Shitamachi is the forgiving table. Forgiving is a strong word.',
+  'Same record for eleven years. Nobody’s asked me to change it. Nobody dares.',
+  'Somebody left an umbrella here in 1994. I’m still holding it for them. Debts are debts.',
+]
 
-export const IDLE_CAT: Bank = ['Kyū’s asleep on the ledger. Let her.', 'The cat’s watching the door. She knows something.'];
+export const IDLE_CAT: Bank = ['Kyū’s asleep on the ledger. Let her.'];
 
 // ---------------------------------------------------------------------------
 // Easter eggs
@@ -339,7 +246,7 @@ export const COLD_OPEN: readonly ColdOpenBeat[] = [
   { text: 'Shinjuku. Golden Gai. Three in the morning.', hold: 2600 },
   { text: 'In the old card game, eight, nine and three add up to nothing.', hold: 3200 },
   { text: 'Ya. Ku. Za.\nThe worst hand there is.', kanji: '八九三', seal: true, hold: 3200 },
-  { text: 'Everyone in this bar was dealt it. Come up. Play it together.', hold: 3400 },
+  { text: 'A co-op poker game. Your crew against the House. No talking about your cards.', hold: 3400 },
 ];
 
 // ---------------------------------------------------------------------------
