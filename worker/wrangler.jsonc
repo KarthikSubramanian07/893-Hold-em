@@ -1,0 +1,14 @@
+{
+  // The rooms backend: one Worker, one SQLite-backed Durable Object class per
+  // table. Deploy with `npm run deploy:rooms`.
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "holdem893-rooms",
+  "main": "index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [{ "name": "TABLE", "class_name": "Table" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Table"] }]
+}
