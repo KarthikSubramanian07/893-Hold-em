@@ -1,0 +1,185 @@
+/* The matchbook page: a lacquer counter, one lantern, the rain behind. */
+
+.matchbook-fallback {
+  position: fixed;
+  inset: 0;
+  background: #0d0c0b;
+}
+
+.mbp {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  color: var(--night-ink);
+  background:
+    radial-gradient(60% 46% at 50% 6%, rgb(228 170 92 / 0.2), transparent 70%),
+    radial-gradient(90% 60% at 50% 112%, rgb(201 164 92 / 0.08), transparent 60%),
+    linear-gradient(180deg, #0c0b0a 0%, #13110f 58%, #1a1612 100%);
+  animation: mbp-in 900ms var(--ease-out) both;
+}
+
+@keyframes mbp-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.mbp__rain {
+  position: absolute;
+  inset: 0;
+  /* A canvas has an intrinsic size; pin it to the page, or every resize at
+     2x feeds the next one. */
+  width: 100%;
+  height: 100%;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* The lantern: a warm pool on the counter that breathes a little. */
+.mbp__lamp {
+  position: absolute;
+  left: 50%;
+  top: -22vh;
+  width: min(70rem, 140vw);
+  aspect-ratio: 1;
+  translate: -50% 0;
+  background: radial-gradient(closest-side, rgb(242 178 96 / 0.16), rgb(242 178 96 / 0.05) 55%, transparent 72%);
+  pointer-events: none;
+  animation: mbp-lamp 7s ease-in-out infinite alternate;
+}
+
+@keyframes mbp-lamp {
+  50% {
+    opacity: 0.86;
+  }
+  52% {
+    opacity: 0.7;
+  }
+  54% {
+    opacity: 0.9;
+  }
+}
+
+.mbp__top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem clamp(1rem, 4vw, 2.5rem);
+}
+
+.mbp__mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--night-ink-soft);
+  font: 600 11px/1 var(--mono);
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.mbp__mark:hover {
+  color: var(--night-ink);
+}
+
+.mbp__k {
+  font: 500 11px/1 var(--mono);
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  color: var(--night-ink-faint);
+}
+
+.mbp__main {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1.6rem;
+  padding: 0 1rem 3rem;
+}
+
+/* Slides into the light, closed, then opens. */
+.mbp__book {
+  animation: mbp-book 1100ms var(--ease-out) 120ms both;
+}
+
+@keyframes mbp-book {
+  from {
+    opacity: 0;
+    transform: translateY(36px) rotate(-2.5deg);
+  }
+}
+
+.mbp__caption {
+  max-width: 34rem;
+  margin: 0;
+  text-align: center;
+  font: 500 1rem/1.55 var(--serif);
+  color: var(--night-ink-soft);
+  text-wrap: balance;
+  animation: mbp-rise 900ms var(--ease-out) 700ms both;
+}
+
+.mbp__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem 1rem;
+  animation: mbp-rise 900ms var(--ease-out) 850ms both;
+}
+
+@keyframes mbp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.mbp__home {
+  font: 500 11px/1 var(--mono);
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+  color: var(--night-ink-faint);
+  text-decoration: none;
+  padding: 0.6rem 0.4rem;
+  transition: color 0.2s;
+}
+
+.mbp__home:hover {
+  color: var(--kin);
+}
+
+@media (max-width: 52rem) {
+  .mbp__k {
+    display: none;
+  }
+
+  .mbp__main {
+    align-content: start;
+    padding-top: 0.5rem;
+  }
+
+  /* The page already keeps a margin; the book takes the rest of the width. */
+  .mbp__book .matchbook {
+    --w: min(23rem, calc(100vw - 2rem));
+    padding: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mbp,
+  .mbp__book,
+  .mbp__caption,
+  .mbp__actions,
+  .mbp__lamp {
+    animation: none;
+  }
+}

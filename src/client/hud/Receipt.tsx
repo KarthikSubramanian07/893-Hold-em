@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { RULES, TABLES } from '../../engine/rules';
 import type { GameView, HistoryEntry } from '../../engine/types';
 import { sfx } from '../audio';
-import { navigate } from '../app/router';
+import { Link, navigate } from '../app/router';
 import { amHost, VERDICT_LINE, VERDICT_SUB } from '../net/selectors';
 import { useTable } from '../net/store';
 import { Seal } from '../ui/Seal';
@@ -94,6 +94,9 @@ export function Receipt({ view, aside }: { view: GameView; aside?: ReactNode }) 
         >
           Leave
         </button>
+        <Link to={`/matchbook?table=${view.code}`} className="over__book" onClick={() => sfx.click()}>
+          <span aria-hidden="true">帳</span> Your matchbook
+        </Link>
       </div>
     </section>
   );

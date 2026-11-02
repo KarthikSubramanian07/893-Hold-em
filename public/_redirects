@@ -1,2 +1,3 @@
 # Every table is the same single-page app; the client router reads the code.
 /t/*  /index.html  200
+/matchbook  /index.html  200

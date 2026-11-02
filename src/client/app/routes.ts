@@ -5,6 +5,7 @@ import { PRACTICE_CODE, PRACTICE_PATH, isPracticeCode } from '../net/practice';
 export type Route =
   | { name: 'landing' }
   | { name: 'table'; code: string }
+  | { name: 'matchbook' }
   | { name: 'notfound'; reason: 'path' | 'code' };
 
 export function matchRoute(pathname: string): Route {
@@ -12,6 +13,7 @@ export function matchRoute(pathname: string): Route {
   if (path === '/' || path === '' || path === '/index.html') return { name: 'landing' };
   // The practice table is a table like any other, with a code no server can hand out.
   if (path.toLowerCase() === PRACTICE_PATH) return { name: 'table', code: PRACTICE_CODE };
+  if (path.toLowerCase() === '/matchbook') return { name: 'matchbook' };
   const m = /^\/t\/([^/]+)$/i.exec(path);
   if (m) {
     let raw = m[1]!;
@@ -32,5 +34,6 @@ export function canonicalPath(pathname: string, route: Route): string | null {
     const want = isPracticeCode(route.code) ? PRACTICE_PATH : `/t/${route.code}`;
     return pathname === want ? null : want;
   }
+  if (route.name === 'matchbook') return pathname === '/matchbook' ? null : '/matchbook';
   return null;
 }
