@@ -15,7 +15,7 @@
 import { create } from 'zustand';
 import { is893Code, nameEgg } from './analysis';
 import { hash, pick } from './hash';
-import { CAT, EGG_LINES } from './lines';
+import { CAT, EGG_LINES, WELCOME } from './lines';
 import { useMatchbook } from './stamps';
 import type { Line } from './types';
 
@@ -138,6 +138,12 @@ const LINE_BANK: Partial<Record<EggId, readonly string[]>> = {
   kanpai: EGG_LINES.kanpai,
   lantern: EGG_LINES.lantern,
   cat: EGG_LINES.cat,
+  // The welcome says these when a table opens; the egg says them anywhere else
+  // (a rename mid-lobby, 3 a.m. at the front door).
+  oyabun: WELCOME.oyabun,
+  master: WELCOME.master,
+  'cat-name': WELCOME.cat,
+  'three-am': WELCOME.threeAm,
 };
 
 export interface EggState {
@@ -151,12 +157,21 @@ export interface EggState {
 
 export const useEggs = create<EggState>(() => ({ last: null, count: 0, session: [] }));
 
+const EGG_KANJI: Partial<Record<EggId, string>> = {
+  cat: CAT.kanji,
+  'cat-name': CAT.kanji,
+  neon: '八九三',
+  konami: BUTA_CARD.kanji,
+  oyabun: '親分',
+  'three-am': '三',
+};
+
 /** The Master's line for an egg, varying each time it's found. */
 export function eggLine(id: EggId, n = 0): Line | null {
   const bank = LINE_BANK[id];
   if (!bank) return null;
   const text = pick(bank, 'egg', n, id);
-  const kanji = id === 'cat' ? CAT.kanji : id === 'neon' ? '八九三' : id === 'konami' ? BUTA_CARD.kanji : null;
+  const kanji = EGG_KANJI[id] ?? null;
   return { id: `egg:${id}:${n}`, speaker: 'master', text, mood: 'wry', ...(kanji ? { kanji } : {}), hold: 4200 };
 }
 
