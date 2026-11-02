@@ -1,3 +1,5 @@
-# Every table is the same single-page app; the client router reads the code.
-/t/*  /index.html  200
-/matchbook  /index.html  200
+# Every page is the same single-page app; the client router reads the path.
+# Rewrite to / rather than /index.html: Pages strips .html, so the latter loops.
+/t/*        /  200
+/practice   /  200
+/matchbook  /  200

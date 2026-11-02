@@ -19,11 +19,11 @@
     "e2e": "node scripts/e2e.mjs",
     "e2e:practice": "node scripts/practice-e2e.mjs",
     "deploy:rooms": "bun run build:wasm && wrangler deploy --config worker/wrangler.jsonc",
-    "deploy:web": "bun run build && wrangler pages deploy dist --project-name holdem893 --branch main",
-    "deploy": "bun run deploy:rooms && bun run deploy:web",
     "build:wasm": "wasm-pack build crates/wasm --target web --out-dir pkg --release --no-pack",
     "smoke:rooms": "node scripts/rooms-smoke.mjs",
-    "predev": "bun run build:wasm"
+    "predev": "bun run build:wasm",
+    "build:cf": "bash scripts/cf-build.sh web",
+    "build:cf:rooms": "bash scripts/cf-build.sh rooms"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
