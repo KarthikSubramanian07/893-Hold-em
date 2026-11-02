@@ -11,25 +11,24 @@ import { MAX_STAKE } from '../../../engine/rules';
 import { plateText } from '../cardInfo';
 import type { SeatTarget } from '../derive';
 import { PLATE_FONT } from '../fonts';
-import { cameraFrame, type SeatSpot } from '../layout';
+import { cameraFrame, seatLocal as local, type SeatSpot } from '../layout';
 import { damp, useLive } from '../live';
 import { PALETTE } from '../palette';
 import { softDot } from '../textures/canvas';
 import { flameTexture, sealTexture, stampTexture, tokenTexture } from '../textures/marks';
+import { maskTagTexture } from '../textures/masks';
+import type { MaskId } from '../../story/types';
+import { MASK_TAG as MASK_TAGS, type MASK_TAG } from '../watch';
 import { Card } from './Card';
+import { SeenMark } from './Watch';
+
+type Tag = (typeof MASK_TAG)[keyof typeof MASK_TAG];
 
 const TOKEN_R = 0.07;
 const TOKEN_H = 0.022;
 const TOKEN_GEO = new THREE.CylinderGeometry(TOKEN_R, TOKEN_R, TOKEN_H, 40);
 const SEAL_GEO = new THREE.CylinderGeometry(0.085, 0.085, 0.03, 40);
 const STAMP_GEO = new THREE.PlaneGeometry(0.3, 0.3);
-
-/** Rotate a seat-local offset (x across, z outward) into world space. */
-function local(spot: SeatSpot, lx: number, lz: number): [number, number] {
-  const c = Math.cos(spot.yaw);
-  const s = Math.sin(spot.yaw);
-  return [spot.x + lx * c + lz * s, spot.z - lx * s + lz * c];
-}
 
 function Tokens({ stake, appear }: { stake: number | null; appear: number }) {
   const refs = useRef<(THREE.Mesh | null)[]>([]);
@@ -195,14 +194,31 @@ function Stamp({ mark, position, yaw }: { mark: SeatTarget['lastCall']; position
   return <mesh ref={mesh} geometry={STAMP_GEO} material={mat} receiveShadow />;
 }
 
-function PlaceCard({ name, dim, yaw }: { name: string; dim: number; yaw: number }) {
+/** A tiny hanko in the watching mask's colour, so you can tell whose eyes are on you. */
+function TagMark({ tag, position, rotation, size, dim }: { tag: Tag; position: [number, number, number]; rotation: [number, number, number]; size: number; dim: number }) {
+  const mat = useMemo(
+    () => new THREE.MeshStandardMaterial({ map: maskTagTexture(tag.kanji, tag.color, tag.ink), transparent: true, roughness: 0.7, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
+    [tag],
+  );
+  mat.color.setScalar(1 - dim * 0.6);
+  return (
+    <mesh material={mat} position={position} rotation={rotation}>
+      <planeGeometry args={[size, size]} />
+    </mesh>
+  );
+}
+
+function PlaceCard({ name, dim, yaw, tag, seen }: { name: string; dim: number; yaw: number; tag: Tag | null; seen: SeatTarget['seen'] }) {
   const mat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#efe6d3', roughness: 0.85, side: THREE.DoubleSide }), []);
   mat.color.set('#efe6d3').multiplyScalar(1 - dim * 0.65);
   const W = 0.46;
   const H = 0.14;
   const lean = 0.32;
+  const face = (x: number, y: number, out: number): [number, number, number] => [x, y * Math.cos(lean), y * Math.sin(lean) + out];
   return (
     <group rotation={[0, yaw, 0]}>
+      {tag && <TagMark tag={tag} dim={dim} size={0.075} position={face(W / 2 - 0.048, H / 2 + 0.002, 0.006)} rotation={[-lean, 0, 0]} />}
+      <SeenMark seen={seen} at={[0, -0.28]} stampAt={face(-W / 2 + 0.07, H / 2 + 0.01, 0.012)} stampRot={[-lean, 0, -0.12]} you={false} />
       {[1, -1].map((s) => (
         <mesh
           key={s}
@@ -222,8 +238,8 @@ function PlaceCard({ name, dim, yaw }: { name: string; dim: number; yaw: number 
         fillOpacity={1 - dim * 0.6}
         anchorX="center"
         anchorY="middle"
-        maxWidth={W * 0.92}
-        position={[0, (H / 2) * Math.cos(lean), (H * Math.sin(lean)) / 2 + 0.003]}
+        maxWidth={tag ? W * 0.72 : W * 0.92}
+        position={[tag ? -0.03 : 0, (H / 2) * Math.cos(lean), (H * Math.sin(lean)) / 2 + 0.003]}
         rotation={[-lean, 0, 0]}
       >
         {plateText(name)}
@@ -232,7 +248,7 @@ function PlaceCard({ name, dim, yaw }: { name: string; dim: number; yaw: number 
   );
 }
 
-export function Seat({ seat, spot, aspect, order }: { seat: SeatTarget; spot: SeatSpot; aspect: number; order: number }) {
+export function Seat({ seat, spot, aspect, order, tag }: { seat: SeatTarget; spot: SeatSpot; aspect: number; order: number; tag: Tag | null }) {
   const live = useLive();
   const appear = useRef(seat.empty ? 0.35 : 0);
   const group = useRef<THREE.Group>(null);
@@ -287,10 +303,11 @@ export function Seat({ seat, spot, aspect, order }: { seat: SeatTarget; spot: Se
       <group ref={group}>
         {!seat.you && !seat.empty && (
           <group position={[plateAt[0], 0, plateAt[1]]}>
-            <PlaceCard name={seat.name} dim={dim} yaw={plateYaw} />
+            <PlaceCard name={seat.name} dim={dim} yaw={plateYaw} tag={tag} seen={seat.seen} />
           </group>
         )}
         <mesh geometry={SEAL_GEO} material={sealMat} position={[sealAt[0], 0.015, sealAt[1]]} rotation={[0, spot.yaw, 0]} castShadow receiveShadow />
+        {seat.you && tag && <TagMark tag={tag} dim={dim} size={0.11} position={[sealAt[0] + 0.1, 0.034, sealAt[1] - 0.1]} rotation={[-Math.PI / 2, 0, -0.1]} />}
         <mesh material={champGlow} position={[sealAt[0], 0.04, sealAt[1]]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[0.6, 0.6]} />
         </mesh>
@@ -304,6 +321,7 @@ export function Seat({ seat, spot, aspect, order }: { seat: SeatTarget; spot: Se
         </group>
       </group>
       {!seat.empty && <Stamp mark={seat.lastCall} position={stampAt} yaw={spot.yaw} />}
+      {seat.you && <SeenMark seen={seat.seen} at={sealAt} stampAt={[sealAt[0] + 0.02, 0.05, sealAt[1] - 0.2]} stampRot={[-Math.PI / 2, 0, 0.12]} you />}
       {showCards &&
         seat.cards.map((slot, k) => {
           const glow = seat.glow[k] ?? false;
@@ -328,10 +346,13 @@ export function Seat({ seat, spot, aspect, order }: { seat: SeatTarget; spot: Se
   );
 }
 
-export function Seats({ seats, spots, aspect }: { seats: SeatTarget[]; spots: SeatSpot[]; aspect: number }) {
+export function Seats({ seats, spots, aspect, masks }: { seats: SeatTarget[]; spots: SeatSpot[]; aspect: number; masks: readonly MaskId[] }) {
   return (
     <group>
-      {seats.map((s, i) => (spots[i] ? <Seat key={s.key} seat={s} spot={spots[i]!} aspect={aspect} order={i} /> : null))}
+      {seats.map((s, i) => {
+        const m = s.watcher === null ? undefined : masks[s.watcher];
+        return spots[i] ? <Seat key={s.key} seat={s} spot={spots[i]!} aspect={aspect} order={i} tag={m ? MASK_TAGS[m] : null} /> : null;
+      })}
     </group>
   );
 }

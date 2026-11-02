@@ -1678,6 +1678,12 @@
   filter: drop-shadow(0 0 10px rgb(228 200 138 / 0.4));
 }
 
+.float--seat {
+  /* Anchored to a seat's name plate: rise from just above it. */
+  translate: 0 -100%;
+  z-index: 3;
+}
+
 .float__who {
   font: 600 9px/1 var(--mono);
   letter-spacing: 0.14em;

@@ -113,3 +113,36 @@ describe('deriveTargets', () => {
     expect(maskMood(true, F('river'))).toBe('idle');
   });
 });
+
+describe('masks and watchers', () => {
+  it('names each House hand by the mask that holds it at this table', () => {
+    const v = F('river');
+    expect(deriveTargets(v).house.map((h) => h.mask)).toEqual(['kitsune', 'tengu', 'hannya']);
+    v.config.difficulty = 'oyabun';
+    expect(deriveTargets(v).house.map((h) => h.mask)).toEqual(['okina', 'hannya', 'kitsune']);
+    v.rule = 'oni';
+    expect(deriveTargets(v).house.map((h) => h.mask).at(-1)).toBe('oni');
+  });
+
+  it("lists the seats each mask watches and gives each seat its watcher", () => {
+    const t = deriveTargets(F('river'));
+    expect(t.house.map((h) => h.watches)).toEqual([['s0', 's1'], ['s2', 's3'], ['s4']]);
+    expect(t.seats.find((s) => s.key === 's3')!.watcher).toBe(1);
+  });
+
+  it('marks who was seen at the showdown, even when the crew wins', () => {
+    const t = deriveTargets(F('showdown'));
+    expect(t.outcome).toBe('crew');
+    expect(t.seats.find((s) => s.key === 's3')!.seen).toBe('seen');
+    expect(t.seats.find((s) => s.key === 's0')!.seen).toBe('clear');
+    expect(t.seats.find((s) => s.key === 's2')!.seen).toBeNull();
+    expect(t.house[1]!.saw).toEqual(['s3']);
+    expect(t.house[0]!.saw).toEqual([]);
+  });
+
+  it('has no masks or watchers in the lobby', () => {
+    const t = deriveTargets(F('lobby'));
+    expect(t.house).toEqual([]);
+    expect(t.seats.every((s) => s.watcher === null && s.seen === null)).toBe(true);
+  });
+});

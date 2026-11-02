@@ -85,25 +85,136 @@ export function seatLayout(count: number, aspect: number): SeatSpot[] {
   return spots;
 }
 
+/** Half-extents of a mask face at scale 1, and how far horns, ears, or a hat reach above it. */
+export const MASK_FACE = { hw: 0.3, hh: 0.38, crown: 0.26 } as const;
+
+/** How big the masks are drawn: a touch larger on a wide screen, where they sit further off. */
+export function maskScale(aspect: number, count = 3): number {
+  const crowd = count >= 4 ? 0.86 : count === 1 ? 1.12 : 1;
+  return lerp(1.12, 1.22, aspectBlend(aspect)) * crowd;
+}
+
 /** Where each House mask floats, left to right across the far side. */
 export function maskLayout(count: number, aspect: number): Vec3[] {
   const t = aspectBlend(aspect);
-  const width = lerp(2.75, 3.6, t);
+  const width = lerp(2.5, count >= 4 ? 5.1 : count === 3 ? 4.3 : 3.7, t);
   const n = Math.max(1, count);
   const out: Vec3[] = [];
   for (let i = 0; i < count; i++) {
-    const u = n === 1 ? 0 : i / (n - 1) - 0.5;
+    // Four masks part a little wider in the middle, where the lantern hangs.
+    const u = n === 1 ? 0 : n === 4 ? [-0.5, -0.2, 0.2, 0.5][i]! : i / (n - 1) - 0.5;
     const x = u * width * Math.min(1, (n - 1) / 2.4 + 0.35);
     // Masks sit on a gentle arc so the outer ones come forward a touch.
-    const z = -1.9 + Math.abs(u) * 0.4;
-    out.push({ x, y: 1.02, z });
+    const z = -1.95 + Math.abs(u) * 0.4;
+    out.push({ x, y: 1.06, z });
   }
   return out;
 }
 
 /** How high the lantern hangs: higher on tall screens so it clears the masks. */
 export function lanternHeight(aspect: number): number {
-  return lerp(2.42, 2.0, aspectBlend(aspect));
+  return lerp(2.66, 2.0, aspectBlend(aspect));
+}
+
+/** The lantern hangs this far toward the House from the table centre. */
+export const LANTERN_Z = -0.5;
+
+/** Camera-space depth of a world point (distance along the view direction). */
+function viewDepth(frame: CameraFrame, p: Vec3): number {
+  const f = { x: frame.target.x - frame.position.x, y: frame.target.y - frame.position.y, z: frame.target.z - frame.position.z };
+  const len = Math.hypot(f.x, f.y, f.z);
+  return ((p.x - frame.position.x) * f.x + (p.y - frame.position.y) * f.y + (p.z - frame.position.z) * f.z) / len;
+}
+
+/**
+ * Project a world point to normalised device coordinates (-1..1, y up) for the
+ * resting camera at this aspect. Pure, so composition can be unit-tested.
+ */
+export function projectNdc(p: Vec3, aspect: number, frame: CameraFrame = cameraFrame(aspect)): { x: number; y: number; depth: number } {
+  const pos = frame.position;
+  const fw = { x: frame.target.x - pos.x, y: frame.target.y - pos.y, z: frame.target.z - pos.z };
+  const fl = Math.hypot(fw.x, fw.y, fw.z);
+  const f = { x: fw.x / fl, y: fw.y / fl, z: fw.z / fl };
+  // right = f × up(0,1,0); up' = right × f
+  const rl = Math.hypot(f.z, f.x);
+  const r = { x: -f.z / rl, y: 0, z: f.x / rl };
+  const u = { x: r.y * f.z - r.z * f.y, y: r.z * f.x - r.x * f.z, z: r.x * f.y - r.y * f.x };
+  const d = { x: p.x - pos.x, y: p.y - pos.y, z: p.z - pos.z };
+  const cx = d.x * r.x + d.y * r.y + d.z * r.z;
+  const cy = d.x * u.x + d.y * u.y + d.z * u.z;
+  const cz = d.x * f.x + d.y * f.y + d.z * f.z;
+  const ty = Math.tan((frame.fov * DEG) / 2);
+  return { x: cx / (cz * ty * aspect), y: cy / (cz * ty), depth: cz };
+}
+
+export interface Stage {
+  masks: Vec3[];
+  /** Mask size multiplier. */
+  scale: number;
+  /** The lantern bulb's resting position. */
+  lantern: Vec3;
+  /** The House Rule card's resting position. */
+  rule: Vec3;
+}
+
+/**
+ * The far side of the table as one composition: masks, lantern, and the rule
+ * card, arranged so no face is ever behind the lantern or the card.
+ *
+ *   1 mask    lantern left, mask a touch right, rule card on the right
+ *   2 or 4    lantern and rule card share the centre gap
+ *   3         lantern in the left gap, rule card in the right gap
+ *
+ * Gap positions are found in screen space (the lantern hangs nearer the camera
+ * than the masks, so its world x is scaled by the depth ratio).
+ */
+export function stageLayout(count: number, aspect: number): Stage {
+  const t = aspectBlend(aspect);
+  const scale = maskScale(aspect, count);
+  const frame = cameraFrame(aspect);
+  const masks = maskLayout(count, aspect);
+  const y = lanternHeight(aspect);
+  let ruleX = 0;
+  let gapX = 0;
+  if (count === 1) {
+    masks[0] = { ...masks[0]!, x: lerp(0.32, 0.42, t) };
+    gapX = -lerp(0.62, 1.0, t);
+    ruleX = lerp(0.95, 1.2, t);
+  } else if (count === 3) {
+    gapX = (masks[0]!.x + masks[1]!.x) / 2;
+    ruleX = (masks[1]!.x + masks[2]!.x) / 2;
+  } else if (count % 2 === 0) {
+    gapX = 0;
+    ruleX = 0;
+  }
+  // Put the lantern where the gap is on screen, not in the world.
+  const gap = { x: gapX, y: masks[0]?.y ?? 1, z: masks[0]?.z ?? -1.9 };
+  const lz = LANTERN_Z;
+  const ratio = viewDepth(frame, { x: 0, y, z: lz }) / viewDepth(frame, gap);
+  const lantern = { x: gapX * ratio, y, z: lz };
+  const ruleZ = -1.42;
+  const ruleRatio = viewDepth(frame, { x: 0, y: 0.44, z: ruleZ }) / viewDepth(frame, { x: 0, y: 0.44, z: gap.z });
+  return { masks, scale, lantern, rule: { x: ruleX * (count === 1 ? 1 : ruleRatio), y: 0.44, z: ruleZ } };
+}
+
+/** Rotate a seat-local offset (x across, z outward) into world x/z. */
+export function seatLocal(spot: SeatSpot, lx: number, lz: number): [number, number] {
+  const c = Math.cos(spot.yaw);
+  const s = Math.sin(spot.yaw);
+  return [spot.x + lx * c + lz * s, spot.z - lx * s + lz * c];
+}
+
+/**
+ * Where a seat "is", for anything that needs to point at it: the top of its
+ * name plate, or for your own seat, your seal beside the cards you hold up.
+ */
+export function seatAnchor(spot: SeatSpot, you: boolean): Vec3 {
+  if (you) {
+    const [x, z] = seatLocal(spot, -0.95, 0.05);
+    return { x, y: 0.05, z };
+  }
+  const [x, z] = seatLocal(spot, 0, 0.3);
+  return { x, y: 0.14, z };
 }
 
 /** House hole cards: in front of each mask on the far felt. */
