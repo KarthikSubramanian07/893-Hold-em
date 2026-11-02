@@ -338,7 +338,7 @@ export interface ColdOpenBeat {
 export const COLD_OPEN: readonly ColdOpenBeat[] = [
   { text: 'Shinjuku. Golden Gai. Three in the morning.', hold: 2600 },
   { text: 'In the old card game, eight, nine and three add up to nothing.', hold: 3200 },
-  { text: 'Ya. Ku. Za. The worst hand there is.', kanji: '八九三', seal: true, hold: 3200 },
+  { text: 'Ya. Ku. Za.\nThe worst hand there is.', kanji: '八九三', seal: true, hold: 3200 },
   { text: 'Everyone in this bar was dealt it. Come up. Play it together.', hold: 3400 },
 ];
 
