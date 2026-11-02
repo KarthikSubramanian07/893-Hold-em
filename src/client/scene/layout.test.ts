@@ -6,7 +6,7 @@ describe('seatLayout', () => {
     for (const n of [1, 2, 4, 6]) {
       const [you] = seatLayout(n, 1.6);
       expect(you!.x).toBeCloseTo(0);
-      expect(you!.z).toBeGreaterThan(1);
+      expect(you!.z).toBeGreaterThan(0.6);
       expect(you!.angle).toBe(0);
     }
   });
@@ -86,7 +86,7 @@ describe('cameraFrame', () => {
   it('keeps the field of view in a sane range', () => {
     for (const a of [0.3, 0.46, 0.75, 1, 1.6, 2.4, 4]) {
       const { fov } = cameraFrame(a);
-      expect(fov).toBeGreaterThanOrEqual(34);
+      expect(fov).toBeGreaterThanOrEqual(40);
       expect(fov).toBeLessThanOrEqual(74);
     }
   });

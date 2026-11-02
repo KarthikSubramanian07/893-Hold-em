@@ -61,17 +61,18 @@ export function seatLayout(count: number, aspect: number): SeatSpot[] {
   const t = aspectBlend(aspect);
   // On a narrow screen the sides of the oval fall off-frame, so pull the
   // anchors in toward the middle and keep them nearer the camera.
-  const rx = lerp(1.55, 2.25, t);
-  const rz = lerp(1.2, 1.18, t);
-  const nearA = lerp(34, 40, t);
-  const farA = lerp(82, 100, t);
-  const singleA = lerp(56, 64, t);
+  const rx = lerp(1.5, 2.15, t);
+  const rz = lerp(1.15, 1.1, t);
+  const nearA = lerp(38, 44, t);
+  const farA = lerp(84, 98, t);
+  const singleA = lerp(58, 66, t);
 
   const spots: SeatSpot[] = [];
   const place = (angle: number) => {
     const a = angle * DEG;
     const x = rx * Math.sin(a);
-    const z = rz * Math.cos(a);
+    // The viewer's own things sit closer in, beside the cards held up to camera.
+    const z = angle === 0 ? lerp(0.95, 0.72, t) : rz * Math.cos(a);
     spots.push({ x, z, yaw: Math.atan2(x, z), angle });
   };
 
@@ -94,22 +95,22 @@ export function maskLayout(count: number, aspect: number): Vec3[] {
     const u = n === 1 ? 0 : i / (n - 1) - 0.5;
     const x = u * width * Math.min(1, (n - 1) / 2.4 + 0.35);
     // Masks sit on a gentle arc so the outer ones come forward a touch.
-    const z = -2.25 + Math.abs(u) * 0.45;
-    out.push({ x, y: 1.32, z });
+    const z = -1.9 + Math.abs(u) * 0.4;
+    out.push({ x, y: 1.02, z });
   }
   return out;
 }
 
 /** House hole cards: in front of each mask on the far felt. */
 export function houseCardSpots(mask: Vec3): [Vec3, Vec3] {
-  const z = mask.z + 1.05;
+  const z = mask.z + 0.78;
   return [
     { x: mask.x - 0.2, y: 0, z },
     { x: mask.x + 0.2, y: 0, z },
   ];
 }
 
-export const BOARD_Z = 0.08;
+export const BOARD_Z = -0.18;
 export const BOARD_GAP = 0.6;
 
 export function boardSpot(i: number): Vec3 {
@@ -130,14 +131,14 @@ export interface CameraFrame {
  */
 export function cameraFrame(aspect: number): CameraFrame {
   const t = aspectBlend(aspect);
-  const position = { x: 0, y: lerp(4.0, 2.45, t), z: lerp(5.3, 4.5, t) };
-  const target = { x: 0, y: lerp(0.35, 0.5, t), z: lerp(-0.55, -0.95, t) };
+  const position = { x: 0, y: lerp(4.3, 3.2, t), z: lerp(5.0, 4.0, t) };
+  const target = { x: 0, y: lerp(0.0, 0.1, t), z: lerp(0.25, -0.42, t) };
   const dist = Math.hypot(position.y - target.y, position.z - target.z);
   // Horizontal half-width that must stay visible at the target distance.
-  const halfWidth = lerp(1.85, 3.1, t);
+  const halfWidth = lerp(1.9, 3.1, t);
   const hHalf = Math.atan(halfWidth / dist);
   const vFromWidth = (2 * Math.atan(Math.tan(hHalf) / Math.max(aspect, 0.1))) / DEG;
-  const fov = clamp(Math.max(vFromWidth, lerp(40, 38, t)), 34, 74);
+  const fov = clamp(Math.max(vFromWidth, lerp(52, 50, t)), 40, 74);
   return { position, target, fov };
 }
 
@@ -146,7 +147,7 @@ export function cameraFrame(aspect: number): CameraFrame {
  * above the bottom HUD band and scale with the shorter screen side.
  */
 export function heroCardPixels(width: number, height: number, bottomCalm = 150) {
-  const h = clamp(Math.min(height * 0.25, width * 0.4), 120, 250);
-  const centreY = bottomCalm + h * 0.55 + 12;
+  const h = clamp(Math.min(height * 0.22, width * 0.4), 110, 230);
+  const centreY = bottomCalm + h * 0.5 + 10;
   return { cardHeight: h, centreY, gap: h * 0.42 };
 }
