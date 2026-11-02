@@ -4,18 +4,19 @@
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { lanternHeight } from '../layout';
 import { damp, useLive } from '../live';
 import { PALETTE } from '../palette';
 import { softDot } from '../textures/canvas';
 import { lanternTexture } from '../textures/surfaces';
 
 const PIVOT_Y = 4.6;
-const BULB_Y = 2.0;
 const BULB_Z = -0.5;
 const R = 0.3;
 const H = 0.64;
 
-export function Lantern({ shadows }: { shadows: boolean }) {
+export function Lantern({ shadows, aspect }: { shadows: boolean; aspect: number }) {
+  const BULB_Y = lanternHeight(aspect);
   const live = useLive();
   const swing = useRef<THREE.Group>(null);
   const spot = useRef<THREE.SpotLight>(null);

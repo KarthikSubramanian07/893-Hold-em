@@ -59,7 +59,7 @@ function World({ targets, high, dpr }: { targets: SceneTargets; high: boolean; d
     <>
       <Room />
       <Table />
-      <Lantern shadows />
+      <Lantern shadows aspect={aspect} />
       <House house={targets.house} aspect={aspect} />
       <RuleCard rule={targets.rule} position={[0, 0.44, -1.42]} />
       <Board board={targets.board} showdown={showdown} />

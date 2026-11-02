@@ -61,10 +61,10 @@ export function seatLayout(count: number, aspect: number): SeatSpot[] {
   const t = aspectBlend(aspect);
   // On a narrow screen the sides of the oval fall off-frame, so pull the
   // anchors in toward the middle and keep them nearer the camera.
-  const rx = lerp(1.5, 2.15, t);
+  const rx = lerp(1.4, 2.15, t);
   const rz = lerp(1.15, 1.1, t);
   const nearA = lerp(38, 44, t);
-  const farA = lerp(84, 98, t);
+  const farA = lerp(86, 106, t);
   const singleA = lerp(58, 66, t);
 
   const spots: SeatSpot[] = [];
@@ -88,7 +88,7 @@ export function seatLayout(count: number, aspect: number): SeatSpot[] {
 /** Where each House mask floats, left to right across the far side. */
 export function maskLayout(count: number, aspect: number): Vec3[] {
   const t = aspectBlend(aspect);
-  const width = lerp(2.0, 3.6, t);
+  const width = lerp(2.75, 3.6, t);
   const n = Math.max(1, count);
   const out: Vec3[] = [];
   for (let i = 0; i < count; i++) {
@@ -99,6 +99,11 @@ export function maskLayout(count: number, aspect: number): Vec3[] {
     out.push({ x, y: 1.02, z });
   }
   return out;
+}
+
+/** How high the lantern hangs: higher on tall screens so it clears the masks. */
+export function lanternHeight(aspect: number): number {
+  return lerp(2.42, 2.0, aspectBlend(aspect));
 }
 
 /** House hole cards: in front of each mask on the far felt. */

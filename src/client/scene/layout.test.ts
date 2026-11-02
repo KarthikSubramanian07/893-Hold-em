@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aspectBlend, boardSpot, cameraFrame, heroCardPixels, maskLayout, seatLayout, TABLE } from './layout';
+import { aspectBlend, boardSpot, cameraFrame, heroCardPixels, lanternHeight, maskLayout, seatLayout, TABLE } from './layout';
 
 describe('seatLayout', () => {
   it('puts the viewer at the front centre', () => {
@@ -106,5 +106,11 @@ describe('heroCardPixels', () => {
       const p = heroCardPixels(w, h);
       expect(p.centreY - p.cardHeight / 2).toBeGreaterThan(150);
     }
+  });
+});
+
+describe('lanternHeight', () => {
+  it('hangs higher on tall screens so it clears the masks', () => {
+    expect(lanternHeight(390 / 844)).toBeGreaterThan(lanternHeight(1440 / 900));
   });
 });
