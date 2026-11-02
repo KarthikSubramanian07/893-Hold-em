@@ -1,0 +1,6 @@
+# Tables are private rooms. Only the front door is for search engines.
+User-agent: *
+Allow: /
+Disallow: /t/
+
+Sitemap: https://holdem893.pages.dev/sitemap.xml
