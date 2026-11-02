@@ -1,0 +1,52 @@
+{
+  "name": "893-holdem",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A co-op poker heist for 2 to 6. Beat the House together without saying a word.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "concurrently -k -n web,rooms -c auto \"vite\" \"npm:dev:rooms\"",
+    "dev:web": "vite",
+    "dev:rooms": "wrangler dev --config worker/wrangler.jsonc --port 8787",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.worker.json --noEmit",
+    "lint": "oxlint src worker functions scripts",
+    "sim": "vite-node scripts/simulate.ts",
+    "e2e": "node scripts/e2e.mjs",
+    "deploy:rooms": "wrangler deploy --config worker/wrangler.jsonc",
+    "deploy:web": "npm run build && wrangler pages deploy dist --project-name holdem893 --branch main",
+    "deploy": "npm run deploy:rooms && npm run deploy:web"
+  },
+  "dependencies": {
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource/caveat": "^5.3.0",
+    "@fontsource/shippori-mincho-b1": "^5.3.0",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@react-three/postprocessing": "^3.2.2",
+    "postprocessing": "^6.39.6",
+    "react": "~19.3.1",
+    "react-dom": "~19.3.1",
+    "three": "~0.187.0",
+    "zustand": "^5.0.16"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261102.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "~0.187.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "oxlint": "^1.90.0",
+    "playwright": "^1.64.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vite-node": "^6.0.0",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.156.1"
+  }
+}
