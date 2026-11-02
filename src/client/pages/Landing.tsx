@@ -445,6 +445,15 @@ function MatchbookFooter({ onRules }: { onRules: () => void }) {
             <p className="label foot__k">The fine print</p>
             <ul>
               <li>
+                <a href="/about">About</a>
+              </li>
+              <li>
+                <a href="/privacy">Privacy</a>
+              </li>
+              <li>
+                <a href="/contact">Contact</a>
+              </li>
+              <li>
                 <a href={REPO} target="_blank" rel="noreferrer">
                   Source on GitHub
                 </a>
