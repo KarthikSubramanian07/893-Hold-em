@@ -3,12 +3,70 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>893 Hold'em: co-op poker for 2 to 6</title>
-    <meta name="description" content="A co-op poker heist for 2 to 6. Beat the House together without saying a word. One link, no accounts." />
+    <title>893 Hold'em: a co-op poker heist for 2 to 6</title>
+    <meta name="description" content="A co-op poker heist for 2 to 6. Beat the House without saying a word. One link, no accounts, free in your browser." />
+    <link rel="canonical" href="https://holdem893.pages.dev/" />
     <meta name="theme-color" content="#1b1a17" />
+    <meta name="color-scheme" content="light" />
+    <meta name="author" content="Karthik Subramanian" />
+    <meta name="keywords" content="co-op poker, cooperative card game, Texas Hold'em, browser game, party game, multiplayer, no accounts, yakuza" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="893 Hold'em" />
+    <meta property="og:title" content="893 Hold'em: a co-op poker heist for 2 to 6" />
+    <meta property="og:description" content="Beat the House without saying a word. One link, no accounts." />
+    <meta property="og:url" content="https://holdem893.pages.dev/" />
+    <meta property="og:image" content="https://holdem893.pages.dev/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="893 Hold'em, printed in sumi ink on washi paper with a vermilion hanko seal." />
+    <meta property="og:locale" content="en_US" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="893 Hold'em: a co-op poker heist for 2 to 6" />
+    <meta name="twitter:description" content="Beat the House without saying a word. One link, no accounts." />
+    <meta name="twitter:image" content="https://holdem893.pages.dev/og.png" />
+    <meta name="twitter:image:alt" content="893 Hold'em, printed in sumi ink on washi paper with a vermilion hanko seal." />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "893 Hold'em",
+        "alternateName": "八九三 Hold'em",
+        "url": "https://holdem893.pages.dev/",
+        "image": "https://holdem893.pages.dev/og.png",
+        "description": "A co-op poker heist for 2 to 6. Beat the House without saying a word.",
+        "genre": ["Card game", "Cooperative", "Party game"],
+        "playMode": "CoOp",
+        "numberOfPlayers": { "@type": "QuantitativeValue", "minValue": 2, "maxValue": 6 },
+        "gamePlatform": "Web browser",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Any",
+        "inLanguage": "en",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": { "@type": "Person", "name": "Karthik Subramanian" },
+        "license": "https://opensource.org/licenses/MIT",
+        "codeRepository": "https://github.com/KarthikSubramanian07/893-Hold-em"
+      }
+    </script>
+    <style>
+      /* Paint the paper before the app loads, so there is no white flash. */
+      html { background: #efe8da; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <p style="font: 18px/1.5 Georgia, serif; max-width: 32rem; margin: 20vh auto; padding: 0 1.5rem; color: #1b1a17">
+        893 Hold'em is a co-op poker heist for 2 to 6 players. The bar needs JavaScript to deal the cards.
+      </p>
+    </noscript>
     <script type="module" src="/src/client/main.tsx"></script>
   </body>
 </html>
