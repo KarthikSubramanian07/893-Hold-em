@@ -4,6 +4,7 @@ import type { GameView } from '../../engine/types';
 import { REACTIONS, type Reaction } from '../../protocol';
 import { sfx } from '../audio';
 import { canReact } from '../net/selectors';
+import { useSeatAnchors } from '../scene/anchors';
 import { useTable } from '../net/store';
 import { REACTION_LABEL, ReactionGlyph } from '../ui/glyphs';
 
@@ -32,9 +33,14 @@ export function ReactionsTray({ view }: { view: GameView }) {
   );
 }
 
-/** Incoming reactions drift up from their seat's spot along the rail. */
+/**
+ * Incoming reactions drift up from the seat that sent them: from its name
+ * plate in the 3D scene once the table is in view, otherwise (the lobby, or
+ * before the scene has placed it) from a spot along the rail in seat order.
+ */
 export function ReactionFloats({ view }: { view: GameView }) {
   const reactions = useTable((s) => s.reactions);
+  const anchors = useSeatAnchors((s) => s.seats);
   const [now, setNow] = useState(() => Date.now());
   const live = reactions.filter((r) => now - r.at < LIFE);
 
@@ -52,9 +58,14 @@ export function ReactionFloats({ view }: { view: GameView }) {
       {live.map((r) => {
         const idx = view.seats.findIndex((s) => s.id === r.seat);
         const seat = view.seats[idx];
-        const left = ((Math.max(0, idx) + 0.5) / n) * 100;
+        // In the lobby the paper card covers the table, so seats aren't where the eye is.
+        const anchor = view.phase === 'lobby' ? undefined : anchors[r.seat];
+        const drift = { ['--drift' as string]: `${((r.id * 37) % 40) - 20}px` };
+        const style = anchor?.visible
+          ? { position: 'fixed' as const, left: `${anchor.pageX}px`, top: `${anchor.pageY}px`, bottom: 'auto', ...drift }
+          : { left: `${((Math.max(0, idx) + 0.5) / n) * 100}%`, ...drift };
         return (
-          <div key={r.id} className="float" style={{ left: `${left}%`, ['--drift' as string]: `${((r.id * 37) % 40) - 20}px` }}>
+          <div key={r.id} className={`float${anchor?.visible ? ' float--seat' : ''}`} style={style}>
             <ReactionGlyph reaction={r.reaction} size={34} strokeWidth={1.8} />
             <span className="float__who">{seat?.name ?? 'Someone'}</span>
             <span className="sr-only">
