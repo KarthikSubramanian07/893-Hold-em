@@ -63,7 +63,28 @@ function script(): { name: string; view: GameView; hold: number }[] {
     board: ['Kh', '7s', '7d', '2c', 'Qh'],
     seats: turn.seats.map((s, i) => ({ ...s, calls: [s.calls[0]!, s.calls[1]!, i === 2 ? null : 'stay', null], locked: i === 1 })),
   };
+  // Six seats, four masks (Oni), calls hidden under Hush: the busiest table.
+  const names = ['Karthik', 'Mio', 'Ren', 'Daichi', 'Sora', 'Yuki'];
+  const crowd: GameView = {
+    ...riv,
+    rule: 'shizuka',
+    heat: 6,
+    seats: names.map((n, i) => ({
+      ...deal.seats[0]!,
+      id: `s${i}`,
+      name: n,
+      avatar: (['kitsune', 'koi', 'tora', 'tanuki', 'tsuru', 'karasu'] as const)[i]!,
+      cards: i === 0 ? ['Qs', 'Qd'] : ['back', 'back'],
+      active: i !== 4,
+      stake: i === 0 ? 2 : null,
+      locked: i % 2 === 1,
+      connected: i !== 5,
+      calls: ['hidden', 'hidden', i === 4 ? 'fold' : 'hidden', null],
+    })),
+    house: [0, 1, 2, 3].map(() => ({ cards: ['back', 'back'], hand: null, champion: false })),
+  };
   return [
+    { name: 'crowd', view: crowd, hold: 3000 },
     { name: 'lobby', view: lobby, hold: 2200 },
     { name: 'lobby (full)', view: lobbyFull, hold: 2200 },
     { name: 'deal', view: deal, hold: 3200 },
@@ -95,7 +116,7 @@ function Lab() {
   const steps = useMemo(script, []);
   const [name, setName] = useState(params.get('fixture') ?? 'river');
   const [view, setView] = useState<GameView>(() => {
-    const step = steps.find((s) => s.name === name);
+    const step = steps.find((s) => s.name === name || s.name === name.replace(/-/g, ' '));
     return applyParams(step?.view ?? FIXTURES[name] ?? FIXTURES.river!, params);
   });
   const [guides, setGuides] = useState(params.has('guides'));
@@ -113,12 +134,13 @@ function Lab() {
 
   const play = useCallback(() => {
     window.clearTimeout(timer.current);
-    let i = 0;
+    let i = 1;
     const next = () => {
       const s = steps[i]!;
       setName(`▶ ${s.name}`);
       setView(applyParams(s.view, params));
       i = (i + 1) % steps.length;
+      if (i === 0) i = 1; // the crowd view is not part of the hand
       timer.current = window.setTimeout(next, s.hold);
     };
     next();
