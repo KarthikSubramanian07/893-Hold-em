@@ -345,3 +345,13 @@ describe('idle', () => {
     expect(idleLine(fixture('river'), 1)).toBeNull();
   });
 });
+
+describe('a second night at the same table', () => {
+  it('reseeds the line choices, and the first night is unchanged', async () => {
+    const { seedOf } = await import('./narrator');
+    expect(seedOf({ code: 'K7QX2', night: 0 })).toBe('K7QX2');
+    expect(seedOf({ code: 'K7QX2', night: 1 })).toBe('K7QX2');
+    expect(seedOf({ code: 'K7QX2', night: 2 })).toBe('K7QX2~2');
+    expect(seedOf({ code: 'K7QX2', night: 3 })).not.toBe(seedOf({ code: 'K7QX2', night: 2 }));
+  });
+});
