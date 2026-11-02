@@ -3,7 +3,7 @@ name: Deploy
 # On every push to main: build the wasm engine, deploy the rooms Worker, then
 # the Pages site. Runs only when a CLOUDFLARE_API_TOKEN secret is set (with
 # Workers Scripts and Pages edit permissions) plus CLOUDFLARE_ACCOUNT_ID, so the
-# repo stays green before deploys are wired up. Locally, `npm run deploy` does
+# repo stays green before deploys are wired up. Locally, `bun run deploy` does
 # the same with your own wrangler login.
 on:
   push:
@@ -38,12 +38,13 @@ jobs:
         if: ${{ env.CF_TOKEN != '' }}
         with:
           node-version: 22
-          cache: npm
+      - uses: oven-sh/setup-bun@v2
+        if: ${{ env.CF_TOKEN != '' }}
       - if: ${{ env.CF_TOKEN != '' }}
-        run: npm ci
+        run: bun install --frozen-lockfile
       - name: Build
         if: ${{ env.CF_TOKEN != '' }}
-        run: npm run build:wasm && npm run build
+        run: bun run build:wasm && bun run build
       - name: Deploy the rooms Worker
         if: ${{ env.CF_TOKEN != '' }}
         uses: cloudflare/wrangler-action@v3

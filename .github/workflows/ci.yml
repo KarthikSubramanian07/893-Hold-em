@@ -26,10 +26,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run build:wasm
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test -- --passWithNoTests
-      - run: npx vite build
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run build:wasm
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun run test
+      - run: bunx vite build

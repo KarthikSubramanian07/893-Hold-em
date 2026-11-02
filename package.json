@@ -6,24 +6,24 @@
   "description": "A co-op poker heist for 2 to 6. Beat the House together without saying a word.",
   "license": "MIT",
   "scripts": {
-    "dev": "concurrently -k -n web,rooms -c auto \"vite\" \"npm:dev:rooms\"",
+    "dev": "concurrently -k -n web,rooms -c auto \"vite\" \"bun run dev:rooms\"",
     "dev:web": "vite",
     "dev:rooms": "wrangler dev --config worker/wrangler.jsonc --port 8787",
-    "build": "npm run typecheck && vite build",
+    "build": "bun run typecheck && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.worker.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "lint": "oxlint src worker functions scripts",
-    "sim": "vite-node scripts/simulate.ts",
+    "sim": "cargo run --release -p hachi-sim",
     "e2e": "node scripts/e2e.mjs",
     "e2e:practice": "node scripts/practice-e2e.mjs",
-    "deploy:rooms": "npm run build:wasm && wrangler deploy --config worker/wrangler.jsonc",
-    "deploy:web": "npm run build && wrangler pages deploy dist --project-name holdem893 --branch main",
-    "deploy": "npm run deploy:rooms && npm run deploy:web",
+    "deploy:rooms": "bun run build:wasm && wrangler deploy --config worker/wrangler.jsonc",
+    "deploy:web": "bun run build && wrangler pages deploy dist --project-name holdem893 --branch main",
+    "deploy": "bun run deploy:rooms && bun run deploy:web",
     "build:wasm": "wasm-pack build crates/wasm --target web --out-dir pkg --release --no-pack",
     "smoke:rooms": "node scripts/rooms-smoke.mjs",
-    "predev": "npm run build:wasm"
+    "predev": "bun run build:wasm"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
@@ -50,8 +50,8 @@
     "playwright": "^1.64.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
-    "vite-node": "^6.0.0",
     "vitest": "^5.0.5",
     "wrangler": "^4.156.1"
-  }
+  },
+  "packageManager": "bun@1.4.4"
 }
