@@ -1,11 +1,13 @@
 // Dev-only scene lab, served at /scene.html by `vite`. Never built.
-// Keys 1–5 pick a fixture, P plays a scripted hand, G toggles the HUD guides.
+// Alt+1–5 pick a fixture, Alt+P plays a scripted hand, Alt+G toggles the HUD
+// guides (Alt, so typing 8 9 3 or kanpai reaches the easter eggs instead).
 // URL params: ?fixture=<name>&quality=low|high&heat=<n>&outcome=crew|house|tie|walked
 
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { GameView, HandOutcome } from '../../engine/types';
 import { FIXTURES } from '../dev/fixtures';
+import { installEggs } from '../story/eggs';
 import { TableScene } from './index';
 
 const clone = (v: GameView): GameView => structuredClone(v);
@@ -105,6 +107,28 @@ function applyParams(view: GameView, params: URLSearchParams): GameView {
   if (verdict === 'clean' || verdict === 'raid' || verdict === 'short') v.verdict = verdict;
   const rule = params.get('rule');
   if (rule) v.rule = rule as GameView['rule'];
+  const table = params.get('table');
+  if (table === 'shitamachi' || table === 'kabukicho' || table === 'oyabun') v.config.difficulty = table;
+  // masks=<1..4> reshapes the crew and the House: n masks face 2n players, and
+  // the fourth mask only ever comes with the Oni.
+  const masks = Number(params.get('masks') ?? 0);
+  const crewParam = Number(params.get('crew') ?? 0);
+  if ((masks || crewParam) && v.phase !== 'lobby') {
+    const oni = masks === 4 || v.rule === 'oni';
+    if (masks === 4) v.rule = 'oni';
+    const crew = crewParam || Math.min(6, oni ? 2 * (masks - 1) : 2 * masks);
+    const names = ['Karthik', 'Mio', 'Ren', 'Daichi', 'Sora', 'Yuki'];
+    const avatars = ['kitsune', 'koi', 'tora', 'tanuki', 'tsuru', 'karasu'] as const;
+    const template = v.seats[v.seats.length - 1]!;
+    v.seats = Array.from({ length: crew }, (_, i) => v.seats[i] ?? { ...structuredClone(template), id: `s${i}`, name: names[i]!, avatar: avatars[i]!, champion: false });
+    const count = masks || Math.ceil(crew / 2) + (oni ? 1 : 0);
+    const proto = v.house[0] ?? { cards: ['back', 'back'], hand: null, champion: false };
+    v.house = Array.from({ length: count }, (_, i) => v.house[i] ?? { ...structuredClone(proto), champion: false });
+  }
+  // Watchers as the engine assigns them: pairs of seats, in seat order.
+  v.seats = v.seats.map((s, k) => ({ ...s, watcher: v.phase === 'lobby' || !v.house.length ? null : Math.min(Math.floor(k / 2), v.house.length - 1) }));
+  const burned = params.get('burned');
+  if (burned !== null && v.result) v.result.burned = burned ? burned.split(',') : [];
   return v;
 }
 
@@ -146,14 +170,19 @@ function Lab() {
     next();
   }, [steps, params]);
 
+  // The keyboard eggs (8-9-3, kanpai, the Konami code), as the app installs them.
+  useEffect(() => installEggs({ console: false }), []);
+
   useEffect(() => {
     if (params.has('play')) play();
+    // Lab keys sit behind Alt (Option) so typing 893 or kanpai reaches the eggs.
     const onKey = (e: KeyboardEvent) => {
-      const n = Number(e.key);
+      if (!e.altKey) return;
+      const n = Number(e.code.replace('Digit', ''));
       if (n >= 1 && n <= NAMES.length) pick(NAMES[n - 1]!);
-      if (e.key === 'p') play();
-      if (e.key === 'g') setGuides((g) => !g);
-      if (e.key === 'h') setHud((h) => !h);
+      if (e.code === 'KeyP') play();
+      if (e.code === 'KeyG') setGuides((g) => !g);
+      if (e.code === 'KeyH') setHud((h) => !h);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -161,7 +190,7 @@ function Lab() {
 
   return (
     <>
-      <TableScene view={view} quality={quality} />
+      <TableScene view={view} quality={quality} cat={params.has('cat') ? params.get('cat') !== '0' : undefined} />
       {guides && (
         <>
           <div style={{ position: 'fixed', left: 0, right: 0, top: 0, height: 64, background: 'rgba(255,79,109,0.18)', pointerEvents: 'none' }} />
@@ -184,11 +213,11 @@ function Lab() {
         >
           {NAMES.map((n, i) => (
             <button key={n} onClick={() => pick(n)} style={btn(n === name)}>
-              {i + 1} {n}
+              ⌥{i + 1} {n}
             </button>
           ))}
           <button onClick={play} style={btn(name.startsWith('▶'))}>
-            P play {name.startsWith('▶') ? name.slice(2) : ''}
+            ⌥P play {name.startsWith('▶') ? name.slice(2) : ''}
           </button>
         </div>
       )}

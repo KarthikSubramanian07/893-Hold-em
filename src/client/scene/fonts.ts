@@ -13,7 +13,7 @@ export const MONO = '"JetBrains Mono Variable", ui-monospace, Menlo, monospace';
 
 /** Every glyph the painted textures use, so the right subsets load up front. */
 const GLYPHS =
-  '0123456789AJQK10八九三二四五六七十侍姫王壱降待攻伏狐狸鯉鶴虎兎烏蛇霧鏡鬼静炎絆逆バー麻雀酒円熱スナック営業中夜掟';
+  '0123456789AJQK10八九三二四五六七十侍姫王壱降待攻伏狐狸鯉鶴虎兎烏蛇霧鏡鬼静炎絆逆バー麻雀酒円熱スナック営業中夜掟見亀火恵天般翁';
 
 let ready: Promise<void> | null = null;
 

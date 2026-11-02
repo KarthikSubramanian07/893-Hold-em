@@ -8,14 +8,18 @@ import { Environment, Lightformer, PerformanceMonitor } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber';
 import { Suspense, use, useEffect, useMemo, useState } from 'react';
 import type { GameView } from '../../engine/types';
+import { AnchorTracker } from './AnchorTracker';
 import { CameraRig } from './CameraRig';
 import { deriveTargets, type SceneTargets } from './derive';
+import { EggListener } from './EggListener';
+import { catVisits } from '../story/eggs';
+import { Bar } from './parts/Bar';
 import { fontsReady } from './fonts';
 import { Dust } from './fx/Dust';
 import { GoldLeaf } from './fx/GoldLeaf';
 import { Post } from './fx/Post';
 import { SmokePuff, Smoke } from './fx/Smoke';
-import { cameraFrame, seatLayout } from './layout';
+import { cameraFrame, seatAnchor, seatLayout, stageLayout, type Vec3 } from './layout';
 import { createLive, LiveContext } from './live';
 import { LiveDriver } from './LiveDriver';
 import { PALETTE } from './palette';
@@ -27,11 +31,14 @@ import { Room } from './parts/Room';
 import { RuleCard } from './parts/RuleCard';
 import { Seats } from './parts/Seats';
 import { Table } from './parts/Table';
+import { Threads } from './parts/Watch';
 
 export interface TableSceneProps {
   view: GameView;
   /** Reduced motion / low power: skip post-processing and long camera moves. */
   quality?: 'low' | 'high';
+  /** Force Kyū onto the bar (or off it). Defaults to catVisits(view.code), tonight. */
+  cat?: boolean;
 }
 
 function usePrefersReducedMotion(): boolean {
@@ -47,11 +54,17 @@ function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
-function World({ targets, high, dpr }: { targets: SceneTargets; high: boolean; dpr: number }) {
+function World({ targets, high, dpr, cat }: { targets: SceneTargets; high: boolean; dpr: number; cat: boolean }) {
   use(fontsReady());
   const size = useThree((s) => s.size);
   const aspect = size.width / Math.max(1, size.height);
   const spots = useMemo(() => seatLayout(targets.seats.length, aspect), [targets.seats.length, aspect]);
+  const stage = useMemo(() => stageLayout(targets.house.length, aspect), [targets.house.length, aspect]);
+  const anchors = useMemo(() => {
+    const m = new Map<string, Vec3>();
+    targets.seats.forEach((s, i) => spots[i] && !s.empty && m.set(s.key, seatAnchor(spots[i]!, s.you)));
+    return m;
+  }, [targets.seats, spots]);
   const hero = targets.seats.find((s) => s.you && !s.empty);
   const showdown = targets.phase === 'showdown';
 
@@ -59,11 +72,14 @@ function World({ targets, high, dpr }: { targets: SceneTargets; high: boolean; d
     <>
       <Room />
       <Table />
-      <Lantern shadows aspect={aspect} />
-      <House house={targets.house} aspect={aspect} />
-      <RuleCard rule={targets.rule} position={[0, 0.44, -1.42]} />
+      <Bar cat={cat} />
+      <AnchorTracker anchors={anchors} />
+      <Lantern shadows rest={stage.lantern} />
+      <House house={targets.house} spots={stage.masks} scale={stage.scale} anchors={anchors} />
+      <RuleCard rule={targets.rule} position={[stage.rule.x, stage.rule.y, stage.rule.z]} />
       <Board board={targets.board} showdown={showdown} />
-      <Seats seats={targets.seats} spots={spots} aspect={aspect} />
+      <Seats seats={targets.seats} spots={spots} aspect={aspect} masks={targets.house.map((h) => h.mask)} />
+      <Threads seats={targets.seats} house={targets.house} anchors={anchors} />
       <HeroCards cards={targets.heroCards} glow={targets.heroGlow} folded={!!hero && !hero.active && targets.phase === 'call'} />
       <Dust dpr={dpr} />
       <Smoke />
@@ -81,8 +97,9 @@ function World({ targets, high, dpr }: { targets: SceneTargets; high: boolean; d
   );
 }
 
-export function TableScene({ view, quality = 'high' }: TableSceneProps) {
+export function TableScene({ view, quality = 'high', cat }: TableSceneProps) {
   const targets = useMemo(() => deriveTargets(view), [view]);
+  const catTonight = useMemo(() => cat ?? catVisits(view.code), [cat, view.code]);
   const reduced = usePrefersReducedMotion();
   // One mutable bag of per-frame values, shared down the tree.
   const [live] = useState(() => createLive(targets, reduced));
@@ -119,9 +136,10 @@ export function TableScene({ view, quality = 'high' }: TableSceneProps) {
           <ambientLight intensity={0.05} color="#8aa0c8" />
           <hemisphereLight args={['#2a3a5a', '#1a0f08', 0.12]} />
           <LiveDriver />
+          <EggListener />
           <CameraRig />
           <Suspense fallback={null}>
-            <World targets={targets} high={high} dpr={dpr} />
+            <World targets={targets} high={high} dpr={dpr} cat={catTonight} />
           </Suspense>
           {high && <Post />}
         </LiveContext.Provider>
