@@ -110,23 +110,23 @@ cards.
 
 ## Run it
 
-Needs Node 22+, Rust (stable) with the `wasm32-unknown-unknown` target, and `wasm-pack`.
+Needs [Bun](https://bun.sh) (installs and scripts), Node 22+ (Wrangler and Vitest run on it), Rust (stable) with the `wasm32-unknown-unknown` target, and `wasm-pack`.
 
 ```sh
-npm ci
-npm run dev                      # builds the wasm engine, then Vite on :5173 + the rooms Worker on :8787
+bun install
+bun run dev                      # builds the wasm engine, then Vite on :5173 + the rooms Worker on :8787
 ```
 
 | Command | Does |
 | --- | --- |
-| `npm test` | Vitest: client, story, audio, scene helpers |
+| `bun run test` | Vitest: client, story, audio, scene helpers |
 | `cargo test --workspace --release` | The engine: rules, views, bots, rooms, evaluator (exhaustive over all 2.6M five-card hands) |
 | `cargo test --release -p hachi-engine -- --ignored` | All 133,784,560 seven-card hands |
-| `npm run smoke:rooms` | Two WebSocket clients play a whole night against `wrangler dev`, checking every view for leaks |
-| `npm run e2e` | Two real browsers play a whole night through the UI |
-| `npm run e2e:practice` | One browser plays a practice night through the UI, with no Worker running (`npx vite --port 5213` first) |
+| `bun run smoke:rooms` | Two WebSocket clients play a whole night against `wrangler dev`, checking every view for leaks |
+| `bun run e2e` | Two real browsers play a whole night through the UI |
+| `bun run e2e:practice` | One browser plays a practice night through the UI, with no Worker running (`npx vite --port 5213` first) |
 | `cargo run --release -p hachi-sim` | Rebalance the tables |
-| `npm run deploy` | Deploy the rooms Worker and the Pages site |
+| `bun run deploy` | Deploy the rooms Worker and the Pages site |
 
 ## License
 
