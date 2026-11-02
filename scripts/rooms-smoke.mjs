@@ -64,6 +64,7 @@ a.send({ t: 'hello', pid: pid(), name: 'Mio', avatar: 'koi' });
 await a.until((v) => v.seats.length === 1);
 b.send({ t: 'hello', pid: pid(), name: 'Ren', avatar: 'tora' });
 await a.until((v) => v.seats.length === 2);
+await b.until(() => b.seat !== undefined);
 if (a.seat !== 's0' || b.seat !== 's1') fail(`seats ${a.seat} ${b.seat}`);
 console.log(`✓ table ${code}: two seated`);
 
