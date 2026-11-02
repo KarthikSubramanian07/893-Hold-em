@@ -18,7 +18,7 @@ staircase too narrow for two in Shinjuku's Golden Gai. It's 3 a.m. It's raining.
 ---
 
 > **8 · 9 · 3**, read *ya-ku-za*: the worst hand in oicho-kabu, eight plus nine plus three,
-> twenty, which scores zero. The gangs took the name for themselves.
+> twenty, which scores zero. The yakuza took the name for themselves.
 > Everybody at this table starts with a bad hand. The point is to play it together.
 
 ## How a night plays

@@ -1,7 +1,7 @@
 # 893 Hold'em — design
 
 > 8-9-3, read *ya-ku-za*: the worst hand in an old Japanese card game, and the
-> name the gangs took for themselves. Everybody at this table starts with a
+> name the yakuza took for themselves. Everybody at this table starts with a
 > bad hand. The point is to play it together.
 
 This is the canonical spec. Code, copy, and art all answer to it.
