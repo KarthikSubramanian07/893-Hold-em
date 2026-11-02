@@ -1,0 +1,236 @@
+/* The night world: page frame and the shoji transition. */
+
+.table {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--sumi);
+  color: var(--night-ink);
+}
+
+.table-fallback {
+  position: fixed;
+  inset: 0;
+  background: var(--washi);
+}
+
+.table__scene {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1.4s 0.5s ease;
+}
+
+.table__scene.is-on {
+  opacity: 1;
+}
+
+.table__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 50% 45%, transparent 55%, rgb(8 7 6 / 0.55) 100%),
+    linear-gradient(transparent 70%, rgb(8 7 6 / 0.45));
+}
+
+/* ---- Shoji ------------------------------------------------------------ */
+
+.shoji {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  color: var(--ink);
+}
+
+.shoji__door {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50.5%;
+  transition: transform 1.35s cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+.shoji__door--l {
+  left: 0;
+  border-right: 5px solid #3a2a1b;
+}
+
+.shoji__door--r {
+  right: 0;
+  border-left: 5px solid #3a2a1b;
+}
+
+/* Kumiko lattice: thin wooden ribs over the paper. */
+.shoji__door::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 calc(100% / 6 - 2px), rgb(74 55 36 / 0.85) calc(100% / 6 - 2px) calc(100% / 6)),
+    repeating-linear-gradient(0deg, transparent 0 calc(100% / 11 - 2px), rgb(74 55 36 / 0.85) calc(100% / 11 - 2px) calc(100% / 11));
+  box-shadow:
+    inset 0 0 0 14px #3a2a1b,
+    inset 0 0 0 15px rgb(201 164 92 / 0.3),
+    inset 0 -90px 0 -76px #3a2a1b;
+}
+
+.shoji__door--l::after {
+  background-position: 3px 0, 0 3px;
+}
+
+/* Light behind the paper. */
+.shoji__glow {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 46% at 50% 50%, rgb(255 196 120 / 0.38), transparent 70%),
+    radial-gradient(120% 90% at 50% 50%, transparent 40%, rgb(40 24 10 / 0.42));
+  mix-blend-mode: multiply;
+  animation: lantern 3.2s ease-in-out infinite;
+  transition: opacity 0.6s;
+}
+
+.shoji__center {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  overflow: auto;
+}
+
+.shoji__card {
+  width: min(100%, 36rem);
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: 1px solid var(--hair-strong);
+  box-shadow:
+    0 30px 60px -30px rgb(30 20 10 / 0.7),
+    0 0 0 6px rgb(239 232 218 / 0.5);
+  animation: fade-up 0.6s var(--ease-out) both;
+}
+
+.shoji__msg {
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+  padding: 2.2rem 2.6rem;
+  background: rgb(239 232 218 / 0.9);
+  border: 1px solid var(--hair-strong);
+  text-align: center;
+  box-shadow: 0 20px 50px -25px rgb(30 20 10 / 0.6);
+}
+
+.shoji__title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  max-width: 22rem;
+  line-height: 1.2;
+}
+
+.shoji__sub {
+  color: var(--ink-faint);
+}
+
+.shoji__sub::after {
+  content: '';
+  display: inline-block;
+  width: 1.4em;
+  text-align: left;
+  animation: dots 1.4s steps(4) infinite;
+}
+
+.shoji.is-open {
+  pointer-events: none;
+}
+
+.shoji.is-open .shoji__door--l {
+  transform: translateX(-102%);
+}
+
+.shoji.is-open .shoji__door--r {
+  transform: translateX(102%);
+}
+
+.shoji.is-open .shoji__glow {
+  opacity: 0;
+}
+
+@keyframes lantern {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.86;
+  }
+  50% {
+    opacity: 0.96;
+  }
+  52% {
+    opacity: 0.8;
+  }
+  60% {
+    opacity: 0.94;
+  }
+}
+
+@keyframes dots {
+  0% {
+    content: '';
+  }
+  25% {
+    content: '.';
+  }
+  50% {
+    content: '..';
+  }
+  75% {
+    content: '...';
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shoji.is-open {
+    opacity: 0;
+    transition: opacity 0.4s !important;
+  }
+
+  .shoji.is-open .shoji__door {
+    transform: none !important;
+  }
+}
+
+/* ---- Profile dialog --------------------------------------------------- */
+
+.pdialog {
+  width: min(calc(100vw - 2rem), 36rem);
+  max-height: calc(100dvh - 2rem);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: 1px solid var(--hair-strong);
+  color: var(--ink);
+  overflow: auto;
+  box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.8);
+}
+
+.pdialog::backdrop {
+  background: rgb(10 9 8 / 0.6);
+}
+
+.pdialog[open] {
+  animation: fade-up 0.4s var(--ease-out) both;
+}
