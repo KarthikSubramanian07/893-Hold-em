@@ -49,7 +49,7 @@ const frag = /* glsl */ `
     vec2 f = fract(g) - 0.5;
     vec2 r = h22(id);
     vec2 c = (r - 0.5) * 0.7;
-    float life = fract(t * (0.05 + r.x * 0.08) + r.y);
+    float life = fract(t * (0.12 + r.x * 0.2) + r.y);
     float rad = (0.08 + 0.22 * h21(id + 7.0)) * smoothstep(0.0, 0.1, life) * smoothstep(1.0, 0.75, life);
     vec2 d = f - c;
     float m = smoothstep(rad, rad * 0.6, length(d)) * step(0.35, h21(id + 3.1));
@@ -62,9 +62,9 @@ const frag = /* glsl */ `
     vec2 g = vec2(uv.x * cols, uv.y);
     float col = floor(g.x);
     float rnd = h11(col * 17.31);
-    if (rnd < 0.35) return vec4(0.0);
+    if (rnd < 0.2) return vec4(0.0);
     float fx = fract(g.x) - 0.5;
-    float speed = 0.05 + rnd * 0.08;
+    float speed = 0.16 + rnd * 0.22;
     float ph = t * speed + h11(col * 3.7);
     // stick-slip motion
     float y = 1.15 - fract(ph) * 1.4 - 0.04 * sin(ph * 40.0) * (1.0 - fract(ph));
@@ -88,7 +88,8 @@ const frag = /* glsl */ `
     for (int layer = 0; layer < 2; layer++) {
       float fl = float(layer);
       float sc = 5.0 + fl * 4.0;
-      vec2 g = uv * vec2(sc * uAspect, sc) + vec2(t * 0.01 * (fl + 1.0), 0.0);
+      vec2 g = uv * vec2(sc * uAspect, sc) + vec2(t * 0.03 * (fl + 1.0), 0.0)
+        + vec2(sin(uv.y * 31.0 + t * 1.7), cos(uv.x * 27.0 + t * 1.3)) * 0.04;
       vec2 id = floor(g);
       vec2 f = fract(g) - 0.5;
       vec2 r = h22(id + fl * 13.0);
@@ -98,13 +99,17 @@ const frag = /* glsl */ `
       float lum = smoothstep(rad, rad * 0.35, length(f - c)) * on;
       float hue = h21(id + 9.0 + fl);
       vec3 tint = hue < 0.35 ? vec3(1.0, 0.62, 0.3) : hue < 0.6 ? vec3(0.9, 0.95, 1.0) : hue < 0.8 ? vec3(0.25, 0.85, 0.8) : vec3(1.0, 0.3, 0.45);
-      float twinkle = 0.75 + 0.25 * sin(t * (0.5 + r.x) + r.y * 6.28);
+      float twinkle = 0.7 + 0.3 * sin(t * (1.2 + r.x * 2.0) + r.y * 6.28);
       col += tint * lum * twinkle * (0.075 / (fl + 1.0));
     }
-    // Headlights sweep past now and then, low in the frame.
-    float sweep = fract(t * 0.045);
-    float car = smoothstep(0.25, 0.0, abs(uv.x - (sweep * 1.6 - 0.3))) * smoothstep(0.35, 0.05, uv.y);
-    col += vec3(1.0, 0.85, 0.65) * car * 0.25;
+    // Cars hiss past in the wet street, low in the frame: headlights one way,
+    // tail lights the other, every few seconds.
+    float sweep = fract(t * 0.13);
+    float car = smoothstep(0.22, 0.0, abs(uv.x - (sweep * 1.6 - 0.3))) * smoothstep(0.35, 0.05, uv.y);
+    col += vec3(1.0, 0.85, 0.65) * car * 0.32;
+    float back = fract(t * 0.09 + 0.5);
+    float tail = smoothstep(0.12, 0.0, abs(uv.x - (1.3 - back * 1.6))) * smoothstep(0.28, 0.04, uv.y);
+    col += vec3(1.0, 0.12, 0.08) * tail * 0.22;
     return col;
   }
 
@@ -120,7 +125,8 @@ const frag = /* glsl */ `
     float f1 = 0.82 + 0.18 * step(0.12 - hot * 0.06, fract(sin(floor(t * 9.0) * 12.9898) * 43758.5));
     float f2 = 1.0 - 0.9 * step(0.985 - hot * 0.08, fract(sin(floor(t * 13.0) * 78.233) * 12345.6));
     float f3 = 0.86 + 0.14 * sin(t * 50.0) * step(0.6, fract(t * 0.21));
-    vec3 neon = n.r * vec3(1.0, 0.31, 0.43) * f1 + n.g * vec3(0.25, 0.9, 0.82) * f2 + n.b * vec3(1.0, 0.32, 0.14) * f3;
+    float buzz = 0.93 + 0.07 * sin(t * 7.0) * sin(t * 2.3 + 1.0);
+    vec3 neon = (n.r * vec3(1.0, 0.31, 0.43) * f1 + n.g * vec3(0.25, 0.9, 0.82) * f2 + n.b * vec3(1.0, 0.32, 0.14) * f3) * buzz;
     col += neon * (0.9 + uNeonLevel * 2.4 + uSurge * 2.5) * uGate;
     return col;
   }
@@ -145,15 +151,20 @@ const frag = /* glsl */ `
 
     // Rain falling outside, lit by the neon.
     float streak = 0.0;
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 3; i++) {
       float fi = float(i);
-      float cols = 160.0 + fi * 90.0;
-      float cx = floor(uv.x * cols);
+      float cols = 110.0 + fi * 70.0;
+      // Wind leans the rain a little, and the lean breathes.
+      float lean = (0.18 + 0.05 * sin(t * 0.4)) * (1.0 - fi * 0.2);
+      vec2 ruv = vec2(uv.x + uv.y * lean, uv.y);
+      float cx = floor(ruv.x * cols);
       float rnd = h11(cx * 1.37 + fi * 31.0);
-      float y = fract(uv.y * (1.0 + fi) + t * (1.7 + rnd) + rnd * 10.0);
-      streak += smoothstep(0.92, 1.0, y) * step(0.7, rnd) * smoothstep(0.5, 0.0, abs(fract(uv.x * cols) - 0.5));
+      float y = fract(ruv.y * (0.8 + fi * 0.5) + t * (1.4 + rnd * 1.2 + fi * 0.4) + rnd * 10.0);
+      float lit = step(0.45, rnd);
+      streak += smoothstep(0.82, 1.0, y) * smoothstep(1.0, 0.97, y) * lit
+        * smoothstep(0.5, 0.0, abs(fract(ruv.x * cols) - 0.5)) * (1.0 - fi * 0.25);
     }
-    col += vec3(0.5, 0.6, 0.75) * streak * 0.12 * (0.6 + uNeonLevel);
+    col += vec3(0.55, 0.65, 0.8) * streak * 0.36 * (0.6 + uNeonLevel);
 
     // Highlights where the room's lantern catches the top of each drop.
     col += vec3(1.0, 0.75, 0.45) * pow(max(0.0, -offs.y * 40.0), 2.0) * mask * 0.25;
