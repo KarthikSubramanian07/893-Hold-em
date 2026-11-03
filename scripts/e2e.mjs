@@ -106,7 +106,7 @@ step('guest joined through the invite link');
 
 // Two regulars fill chairs; the host starts the night.
 for (let i = 0; i < 2; i++) {
-  await host.getByRole('button', { name: /seat a regular/i }).click();
+  await host.getByRole('button', { name: /add a bot/i }).click();
   await host.waitForTimeout(400);
 }
 await host.waitForTimeout(800);

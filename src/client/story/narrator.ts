@@ -38,6 +38,7 @@ import {
   WELCOME,
   type Bank,
 } from './lines';
+import { isPracticeCode } from '../net/practice';
 import { maskFor } from './masks';
 import { regularFor } from './regulars';
 import type { Line, Mood, RegularName, ShowdownKind, Speaker } from './types';
@@ -182,6 +183,7 @@ function welcome(view: GameView, you: string | null, ctx: NarrateContext): Line 
   if (egg === 'cat') return say('cat', 'wry', '九');
   if (is893Code(view.code)) return say('code893', 'gold', '八九三');
   if (hour === 3) return say('threeAm', 'hush', '三');
+  if (isPracticeCode(view.code)) return say('practice');
   return say(ctx.returning ? 'returning' : 'first');
 }
 

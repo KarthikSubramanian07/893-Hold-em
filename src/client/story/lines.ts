@@ -39,6 +39,11 @@ export const WELCOME = {
     'Six stools, one table, one cat. The House sits across. The cat sits wherever she likes.',
     'Send the link to bring your crew. Strangers welcome. Everyone here was a stranger once, and owed money twice.',
   ],
+  practice: [
+    'Just you and the regulars tonight. Nobody is watching. Well, the cat.',
+    'Practice table. Real cards, fake stakes. The regulars play like it’s neither.',
+    'Learn the calls here. The regulars won’t tell anyone how it went. Tetsu might.',
+  ],
   returning: ['Back again. Same stool. I didn’t dust it.', 'Welcome back. Your tab is still zero. Let’s keep it that way.'],
   rejoin: ['Your seat held. You were dealt in while you were gone.'],
   spectator: ['The table is full tonight. You can watch.'],
