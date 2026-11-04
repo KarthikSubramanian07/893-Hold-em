@@ -209,16 +209,16 @@ window.__audioLab = { names: Object.keys(VOICES) as VoiceName[], renderVoice, re
 function demoHand(): { view: GameView; hold: number }[] {
   const now = Date.now();
   const lockOne = (v: GameView, id: string): GameView => ({ ...v, seats: v.seats.map((s) => (s.id === id ? { ...s, locked: true } : s)) });
-  const pre = { ...FIXTURES.preflop!, hand: 1, rule: 'oni' as const, seats: FIXTURES.preflop!.seats.map((s) => ({ ...s, locked: false })) };
+  const nod = { ...FIXTURES.nod!, hand: 1, seats: FIXTURES.nod!.seats.map((s) => ({ ...s, locked: false })) };
   const at = (v: GameView, offset: number, deadline: number | null): GameView => ({ ...v, now: now + offset, deadline: deadline === null ? null : now + deadline });
-  const river = FIXTURES.river!;
+  const call = FIXTURES.call!;
   return [
     { view: at(FIXTURES.lobby!, 0, null), hold: 600 },
-    { view: at(pre, 600, 6_400), hold: 1_200 },
-    { view: at(lockOne(pre, 's1'), 1_800, 6_400), hold: 900 },
-    { view: at(lockOne(lockOne(pre, 's1'), 's0'), 2_700, 6_400), hold: 4_300 },
+    { view: at(nod, 600, 6_400), hold: 1_200 },
+    { view: at(lockOne(nod, 's1'), 1_800, 6_400), hold: 900 },
+    { view: at(lockOne(lockOne(nod, 's1'), 's2'), 2_700, 6_400), hold: 4_300 },
     // Same hand number throughout, so the river reads as the hand moving on, not a new deal.
-    { view: at({ ...river, hand: 1, rule: 'kagami', seats: river.seats.map((s) => ({ ...s, locked: false })) }, 7_000, 11_500), hold: 4_800 },
+    { view: at({ ...call, hand: 1, seats: call.seats.map((s) => ({ ...s, locked: false })) }, 7_000, 11_500), hold: 4_800 },
     { view: at({ ...FIXTURES.showdown!, hand: 1 }, 11_800, null), hold: 3_200 },
     { view: at(FIXTURES.over!, 15_000, null), hold: 0 },
   ];

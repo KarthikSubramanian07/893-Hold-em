@@ -25,15 +25,17 @@ WebAudio, and there are no sample files.
 ## The palette
 
 - **Strings.** Karplus-Strong plucks tuned to miyako-bushi. The shamisen is bright,
-  with a bachi snap, and plays the House Rule and the showdown answer. The koto is
+  with a bachi snap, and plays the showdown answer. The koto is
   round and long, and plays wins, ties, and losses.
-- **Table.** The card flick and the softer flip, lacquer tokens as modal clacks,
-  the hanko thunk on your lock-in (with a muffled, panned one for everyone else's),
-  the felt slide of a fold, and a wood-block tick for the last five seconds.
+- **Table.** The card flick and the softer flip, a knuckle on the lacquer for a
+  nod, the hanko thunk when you lock In (lighter for Out), a muffled, panned
+  stamp for everyone else deciding, and a wood-block tick for the last five seconds.
+- **Nods and the reveal.** A rising run of rin chimes when the nods turn over,
+  and an upward koto shimmer when your own cards finally flip at the showdown.
 - **Taiko.** A roll that gathers into one big hit at the showdown.
 - **Endings.** A koto run and a rin chime for a win. A sour, detuned low pluck and a
   neon tube stuttering at 100 Hz for a loss. Three stings close the night: clean,
-  raid, and short.
+  raid, and dawn (last orders).
 
 Each play nudges pitch, timing, level, and pan a little, so repeats never sound
 canned.
@@ -42,9 +44,9 @@ canned.
 
 - Nothing makes a sound, and no `AudioContext` exists, until `sfx.unlock()` runs
   inside a user gesture.
-- Joining mid-hand is quiet. Only the call countdown is picked up.
+- Joining mid-hand is quiet. Only the nod or call countdown is picked up.
 - Busy updates are capped and staggered: at most 8 deals, 5 flips (3 at the
-  showdown), and 4 chips.
+  showdown), and 3 distant stamps.
 
 ## Checking it without ears
 
