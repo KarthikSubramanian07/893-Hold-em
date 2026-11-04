@@ -892,7 +892,7 @@ mod tests {
             assert_eq!(s.hole.len(), 2);
             all.extend(&s.hole);
         }
-        assert_eq!(g.house.len(), 8);
+        assert_eq!(g.house.len(), house_cards(Difficulty::Oyabun, 6));
         assert!(HOUSE_UP < g.house.len());
         all.extend(&g.house);
         let n = all.len();

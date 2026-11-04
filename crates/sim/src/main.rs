@@ -45,12 +45,13 @@ fn table_name(d: Difficulty) -> &'static str {
 }
 
 /// The sirens' distance per table and crew: about two bad hands with the
-/// whole crew In, a step closer at the harder tables.
+/// whole crew In, a step closer at each harder table.
 fn sirens_for(d: Difficulty, crew: usize) -> u32 {
     let base = 2 * crew as u32;
     match d {
         Difficulty::Shitamachi => base + 1,
-        Difficulty::Kabukicho | Difficulty::Oyabun => base,
+        Difficulty::Kabukicho => base,
+        Difficulty::Oyabun => base - 1,
     }
 }
 
@@ -341,8 +342,10 @@ fn tune(nights: u64, samples: u32, knobs: &Knobs) {
         header();
         for crew in MIN_CREW..=MAX_CREW {
             let sirens = sirens_for(*d, crew);
-            // Clean rate falls as the door moves away: bisect on the door.
-            let (mut lo, mut hi) = (2u32, 5 * crew as u32);
+            // Clean rate falls as the door moves away: bisect on the door. The
+            // door is never so close that one lucky hand ends the night.
+            let floor = crew as u32 + 1;
+            let (mut lo, mut hi) = (floor, 5 * crew as u32);
             let mut best: Option<(u32, f64)> = None;
             while lo <= hi {
                 let mid = (lo + hi) / 2;
@@ -353,13 +356,32 @@ fn tune(nights: u64, samples: u32, knobs: &Knobs) {
                 }
                 if c > GOALS[ti] {
                     lo = mid + 1;
-                } else if mid == 0 {
-                    break;
                 } else {
                     hi = mid - 1;
                 }
             }
-            let door = best.expect("searched").0;
+            // One step either way on both ends, scored on the goal, on nights of
+            // a sensible length, and on rarely running out the clock.
+            let coarse = best.expect("searched").0;
+            let score = |s: &Stats| {
+                let hands = s.hands as f64 / s.nights.max(1) as f64;
+                let dawn = s.dawn as f64 / s.nights.max(1) as f64;
+                (s.clean_rate() - GOALS[ti]).abs()
+                    + 0.05 * (5.0 - hands).max(0.0)
+                    + 0.05 * (hands - 8.0).max(0.0)
+                    + 0.5 * (dawn - 0.15).max(0.0)
+            };
+            let mut pick = (coarse, sirens, f64::MAX);
+            for door in coarse.saturating_sub(1).max(floor)..=coarse + 1 {
+                for sir in sirens.saturating_sub(1).max(crew as u32)..=sirens + 1 {
+                    let s = batch(*d, crew, nights, 1, samples, knobs, (door, sir), Policy::Regular);
+                    let v = score(&s);
+                    if v < pick.2 {
+                        pick = (door, sir, v);
+                    }
+                }
+            }
+            let (door, sirens) = (pick.0, pick.1);
             table[ti][crew - MIN_CREW] = (door, sirens);
             // Confirm on fresh deals.
             let s = batch(*d, crew, nights, 1_000_003, samples, knobs, (door, sirens), Policy::Regular);
