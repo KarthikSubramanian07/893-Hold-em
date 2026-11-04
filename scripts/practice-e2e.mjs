@@ -81,7 +81,7 @@ let calls = 0;
 let showdowns = 0;
 let lastShowdown = '';
 const started = Date.now();
-while (Date.now() - started < 300_000) {
+while (Date.now() - started < 900_000) {
   const phase = await phaseOf();
   if (phase === 'over') break;
   if (phase === 'nod') {

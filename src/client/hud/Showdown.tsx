@@ -94,7 +94,7 @@ export function Showdown({ view }: { view: GameView }) {
                   <span className="sdseat__none">no nods</span>
                 )}
               </span>
-              {s.champion && <span className="sdseat__tag">carried</span>}
+              {s.champion && <span className="sdseat__tag">{r.outcome === 'crew' ? 'carried' : 'led'}</span>}
               {could && <span className="sdseat__tag sdseat__tag--could">could have</span>}
             </li>
           );
