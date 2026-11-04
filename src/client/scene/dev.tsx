@@ -1,11 +1,13 @@
 // Dev-only scene lab, served at /scene.html by `vite`. Never built.
 // Alt+1–5 pick a fixture, Alt+P plays a scripted hand, Alt+G toggles the HUD
 // guides (Alt, so typing 8 9 3 or kanpai reaches the easter eggs instead).
-// URL params: ?fixture=<name>&quality=low|high&heat=<n>&outcome=crew|house|tie|walked
+// URL params: ?fixture=<name>&quality=low|high&meter=<n>&outcome=crew|house|tie|walked
+//             &verdict=clean|raid|dawn&table=shitamachi|kabukicho|oyabun&crew=<2..6>
 
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { GameView, HandOutcome } from '../../engine/types';
+import { houseCardsFor } from '../../engine/rules';
+import type { GameView, HandOutcome, Slot } from '../../engine/types';
 import { FIXTURES } from '../dev/fixtures';
 import { installEggs } from '../story/eggs';
 import { TableScene } from './index';
@@ -15,124 +17,76 @@ const clone = (v: GameView): GameView => structuredClone(v);
 /** A hand from an empty lobby to the showdown, so every transition can be watched. */
 function script(): { name: string; view: GameView; hold: number }[] {
   const lobby = clone(FIXTURES.lobby!);
-  const pre = clone(FIXTURES.preflop!);
-  const river = clone(FIXTURES.river!);
+  const nod = clone(FIXTURES.nod!);
+  const call = clone(FIXTURES.call!);
   const show = clone(FIXTURES.showdown!);
-  const seats4 = show.seats.map((s) => ({ ...s, hand: null, champion: false }));
-  const deal: GameView = {
-    ...pre,
-    seats: seats4.map((s, i) => ({
-      ...s,
-      cards: i === 0 ? ['Ah', 'Kd'] : ['back', 'back'],
-      active: true,
-      stake: 1,
-      locked: false,
-      calls: [null, null, null, null],
-    })),
-    board: [null, null, null, null, null],
-  };
+  const fresh = nod.seats.map((s) => ({ ...s, locked: false, nod: null, stance: null }));
+  const deal: GameView = { ...nod, seats: fresh, board: [null, null, null, null, null] };
   const lobbyFull: GameView = { ...lobby, seats: deal.seats.map((s) => ({ ...s, cards: [] })) };
-  const flop: GameView = {
-    ...deal,
-    street: 1,
-    hand: 3,
-    rule: 'kagami',
-    house: river.house.slice(0, 2),
-    board: ['Kh', '7s', '7d', null, null],
-    seats: deal.seats.map((s, i) => ({
-      ...s,
-      stake: i === 1 ? 2 : 1,
-      calls: [i === 1 ? 'raise' : 'stay', null, null, null],
-      locked: i === 3,
-    })),
-  };
-  const turn: GameView = {
-    ...flop,
-    street: 2,
-    board: ['Kh', '7s', '7d', '2c', null],
-    heat: 4,
-    seats: flop.seats.map((s, i) => ({
-      ...s,
-      stake: i === 0 ? 2 : i === 1 ? 3 : 1,
-      active: i !== 2,
-      calls: [s.calls[0]!, i === 2 ? 'fold' : i < 2 ? 'raise' : 'stay', null, null],
-      locked: false,
-    })),
-  };
-  const riv: GameView = {
-    ...turn,
-    street: 3,
-    board: ['Kh', '7s', '7d', '2c', 'Qh'],
-    seats: turn.seats.map((s, i) => ({ ...s, calls: [s.calls[0]!, s.calls[1]!, i === 2 ? null : 'stay', null], locked: i === 1 })),
-  };
-  // Six seats, four masks (Oni), calls hidden under Hush: the busiest table.
+  const flop: GameView = { ...nod, seats: fresh };
+  const nodding: GameView = { ...nod, seats: fresh.map((s, i) => ({ ...s, locked: i !== 2 })) };
+  const river: GameView = { ...call, hand: nod.hand, seats: call.seats.map((s) => ({ ...s, locked: false })) };
+  const locked: GameView = { ...river, meter: -5, seats: river.seats.map((s, i) => ({ ...s, locked: i % 2 === 0 })) };
+  // Six seats at Oyabun, five House cards, the marker one step from the sirens: the busiest table.
   const names = ['Karthik', 'Mio', 'Ren', 'Daichi', 'Sora', 'Yuki'];
   const crowd: GameView = {
-    ...riv,
-    rule: 'shizuka',
-    heat: 6,
+    ...river,
+    config: { ...river.config, difficulty: 'oyabun' },
+    meter: -7,
+    door: 12,
+    sirens: 8,
     seats: names.map((n, i) => ({
-      ...deal.seats[0]!,
+      ...river.seats[1]!,
       id: `s${i}`,
       name: n,
       avatar: (['kitsune', 'koi', 'tora', 'tanuki', 'tsuru', 'karasu'] as const)[i]!,
-      cards: i === 0 ? ['Qs', 'Qd'] : ['back', 'back'],
-      active: i !== 4,
-      stake: i === 0 ? 2 : null,
+      cards: i === 0 ? ['back', 'back'] : (['Qs', 'Qd'] as Slot[]),
       locked: i % 2 === 1,
       connected: i !== 5,
-      calls: ['hidden', 'hidden', i === 4 ? 'fold' : 'hidden', null],
+      nod: i === 0 ? null : `s${(i + 1) % 6}`,
     })),
-    house: [0, 1, 2, 3].map(() => ({ cards: ['back', 'back'], hand: null, champion: false })),
+    house: { cards: ['9c', 'back', 'back', 'back', 'back'], hand: null },
   };
   return [
     { name: 'crowd', view: crowd, hold: 3000 },
     { name: 'lobby', view: lobby, hold: 2200 },
     { name: 'lobby (full)', view: lobbyFull, hold: 2200 },
     { name: 'deal', view: deal, hold: 3200 },
-    { name: 'flop', view: flop, hold: 3600 },
-    { name: 'turn', view: turn, hold: 3600 },
-    { name: 'river', view: riv, hold: 3600 },
+    { name: 'flop', view: flop, hold: 3000 },
+    { name: 'nodding', view: nodding, hold: 2600 },
+    { name: 'river (nods revealed)', view: river, hold: 3600 },
+    { name: 'call (locking)', view: locked, hold: 3000 },
     { name: 'showdown', view: show, hold: 7000 },
   ];
 }
 
 function applyParams(view: GameView, params: URLSearchParams): GameView {
   const v = clone(view);
-  const heat = params.get('heat');
-  if (heat !== null) v.heat = Number(heat);
+  const meter = params.get('meter');
+  if (meter !== null) v.meter = Number(meter);
   const outcome = params.get('outcome') as HandOutcome | null;
   if (outcome && v.result) v.result.outcome = outcome;
   const verdict = params.get('verdict');
-  if (verdict === 'clean' || verdict === 'raid' || verdict === 'short') v.verdict = verdict;
-  const rule = params.get('rule');
-  if (rule) v.rule = rule as GameView['rule'];
+  if (verdict === 'clean' || verdict === 'raid' || verdict === 'dawn') v.verdict = verdict;
   const table = params.get('table');
-  if (table === 'shitamachi' || table === 'kabukicho' || table === 'oyabun') v.config.difficulty = table;
-  // masks=<1..4> reshapes the crew and the House: n masks face 2n players, and
-  // the fourth mask only ever comes with the Oni.
-  const masks = Number(params.get('masks') ?? 0);
+  if (table === 'shitamachi' || table === 'kabukicho' || table === 'oyabun') {
+    v.config.difficulty = table;
+    if (v.phase !== 'lobby') {
+      const n = houseCardsFor(table, v.seats.length);
+      v.house = { ...v.house, cards: Array.from({ length: n }, (_, i) => v.house.cards[i] ?? (v.phase === 'showdown' ? '2c' : 'back')) };
+    }
+  }
   const crewParam = Number(params.get('crew') ?? 0);
-  if ((masks || crewParam) && v.phase !== 'lobby') {
-    const oni = masks === 4 || v.rule === 'oni';
-    if (masks === 4) v.rule = 'oni';
-    const crew = crewParam || Math.min(6, oni ? 2 * (masks - 1) : 2 * masks);
+  if (crewParam && v.phase !== 'lobby') {
     const names = ['Karthik', 'Mio', 'Ren', 'Daichi', 'Sora', 'Yuki'];
     const avatars = ['kitsune', 'koi', 'tora', 'tanuki', 'tsuru', 'karasu'] as const;
     const template = v.seats[v.seats.length - 1]!;
-    v.seats = Array.from({ length: crew }, (_, i) => v.seats[i] ?? { ...structuredClone(template), id: `s${i}`, name: names[i]!, avatar: avatars[i]!, champion: false });
-    const count = masks || Math.ceil(crew / 2) + (oni ? 1 : 0);
-    const proto = v.house[0] ?? { cards: ['back', 'back'], hand: null, champion: false };
-    v.house = Array.from({ length: count }, (_, i) => v.house[i] ?? { ...structuredClone(proto), champion: false });
+    v.seats = Array.from({ length: Math.min(6, crewParam) }, (_, i) => v.seats[i] ?? { ...structuredClone(template), id: `s${i}`, name: names[i]!, avatar: avatars[i]!, champion: false });
   }
-  // Watchers as the engine assigns them: pairs of seats, in seat order.
-  v.seats = v.seats.map((s, k) => ({ ...s, watcher: v.phase === 'lobby' || !v.house.length ? null : Math.min(Math.floor(k / 2), v.house.length - 1) }));
-  const burned = params.get('burned');
-  if (burned !== null && v.result) v.result.burned = burned ? burned.split(',') : [];
   return v;
 }
 
-const NAMES = ['lobby', 'preflop', 'river', 'showdown', 'over'];
+const NAMES = ['lobby', 'nod', 'call', 'showdown', 'over'];
 
 function Lab() {
   const params = useMemo(() => new URLSearchParams(location.search), []);

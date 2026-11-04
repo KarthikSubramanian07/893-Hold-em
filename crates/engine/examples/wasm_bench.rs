@@ -7,9 +7,12 @@
 //! node crates/engine/examples/wasm_bench.mjs target/wasm32-unknown-unknown/wasm/examples/wasm_bench.wasm
 //! ```
 
+use hachi_engine::bot::{Temperament, call, nod};
 use hachi_engine::card::{Card, Rng, full_deck};
-use hachi_engine::equity::{Spot, estimate};
 use hachi_engine::eval::score_best;
+use hachi_engine::game::Game;
+use hachi_engine::rules::Difficulty;
+use hachi_engine::view::view_for;
 
 /// Score `n` random seven-card hands (dealt up front, outside the timed part
 /// as far as possible: one shuffle per 1,024 hands). Returns a checksum.
@@ -32,23 +35,33 @@ pub extern "C" fn bench_score(n: u32) -> u32 {
     sink
 }
 
-/// Run `reps` preflop estimates of 2,000 samples against three hidden House hands.
+/// Run `reps` full regular decisions (a nod and an In/Out call, 300 samples
+/// each) at a six-seat Oyabun table. Returns the mean of a checksum.
 #[unsafe(no_mangle)]
-pub extern "C" fn bench_estimate(reps: u32) -> f64 {
-    let mut rng = Rng::seeded(0x893);
-    let deck = full_deck();
-    let house = [[None, None]; 3];
-    let spot = Spot {
-        hole: [deck[51], deck[47]],
-        board: &[],
-        board_total: 5,
-        house: &house,
-        dead: &[],
-        lowball: false,
-    };
+pub extern "C" fn bench_decide(reps: u32) -> f64 {
+    let mut g = Game::new("K7QX2", 0x893);
+    let a = g.join("pid-aaaaaaaa", "A", "koi").unwrap();
+    for _ in 0..5 {
+        g.add_bot(&a).unwrap();
+    }
+    g.set_config(&a, Some(Difficulty::Oyabun), None).unwrap();
+    g.start(&a, 0).unwrap();
+    let flop = view_for(&g, Some("s1"), 0);
+    for s in ["s0", "s1", "s2", "s3", "s4", "s5"] {
+        g.nod(s, Some(if s == "s0" { "s1" } else { "s0" }), 0)
+            .unwrap();
+    }
+    let river = view_for(&g, Some("s1"), 0);
+    let t = Temperament::for_seat("bot:1");
+    let mut rng = hachi_engine::card::Rng::seeded(7);
     let mut total = 0.0;
     for _ in 0..reps {
-        total += estimate(std::hint::black_box(&spot), 2_000, &mut rng).win;
+        total += f64::from(u8::from(
+            nod(std::hint::black_box(&flop), "s1", t, &mut rng).is_some(),
+        ));
+        total += f64::from(u8::from(
+            call(std::hint::black_box(&river), "s1", t, &mut rng) == hachi_engine::game::Stance::In,
+        ));
     }
-    total / reps as f64
+    total / f64::from(reps.max(1))
 }

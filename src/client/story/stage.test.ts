@@ -69,6 +69,7 @@ describe('eggRemark', () => {
 describe('subtitleSlot', () => {
   it('floats over the room during a hand', () => {
     expect(subtitleSlot('call')).toBe('float');
+    expect(subtitleSlot('nod')).toBe('float');
     expect(subtitleSlot('showdown', false)).toBe('float');
   });
 
@@ -97,7 +98,7 @@ describe('idleDue', () => {
     const lobby = fixture('lobby');
     expect(idleDue(lobby, 0, IDLE_EVERY_MS)).toBe(true);
     expect(idleDue(lobby, 1000, IDLE_EVERY_MS)).toBe(false);
-    expect(idleDue(fixture('preflop'), 0, IDLE_EVERY_MS * 2)).toBe(false);
+    expect(idleDue(fixture('nod'), 0, IDLE_EVERY_MS * 2)).toBe(false);
     expect(idleDue(null, 0, IDLE_EVERY_MS * 2)).toBe(false);
   });
 });

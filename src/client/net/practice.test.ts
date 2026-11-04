@@ -44,10 +44,16 @@ describe('useTable on the practice table', () => {
     expect(s.view!.seats.filter((x) => x.bot)).toHaveLength(3);
 
     s.send({ t: 'start' });
-    expect(useTable.getState().view!.phase).toBe('call');
+    expect(useTable.getState().view!.phase).toBe('nod');
     await vi.advanceTimersByTimeAsync(7_000);
-    const bots = useTable.getState().view!.seats.filter((x) => x.bot);
-    expect(bots.every((b) => b.locked || !b.active || useTable.getState().view!.street > 0)).toBe(true);
+    // The regulars nod (or pass) on their own; only you are left.
+    const v = useTable.getState().view!;
+    expect(v.phase).toBe('nod');
+    expect(v.seats.filter((x) => x.bot).every((b) => b.locked)).toBe(true);
+    useTable.getState().nod('s1');
+    expect(useTable.getState().view!.phase).toBe('call');
+    useTable.getState().call('in');
+    expect(useTable.getState().view!.seats[0]!.stance ?? 'in').toBe('in');
 
     useTable.getState().leave();
     expect(useTable.getState().status).toBe('idle');

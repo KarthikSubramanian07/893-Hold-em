@@ -1,4 +1,4 @@
-// The House Rule card that isn't in any deck. It slides out when someone
+// The card that isn't in any deck. It slides out when someone
 // enters the Konami code, and goes back when you tap it.
 
 import { BUTA_CARD } from './eggs';

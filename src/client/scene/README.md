@@ -2,11 +2,11 @@
 
 > 3 a.m. in a Golden Gai bar, printed as a risograph.
 
-![Four masks across the table under the Hush rule](../../../docs/media/night-table-masks.png)
-
 The 3D table for 893 Hold'em: one paper lantern over a black urushi oval,
-rain on the window behind the House, neon kanji bleeding through it, and the
-masks of whichever table you sat down at, each one watching two of you.
+rain on the window behind the House, neon kanji bleeding through it, and one
+masked House across the table with its cards in a row before it. Everyone's
+cards lie face up for the rest of the crew to read, except yours: you hold
+yours up to the camera, backs out, each one marked with a "?".
 
 ```tsx
 import { TableScene } from './scene';
@@ -34,7 +34,7 @@ GameView ──► derive.ts ──► SceneTargets ──► components damp to
   at runtime and cached. The environment map is built from `<Lightformer>`s.
   The troika name plates are clamped to Latin‑1 so troika never reaches for a
   CDN fallback font.
-- **Shared per-frame values** (heat, neon, police lights, haze, the lantern's
+- **Shared per-frame values** (danger, neon, police lights, haze, the lantern's
   swaying position) live in one mutable bag (`live.ts`), damped once per frame
   by `<LiveDriver>`.
 
@@ -43,24 +43,23 @@ GameView ──► derive.ts ──► SceneTargets ──► components damp to
 | File | What it is |
 | --- | --- |
 | `index.tsx` | `<TableScene>`: canvas, lights, performance monitor, suspense on fonts |
-| `derive.ts` | View → targets: seat order, champions' best five, mask identities and moods, watchers, who was seen, heat → neon / police / haze |
-| `watch.ts` | Pure watcher rules: who watches which seat, seen or clear at the showdown, each mask's tag colour and kanji |
-| `layout.ts` | Seat arc, the far-side composition (masks, lantern, rule card), seat anchors, board slots, camera framing, a pure `projectNdc` |
+| `derive.ts` | View → targets: seat order, best fives, the House's mask and mood, nods received and nod threads, In/Out slips, marker → danger → neon / police / haze |
+| `layout.ts` | Seat arc, the far-side composition (the House and the lantern), the House's card row, seat anchors, board slots, camera framing, a pure `projectNdc` |
 | `maskShapes.ts` | The sculpt of all eight masks as outlines and height fields, shared by the mesh and the paint |
 | `anchors.ts` / `AnchorTracker.tsx` | Each seat's position on screen, published for the HUD (see below) |
 | `eggFx.ts` / `EggListener.tsx` | The room's easter-egg reactions: pure envelopes, and a listener for `893:egg` |
-| `cardInfo.ts` | Card labels, kanji flourishes, texture keys, stance kanji (降 待 攻 伏) |
+| `cardInfo.ts` | Card labels, kanji flourishes, texture keys, stance kanji (入 In, 出 Out) |
 | `live.ts` / `LiveDriver.tsx` | The shared per-frame bag and its damping |
-| `CameraRig.tsx` | Aspect framing, slow breathing, pointer parallax, a lean-in as heat climbs |
+| `CameraRig.tsx` | Aspect framing, slow breathing, pointer parallax, a lean-in as the marker nears the sirens |
 | `parts/Table.tsx` | Urushi oval, gold maki-e rim, sashiko felt, ashtray, sake set |
 | `parts/Lantern.tsx` | The chōchin: ribbed lathe, glowing washi, swaying spot light with soft shadows; click it and it swings |
 | `parts/Room.tsx` | The rain-on-glass shader, neon signs, mullions, police lights |
-| `parts/Masks.tsx` | The House: carved, painted masks with their extras (ears, nose, horns, beard, eboshi), turning to watch their seats |
-| `parts/Watch.tsx` | Silk eye-lines from each mask to the seat it's looking at, and the showdown's 見 brand or quiet relief |
+| `parts/Masks.tsx` | The House: a carved, painted mask with its extras (ears, nose, horns, beard, eboshi), glancing from seat to seat, its cards in a row before it |
+| `parts/Nods.tsx` | Gold silk threads that bow from each nodder to the teammate they nodded at, once the nods turn over |
 | `parts/Bar.tsx` | The counter on the left wall: a tokkuri and two cups for kanpai, the Master's bulb, and Kyū on her nights |
-| `parts/Seats.tsx` | Place cards, avatar seals, stake tokens (and the Hush cup), lock candles, call slips |
-| `parts/Card.tsx` | One damped card: deal, flip with a hop, fold into the dark, showdown lift and glow |
-| `parts/Board.tsx` · `HeroCards.tsx` · `RuleCard.tsx` | The five, your two (held up to the camera), the House Rule |
+| `parts/Seats.tsx` | Place cards, avatar seals, face-up hole cards, lock candles, gold nod beads, In/Out slips |
+| `parts/Card.tsx` | One damped card: deal, flip with a hop, sit out into the dark, showdown lift and glow |
+| `parts/Board.tsx` · `HeroCards.tsx` | The five, and your two (held up to the camera, backs out with a "?" until the showdown) |
 | `fx/` | Dust in the lantern cone, cigarette smoke, tie smoke, gold leaf, the post stack |
 | `textures/` | Canvas painters for everything above |
 | `dev.tsx` | The scene lab (dev only, see below) |
@@ -70,61 +69,51 @@ GameView ──► derive.ts ──► SceneTargets ──► components damp to
 | View | On the table |
 | --- | --- |
 | `phase: 'lobby'` | Six chairs; seals and place cards pop in as people join |
-| `seats[].cards` | `null` absent, `'back'` face down, a card face up; `null → card` deals from the House |
-| `seats[].active = false` | Cards slide back and go dark |
-| `seats[].locked` | The seat's candle lights |
-| `seats[].calls` | The newest call drops as a stamped washi slip; `'hidden'` stamps 伏 |
-| `seats[].stake` | Lacquer tokens drop and clack; `null` (Hush) hides them under a cup |
+| `seats[].cards` | Teammates' cards lie face up; yours are `'back'` and float near the camera with a "?"; `null → card` deals from the House |
+| `seats[].locked` | The seat's candle lights (nodded or passed during `nod`; In or Out picked during `call`) |
+| `seats[].nod` | Once every nod is in: a gold thread bows from nodder to nodded, and the nodded seat collects a gold bead per nod |
+| `seats[].stance` | At the showdown a stamped washi slip drops: 入 In or 出 Out. Seats that sat out go dark |
 | `seats[].connected = false` | The seat dims |
-| `seats[].watcher` | A small hanko in the watching mask's colour on the seat's name plate; a faint thread from the mask when it looks that way |
-| `house[]` + `config.difficulty` + `rule` | One masked figure per hand, the mask `maskFor()` names for this table (the Oni under his rule), cards in front |
-| `result.burned` | At the showdown, seen seats get a red thread, a red bloom, and a 見 brand; the watcher's eyes flare even when the crew wins. Everyone else still in lets out a breath |
-| `rule` | The tall lacquer card spins in from its back |
-| `heat / heatLimit` | Neon burns hotter and flickers faster; police lights strobe past half; the camera leans in |
-| `phase: 'showdown'` | Champions' best five lift and glow: kin gold for the crew, neon red for the House |
-| `result.outcome` | Crew: gold leaf. House: eyes flare, neon surges, heat haze. Tie: smoke. Walked: the lantern dims |
-| `verdict` | Clean: gold leaf. Raid: police lights full. Short: a dim lantern |
+| `house.cards` + `config.difficulty` | One masked figure (Okame, Kitsune or the Okina by table) with 3, 4 or 5 cards before it, the first face up |
+| `meter / door / sirens` | As the marker slides toward the sirens: neon burns hotter and flickers faster, police lights strobe through the window, the camera leans in |
+| `phase: 'showdown'` | Your own cards turn over; the best fives lift and glow: kin gold for the crew, neon red for the House |
+| `result.outcome` | Crew: gold leaf, the House retreats. House: eyes flare, neon surges, heat haze. Tie: smoke. Everyone Out: the lantern dims |
+| `verdict` | Clean: gold leaf. Raid: police lights full. Dawn: a dim lantern |
 
-## The masks
+## The House
 
-Each table seats its own masks, in hand order, straight from
-`story/masks.ts`:
+The House wears one mask per table, straight from `story/masks.ts`:
 
-| Table | Masks |
-| --- | --- |
-| Shitamachi | Okame, Hyottoko, Ebisu |
-| Kabukichō | Kitsune, Tengu, Hannya |
-| Oyabun | Okina, Hannya, Kitsune |
-| Any, under the Oni rule | the last seat goes to the Oni |
+| Table | The House | Cards it holds |
+| --- | --- | --- |
+| Shitamachi | Okame | 3 |
+| Kabukichō | Kitsune | 4 |
+| Oyabun | Okina | 5 |
 
 Every face is one height field over face coordinates (`maskShapes.ts`): a
 lacquered shell with a rolled rim, carved sockets, and per-mask sculpting
 (Okame's plum cheeks, the fox's muzzle, the hannya's mouth torn to the ears).
 The texture painter (`textures/masks.ts`) works in the same coordinates and
 bakes soft light and cavity shading from the same field, so paint and carving
-always agree. Anything that isn't a height field is built alongside: fox ears,
-the tengu's nose and tokin, gold hannya horns, the Oni's horns and tusks,
-the Okina's brow tufts and beard, Ebisu's eboshi, Hyottoko's pursed mouth and
-tenugui knot.
+always agree. The other masks (Hyottoko, Ebisu, Tengu, Hannya, the Oni) are
+still carved and painted; the scene lab can seat them.
 
-The far side is composed as one piece (`stageLayout`): the lantern hangs in a
-gap between masks (or beside a lone mask), and the rule card stands in another,
-so no face is ever behind either. Tests project the boxes through the resting
-camera at 1440×900, 1280×800, 1024×768 and 390×844 and fail on any overlap.
+The far side is composed as one piece (`stageLayout`): the lantern hangs beside
+the House, never in front of its face, and the House's card row is drawn in
+toward the middle. Tests project the boxes through the resting camera at
+1440×900, 1280×800, 1024×768 and 390×844 and fail on any overlap or any House
+card off screen.
 
-## Who's watching
+## Nods
 
-Each mask watches two seats in seat order (mask 0 the first two, and so on;
-an Oni's extra mask watches nobody). Your heat check is against your watcher.
-
-- The mask glances slowly between its two seats; a faint silk thread in its
-  colour runs from between its eyes to the plate it's looking at.
-- Each seat's name plate (your own seal, for you) carries a small hanko in the
-  watcher's colour and kanji.
-- At the showdown, 1.5 s after the cards turn: a seat that drew heat is seen.
-  Its watcher snaps round, leans in, eyes flaring red, the thread pulls taut
-  and red, the seat blooms red and is branded 見. Seats that got away with it
-  get one soft warm breath, and their thread goes slack and fades.
+- During `nod` nothing shows: nods are secret until every one is in.
+- When the call opens, each nod becomes a gold silk thread that grows from the
+  nodder's seat, bows over the table, and settles on the teammate they
+  nodded at. It flashes bright, then rests as a faint line through the call
+  and the showdown.
+- The nodded seat collects one small gold bead per nod beside its place card.
+- At the showdown the House turns to stare down the hand that beat it (or the
+  first player In, when it wins).
 
 ## Story hooks
 
@@ -170,7 +159,7 @@ cheap. `visible` is false when a seat is off screen.
   the post stack only if it really can't keep up (under 24 fps). The pixel ratio
   is capped at 1.75.
 - `prefers-reduced-motion` stills the camera, the lantern sway, and the masks'
-  drift (they settle between their two seats instead of glancing), shortens the
+  drift (the House settles on one seat instead of glancing), shortens the
   lantern's swing and the cups' lift, softens the neon stutter, and slows the
   rain.
 - Masks are about 6.5k vertices each plus a few small extras; textures are
@@ -182,19 +171,18 @@ cheap. `visible` is false when a seat is off screen.
 
 ```sh
 npx vite --port 5191
-open http://localhost:5191/scene.html?fixture=river
+open http://localhost:5191/scene.html?fixture=call
 ```
 
 `Alt`+`1`–`5` pick a fixture, `Alt`+`P` plays a scripted hand (lobby → deal →
-flop → turn → river → showdown), `Alt`+`G` shows the HUD guide bands, `Alt`+`H`
+flop → nods → river → call → showdown), `Alt`+`G` shows the HUD guide bands, `Alt`+`H`
 hides the buttons. Lab keys need Alt so that typing `893` or `kanpai` reaches
 the easter eggs.
-URL params: `fixture=lobby|preflop|river|showdown|over|crowd`,
-`quality=low`, `heat=<n>`, `outcome=crew|house|tie|walked`,
-`verdict=clean|raid|short`, `rule=<id>`, `clean` (no buttons), `play`,
-`table=shitamachi|kabukicho|oyabun`, `masks=1..4` (reshapes the crew to
-match; 4 brings the Oni), `crew=<n>`, `burned=s0,s3` (who was seen; empty for
-nobody), `cat` / `cat=0`. The lab installs the keyboard eggs, so typing `893`
+URL params: `fixture=lobby|nod|call|showdown|over|crowd`,
+`quality=low`, `meter=<n>`, `outcome=crew|house|tie|walked`,
+`verdict=clean|raid|dawn`, `clean` (no buttons), `play`,
+`table=shitamachi|kabukicho|oyabun` (also resizes the House's hand),
+`crew=<n>`, `cat` / `cat=0`. The lab installs the keyboard eggs, so typing `893`
 or `kanpai` works.
 
 `scene.html` is never built; Vite only builds `index.html`.

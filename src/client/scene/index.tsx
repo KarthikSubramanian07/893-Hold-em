@@ -29,10 +29,9 @@ import { HeroCards } from './parts/HeroCards';
 import { Lantern } from './parts/Lantern';
 import { House } from './parts/Masks';
 import { Room } from './parts/Room';
-import { RuleCard } from './parts/RuleCard';
 import { Seats } from './parts/Seats';
 import { Table } from './parts/Table';
-import { Threads } from './parts/Watch';
+import { NodThreads } from './parts/Nods';
 
 export interface TableSceneProps {
   view: GameView;
@@ -77,11 +76,10 @@ function World({ targets, high, dpr, cat }: { targets: SceneTargets; high: boole
       <AnchorTracker anchors={anchors} />
       <Lantern shadows rest={stage.lantern} />
       <House house={targets.house} spots={stage.masks} scale={stage.scale} anchors={anchors} />
-      <RuleCard rule={targets.rule} position={[stage.rule.x, stage.rule.y, stage.rule.z]} />
       <Board board={targets.board} showdown={showdown} />
-      <Seats seats={targets.seats} spots={spots} aspect={aspect} masks={targets.house.map((h) => h.mask)} />
-      <Threads seats={targets.seats} house={targets.house} anchors={anchors} />
-      <HeroCards cards={targets.heroCards} glow={targets.heroGlow} folded={!!hero && !hero.active && targets.phase === 'call'} />
+      <Seats seats={targets.seats} spots={spots} aspect={aspect} />
+      <NodThreads nods={targets.nods} anchors={anchors} hand={targets.hand} />
+      <HeroCards cards={targets.heroCards} glow={targets.heroGlow} folded={!!hero && hero.out} />
       <Dust dpr={dpr} />
       <Smoke />
       <SmokePuff on={showdown && targets.outcome === 'tie'} />

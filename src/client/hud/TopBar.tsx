@@ -1,11 +1,12 @@
 // The calm strip across the top: where you are, how the night is going.
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { RULES } from '../../engine/rules';
+import type { ReactNode } from 'react';
+import { TABLES } from '../../engine/rules';
 import type { GameView } from '../../engine/types';
 import { sfx } from '../audio';
 import { IconCopy, IconSound } from '../ui/icons';
 import { Seal } from '../ui/Seal';
 import { isPracticeCode } from '../net/practice';
+import { meterProgress } from '../net/selectors';
 import { copyInvite } from './invite';
 import './practice.css';
 
@@ -46,15 +47,14 @@ export function TopBar({
 
       {inNight && (
         <div className="top__mid">
-          <HandPips hand={view.hand} hands={view.hands} />
-          <TakeMeter take={view.take} target={view.target} />
-          <HeatMeter heat={view.heat} limit={view.heatLimit} />
+          <HandCount hand={view.hand} lastOrders={view.lastOrders} />
+          <Track view={view} />
         </div>
       )}
 
       <div className="top__right">
         {extra}
-        {view.rule && <RuleChip id={view.rule} />}
+        <TableTag view={view} />
         <button
           type="button"
           className="icon-btn top__icon"
@@ -64,7 +64,7 @@ export function TopBar({
         >
           <IconSound muted={muted} />
         </button>
-        <button type="button" className="icon-btn top__icon top__q" onClick={onRules} aria-label="House rules">
+        <button type="button" className="icon-btn top__icon top__q" onClick={onRules} aria-label="How to play">
           ?
         </button>
       </div>
@@ -72,123 +72,67 @@ export function TopBar({
   );
 }
 
-function HandPips({ hand, hands }: { hand: number; hands: number }) {
+function HandCount({ hand, lastOrders }: { hand: number; lastOrders: number }) {
+  const last = hand >= lastOrders;
   return (
-    <div className="pips" role="img" aria-label={`Hand ${hand} of ${hands}`} title={`Hand ${hand} of ${hands} tonight`}>
-      <span className="top__k">Hand</span>
-      <span className="pips__row" aria-hidden="true">
-        {Array.from({ length: hands }, (_, i) => (
-          <i key={i} className={i + 1 < hand ? 'done' : i + 1 === hand ? 'now' : ''} />
-        ))}
-      </span>
+    <div className={`hcount${last ? ' is-last' : ''}`} title={`Hand ${hand}. Last orders after hand ${lastOrders}.`}>
+      <span className="top__k">{last ? 'Last orders' : 'Hand'}</span>
       <span className="top__v">
         {hand}
-        <span className="top__of">/{hands}</span>
+        <span className="top__of">/{lastOrders}</span>
       </span>
     </div>
   );
 }
 
-function TakeMeter({ take, target }: { take: number; target: number }) {
-  const pct = target > 0 ? Math.min(100, (take / target) * 100) : 0;
+/**
+ * The one meter: sirens on the left, the door on the right, the marker
+ * somewhere between. One tick per step.
+ */
+export function Track({ view, size = 'top' }: { view: Pick<GameView, 'meter' | 'door' | 'sirens'>; size?: 'top' | 'big' }) {
+  const p = meterProgress(view);
+  const ticks = Array.from({ length: p.span + 1 }, (_, i) => i - p.sirens);
+  const near = p.toSirens <= 2 ? ' is-hot' : p.toDoor <= 2 ? ' is-close' : '';
   return (
     <div
-      className="meter meter--take"
+      className={`track track--${size}${near}`}
       role="meter"
-      aria-label="Take"
-      aria-valuemin={0}
-      aria-valuemax={target}
-      aria-valuenow={take}
-      aria-valuetext={`${take} of ${target}. Reach ${target} by the last hand to get away clean.`}
-      title={`Take: money the crew has won. Reach ${target} by the end of hand 6 to get away clean.`}
+      aria-label="The marker"
+      aria-valuemin={-p.sirens}
+      aria-valuemax={p.door}
+      aria-valuenow={p.meter}
+      aria-valuetext={`${p.toDoor} ${p.toDoor === 1 ? 'step' : 'steps'} to the door, ${p.toSirens} to the sirens.`}
+      title={`${p.toDoor} to the door, ${p.toSirens} to the sirens`}
     >
-      <span className="top__k">
-        Take <span className="meter__kanji">円</span>
+      <span className="track__end track__end--sirens" aria-hidden="true">
+        <b>警</b>
+        <span>{p.toSirens}</span>
       </span>
-      <span className="meter__track" aria-hidden="true">
-        <span className="meter__fill" style={{ width: `${pct}%` }} />
+      <span className="track__rail" aria-hidden="true">
+        <span className="track__ticks">
+          {ticks.map((t) => (
+            <i key={t} className={t === 0 ? 'is-start' : t < 0 ? 'is-red' : 'is-gold'} />
+          ))}
+        </span>
+        <span className="track__marker" style={{ left: `${p.fraction * 100}%` }} />
       </span>
-      <span className="top__v">
-        {take}
-        <span className="top__of">/{target}</span>
+      <span className="track__end track__end--door" aria-hidden="true">
+        <span>{p.toDoor}</span>
+        <b>門</b>
       </span>
     </div>
   );
 }
 
-function HeatMeter({ heat, limit }: { heat: number; limit: number }) {
-  const hot = limit - heat <= 2;
+function TableTag({ view }: { view: GameView }) {
+  const t = TABLES[view.config.difficulty];
   return (
-    <div
-      className={`meter meter--heat${hot ? ' is-hot' : ''}`}
-      role="meter"
-      aria-label="Heat"
-      aria-valuemin={0}
-      aria-valuemax={limit}
-      aria-valuenow={heat}
-      aria-valuetext={`${heat} of ${limit}. ${hot ? 'Close to a raid.' : `The bar is raided at ${limit}.`}`}
-      title={`Heat: police attention. At ${limit} the bar is raided and the night ends.`}
-    >
-      <span className="top__k">
-        Heat <span className="meter__kanji">熱</span>
+    <span className="ttag" title={`${t.name}: the House holds ${t.house} cards and shows one.`}>
+      <b aria-hidden="true">{t.kanji}</b>
+      <span>
+        {t.name}
+        <small>House holds {t.house}</small>
       </span>
-      <span className="heat" aria-hidden="true">
-        {Array.from({ length: limit }, (_, i) => (
-          <i key={i} className={i < heat ? 'on' : ''} />
-        ))}
-      </span>
-      <span className="top__v">
-        {heat}
-        <span className="top__of">/{limit}</span>
-      </span>
-    </div>
-  );
-}
-
-function RuleChip({ id }: { id: NonNullable<GameView['rule']> }) {
-  const r = RULES[id];
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('pointerdown', away);
-    document.addEventListener('keydown', esc);
-    return () => {
-      document.removeEventListener('pointerdown', away);
-      document.removeEventListener('keydown', esc);
-    };
-  }, [open]);
-
-  return (
-    <div className="rule" ref={ref}>
-      <button
-        type="button"
-        className={`rule__chip rule__chip--${r.kind}`}
-        aria-expanded={open}
-        aria-controls="rule-pop"
-        onClick={() => {
-          sfx.click();
-          setOpen((o) => !o);
-        }}
-      >
-        <span className="rule__kanji">{r.kanji}</span>
-        <span className="rule__name">{r.name}</span>
-      </button>
-      {open && (
-        <div id="rule-pop" className="rule__pop" role="dialog" aria-label={`House Rule: ${r.name}`}>
-          <p className="label rule__k">House Rule · this hand</p>
-          <p className="rule__title">
-            <span>{r.kanji}</span> {r.name} <span className="rule__romaji">{r.romaji}</span>
-          </p>
-          <p className="rule__text">{r.text}</p>
-          <p className="rule__flavor">“{r.flavor}”</p>
-        </div>
-      )}
-    </div>
+    </span>
   );
 }

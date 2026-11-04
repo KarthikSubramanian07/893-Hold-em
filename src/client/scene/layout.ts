@@ -153,17 +153,16 @@ export interface Stage {
   scale: number;
   /** The lantern bulb's resting position. */
   lantern: Vec3;
-  /** The House Rule card's resting position. */
-  rule: Vec3;
 }
 
 /**
- * The far side of the table as one composition: masks, lantern, and the rule
- * card, arranged so no face is ever behind the lantern or the card.
+ * The far side of the table as one composition: the House (and, in the scene
+ * lab, any extra masks) and the lantern, arranged so no face is ever behind
+ * the lantern.
  *
- *   1 mask    lantern left, mask a touch right, rule card on the right
- *   2 or 4    lantern and rule card share the centre gap
- *   3         lantern in the left gap, rule card in the right gap
+ *   1 mask    lantern left, the House a touch right
+ *   2 or 4    lantern in the centre gap
+ *   3         lantern in the left gap
  *
  * Gap positions are found in screen space (the lantern hangs nearer the camera
  * than the masks, so its world x is scaled by the depth ratio).
@@ -174,27 +173,21 @@ export function stageLayout(count: number, aspect: number): Stage {
   const frame = cameraFrame(aspect);
   const masks = maskLayout(count, aspect);
   const y = lanternHeight(aspect);
-  let ruleX = 0;
   let gapX = 0;
   if (count === 1) {
     masks[0] = { ...masks[0]!, x: lerp(0.32, 0.42, t) };
     gapX = -lerp(0.62, 1.0, t);
-    ruleX = lerp(0.95, 1.2, t);
   } else if (count === 3) {
     gapX = (masks[0]!.x + masks[1]!.x) / 2;
-    ruleX = (masks[1]!.x + masks[2]!.x) / 2;
   } else if (count % 2 === 0) {
     gapX = 0;
-    ruleX = 0;
   }
   // Put the lantern where the gap is on screen, not in the world.
   const gap = { x: gapX, y: masks[0]?.y ?? 1, z: masks[0]?.z ?? -1.9 };
   const lz = LANTERN_Z;
   const ratio = viewDepth(frame, { x: 0, y, z: lz }) / viewDepth(frame, gap);
   const lantern = { x: gapX * ratio, y, z: lz };
-  const ruleZ = -1.42;
-  const ruleRatio = viewDepth(frame, { x: 0, y: 0.44, z: ruleZ }) / viewDepth(frame, { x: 0, y: 0.44, z: gap.z });
-  return { masks, scale, lantern, rule: { x: ruleX * (count === 1 ? 1 : ruleRatio), y: 0.44, z: ruleZ } };
+  return { masks, scale, lantern };
 }
 
 /** Rotate a seat-local offset (x across, z outward) into world x/z. */
@@ -218,12 +211,14 @@ export function seatAnchor(spot: SeatSpot, you: boolean): Vec3 {
 }
 
 /** House hole cards: in front of each mask on the far felt. */
-export function houseCardSpots(mask: Vec3): [Vec3, Vec3] {
+export const HOUSE_CARD_GAP = 0.44;
+
+/** The House's cards in a row in front of it, drawn in toward the middle of the table. */
+export function houseCardSpots(mask: Vec3, count = 2): Vec3[] {
   const z = mask.z + 0.78;
-  return [
-    { x: mask.x - 0.2, y: 0, z },
-    { x: mask.x + 0.2, y: 0, z },
-  ];
+  const n = Math.max(1, count);
+  const cx = mask.x * 0.5;
+  return Array.from({ length: n }, (_, i) => ({ x: cx + (i - (n - 1) / 2) * HOUSE_CARD_GAP, y: 0, z }));
 }
 
 export const BOARD_Z = -0.18;
@@ -271,10 +266,14 @@ export function bottomCalm(hudTop: number | null, height: number): number {
 
 /**
  * Where your own two cards hang in front of the camera, in pixels. They sit
- * above the bottom HUD band and scale with the shorter screen side.
+ * above the bottom HUD band and scale with the shorter screen side. While they
+ * are face down they tell you nothing, so they stay small and leave the table
+ * (your teammates' cards) in view; they grow for the reveal.
  */
-export function heroCardPixels(width: number, height: number, bottomCalm = 150) {
-  const h = clamp(Math.min(height * 0.22, width * 0.4), 110, 230);
+export function heroCardPixels(width: number, height: number, bottomCalm = 150, hidden = false) {
+  const h = hidden
+    ? clamp(Math.min(height * 0.12, width * 0.2), 64, 120)
+    : clamp(Math.min(height * 0.22, width * 0.4), 110, 230);
   const centreY = bottomCalm + h * 0.5 + 10;
   return { cardHeight: h, centreY, gap: h * 0.42 };
 }

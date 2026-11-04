@@ -101,13 +101,13 @@ pub fn score5(cards: [Card; 5]) -> u32 {
     score_mask(hand_mask(&cards))
 }
 
-/// Score the best five of 5 to 7 cards. Cheap; no allocation. This is the hot
+/// Score the best five of 5 to 12 cards. Cheap; no allocation. This is the hot
 /// path for Monte Carlo, so it must be fast.
 #[inline]
 pub fn score_best(cards: &[Card]) -> u32 {
     debug_assert!(
-        (5..=7).contains(&cards.len()),
-        "score_best takes 5 to 7 cards"
+        (5..=12).contains(&cards.len()),
+        "score_best takes 5 to 12 cards"
     );
     score_mask(hand_mask(cards))
 }
@@ -118,7 +118,7 @@ pub fn category_of(score: u32) -> Category {
 }
 
 /// Score the best five of the cards in a [`card_mask`] layout mask holding 5 to
-/// 7 distinct cards. This is the evaluator itself; the other entry points build
+/// 12 distinct cards. This is the evaluator itself; the other entry points build
 /// the mask and call it.
 #[inline]
 pub fn score_mask(m: u64) -> u32 {
@@ -128,26 +128,28 @@ pub fn score_mask(m: u64) -> u32 {
     let s3 = ((m >> 48) & LANE) as u32;
     let ranks = s0 | s1 | s2 | s3;
 
-    // With at most seven cards a flush leaves at most two other cards, which is
-    // too few for quads or a full house, so a flush settles the hand.
-    let flush = if s0.count_ones() >= 5 {
-        s0
-    } else if s1.count_ones() >= 5 {
-        s1
-    } else if s2.count_ones() >= 5 {
-        s2
-    } else if s3.count_ones() >= 5 {
-        s3
-    } else {
-        0
-    };
-    if flush != 0 {
-        return match straight_high(flush) {
-            Some(high) => pack(Category::StraightFlush, high, 0, 0),
-            None => pack(Category::Flush, 0, 0, keep_top(flush, 5)),
-        };
+    // The best flush or straight flush in any suit. With seven cards or fewer
+    // a flush rules out quads and full houses, but the House can hold up to
+    // ten cards with the board, so the rank-count hands below still compete.
+    let mut flush_best = 0;
+    for lane in [s0, s1, s2, s3] {
+        if lane.count_ones() >= 5 {
+            let score = match straight_high(lane) {
+                Some(high) => pack(Category::StraightFlush, high, 0, 0),
+                None => pack(Category::Flush, 0, 0, keep_top(lane, 5)),
+            };
+            flush_best = flush_best.max(score);
+        }
     }
+    if flush_best >= pack(Category::StraightFlush, 0, 0, 0) {
+        return flush_best;
+    }
+    flush_best.max(score_ranks(s0, s1, s2, s3, ranks))
+}
 
+/// The best hand that ignores suits: quads down to high card.
+#[inline(always)]
+fn score_ranks(s0: u32, s1: u32, s2: u32, s3: u32, ranks: u32) -> u32 {
     // Bit-sliced per-rank counts: (b2 b1 b0) is how many suits hold each rank.
     let mut b0 = s0 ^ s1;
     let mut b1 = s0 & s1;
@@ -262,11 +264,11 @@ pub fn name_of(score: u32) -> String {
     }
 }
 
-/// Full evaluation of 5 to 7 cards, with the name and the best five.
+/// Full evaluation of 5 to 12 cards, with the name and the best five.
 pub fn evaluate(cards: &[Card]) -> HandValue {
     assert!(
-        (5..=7).contains(&cards.len()),
-        "evaluate takes 5 to 7 cards, got {}",
+        (5..=12).contains(&cards.len()),
+        "evaluate takes 5 to 12 cards, got {}",
         cards.len()
     );
     let score = score_best(cards);
@@ -280,7 +282,16 @@ pub fn evaluate(cards: &[Card]) -> HandValue {
     let mut sorted: Vec<Card> = cards.to_vec();
     sorted.sort_by(|a, b| b.rank().cmp(&a.rank()).then(a.suit().cmp(&b.suit())));
 
-    let flush_suit = (0..4u8).find(|&s| sorted.iter().filter(|c| c.suit() == s).count() >= 5);
+    // With ten or more cards two suits can both hold five, so pick the suit that
+    // actually makes the scored hand.
+    let in_suit = |s: u8, r: u8| sorted.iter().any(|c| c.suit() == s && c.rank() == r);
+    let flush_suit = (0..4u8).find(|&s| match category {
+        Category::Flush => (0..13u8).all(|r| kickers & (1 << r) == 0 || in_suit(s, r)),
+        Category::StraightFlush => {
+            (0..5u8).all(|i| in_suit(s, if major < 4 && i == 4 { ACE } else { major - i }))
+        }
+        _ => false,
+    });
     let mut best: Vec<Card> = Vec::with_capacity(5);
     let mut take = |rank: u8, n: usize, suit: Option<u8>| {
         let picks: Vec<Card> = sorted

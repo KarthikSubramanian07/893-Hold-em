@@ -11,108 +11,92 @@ This is the canonical spec. Code, copy, and art all answer to it.
 ## 1. The pitch
 
 A co-op poker heist for 2 to 6 people. The crew sits on one side of a lacquer
-table in a back-alley bar in Shinjuku. The House sits across, wearing masks.
-You can't talk about your cards. All you can do is **commit**, and everybody
-sees what you committed to.
+table in a back-alley bar in Shinjuku. The House sits across, in a mask.
+You can see every teammate's cards but never your own, and nobody may talk.
+All you get is **one nod a hand**, and the nods that come back to you.
 
 One link, no accounts. Open a table, send the link, play in a minute.
 
 ## 2. Rules
 
+### In four lines
+
+1. **Everyone sees every hand but their own.** The House shows one card. It holds 3
+   cards at Shitamachi, 4 at Kabukichō, 5 at Oyabun, and plays its best five with
+   the board.
+2. **After the flop, each player may nod at one teammate**: "you're good". One nod
+   each per hand, or pass.
+3. **After the river, everyone picks In or Out at once.**
+4. **The best hand that's In faces the House.** Win: the marker moves one step
+   toward the door per player In. Lose: one step toward the sirens per player In.
+   Tie: no move. Everyone Out: no move, but the clock runs.
+
+Reach the door = clean getaway. Reach the sirens = raid. After 10 hands
+("last orders") the night ends as **dawn**.
+
 ### Seats
 
-- **The crew**: 2 to 6 seats, humans or bot "regulars" who fill empty chairs.
-- **The House** plays `ceil(crew / 2)` hands at once, one per mask. Two players
-  face one mask; five players face three. That keeps the odds honest at every
-  table size: when everybody plays, the crew's best hand wins about two times in three.
-
-### A night
-
-A night is **6 hands**. The crew shares two counters:
-
-| Counter | Meaning |
-| --- | --- |
-| **Take** (yen, 円) | Money won. Reach the night's target to get away clean. |
-| **Heat** (熱) | Police attention. Hit the limit and the bar gets raided. You lose immediately. |
-
-The night ends with one of three verdicts:
-
-- **Clean getaway**: all 6 hands are played, take ≥ target, and heat < limit.
-- **Raid**: heat reaches the limit at any point.
-- **Came up short**: 6 hands are played but take < target.
+- **The crew** is 2 to 6 seats, humans or bot regulars who fill empty chairs.
+- **The House** is one masked figure: Okame at Shitamachi, Kitsune at Kabukichō,
+  the Okina at Oyabun. Its cards (`HOUSE_CARDS`: 3, 4, 5) are dealt face down
+  except the first (`HOUSE_UP = 1`).
 
 ### A hand
 
-1. **The deal.** Each crew member gets 2 private hole cards. Each House mask gets 2 face-down cards.
-2. **The House Rule.** From hand 2 on (from hand 1 on the hardest table), one House Rule card flips. It bends this hand only.
-3. **Four calls**: pre-flop, flop (3 board cards), turn (1), river (1). At each call,
-   every crew member still in **secretly** picks one of three:
-   - **Fold** (降): step out. Your cards no longer count for this hand. You can't come back.
-   - **Stay** (待): keep your stake.
-   - **Raise** (攻): your stake goes up by 1, to a maximum of 3.
+Phases: `lobby` → `nod` → `call` → `showdown` → next hand (or `over`).
 
-   Every stake starts at 1. When every active player has locked in, or the call
-   timer runs out (anyone undecided counts as **Stay**), all calls flip at once.
-   That simultaneous flip is the only conversation the crew gets.
-4. **The showdown.** The crew's **best** active hand faces the House's **best** hand
-   (best 5 of 7 across all masks).
-   - **Take**: if the crew's champion wins, **take += every active stake**. Everyone who
-     stayed in gets paid, even with trash cards. That's riding the champion.
-   - **Heat**: separately, **every active player whose own hand loses to the House
-     draws heat equal to their stake**, even when the crew wins. You were seen at the table.
-   - Ties pay nothing and burn nothing (except under Serpent).
-   - Everybody folded: **heat += 1**. Walking away from a job still gets noticed.
+1. **The deal.** Each player gets 2 hole cards, facing out: everyone sees their
+   teammates' cards; your own are `'back'` in your view until the showdown.
+   Spectators see no hole cards at all. The flop (3 board cards) is face up.
+2. **`nod`.** Each player sends `{ t: 'nod', at: seatId }` or `{ t: 'nod', at: null }`
+   to pass. One per hand. Nods stay hidden from others until everyone has nodded;
+   your own is always visible to you.
+3. **`call`.** The turn and the river turn together (all 5 board cards). Each
+   player sends `{ t: 'call', stance: 'in' | 'out' }`. Stances stay hidden until the
+   showdown.
+4. **`showdown`.** Every card flips, including your own, for the first time. The
+   best hand among the players In faces the House's best five (its cards plus the
+   board). `result.moved` is +1 per player In on a win, −1 per player In on a loss,
+   0 on a tie, −1 if everyone was Out. `result.couldHave` lists every seat (In or
+   Out) whose hand beat the House.
 
-The tension is the flip, and the trade. A raise says "I'm carrying this one."
-Riding a teammate's raise turns your heat into the crew's take. Whether that's
-a good deal depends on the night: far from the target with room to burn, ride;
-one step from a raid, fold and let the champion carry it alone.
+The tension is the nod, and the trade. A nod says "I can see your hand, and it
+looks strong." Going In adds a step either way; sitting out a winner leaves steps on
+the table.
 
-### House Rules
+### The track
 
-Each hand after the first draws one card. The difficulty decides which cards are in the deck.
-
-| Id | Kanji | Name | Effect |
-| --- | --- | --- | --- |
-| `kiri` | 霧 | Fog | The river is dealt face down. It turns over at the showdown. |
-| `kagami` | 鏡 | Mirror | Each mask shows one of its hole cards from the start. |
-| `oni` | 鬼 | Oni | The House sits one extra hand. |
-| `shizuka` | 静 | Hush | Calls are hidden. You see only who's in and who's out until the showdown. |
-| `homura` | 炎 | Blaze | Take and heat are doubled. |
-| `kizuna` | 絆 | Bond | Stakes are shared. Every raise raises every active stake. |
-| `hebi` | 蛇 | Serpent | Ties go to the House. |
-| `kitsune` | 狐 | Fox | One random crew member's hole cards are dealt face up for all to see. |
-| `gyaku` | 逆 | Reversal | Lowball. Every hand is still its best five, but the *weaker* one wins: the crew's weakest active hand faces the House's weakest. Oyabun table only. |
+One marker starts at 0. The door sits at `door`, the sirens at `-sirens`; both depend
+on the table **and** the crew size, because every player In moves the marker. They
+live in `BALANCE` in `crates/engine/src/rules.rs` (mirrored in `src/engine/rules.ts`,
+with a test that fails on drift), tuned by the simulator (`crates/sim`) toward the
+goal clean rates below.
 
 ### Difficulty ("tables")
 
-| Table | Rules deck | Rule from hand | Goal clean rate |
-| --- | --- | --- | --- |
-| **Shitamachi** (下町): the corner bar | kagami, kitsune, homura, kiri | 2 | ~70% |
-| **Kabukichō** (歌舞伎町) | all except gyaku | 2 | ~50% |
-| **Oyabun** (親分): the boss's room | everything | 1 | ~30% |
+| Table | House holds | Goal clean rate |
+| --- | --- | --- |
+| **Shitamachi** (下町): the corner bar | 3 cards | ~70% |
+| **Kabukichō** (歌舞伎町) | 4 cards | ~50% |
+| **Oyabun** (親分): the boss's room | 5 cards | ~30% |
 
-Heat limits and take targets depend on the table **and** the crew size, because
-heat grows with every stake that loses. They live in `BALANCE` in
-`crates/engine/src/rules.rs`, tuned by the simulator (`crates/sim`). The
-simulator plays thousands of nights with regulars in every chair, lets the bots
-adapt to the numbers and the numbers to the bots, and picks values that hit the
-goal rate with raids and coming up short about equally likely.
+Shitamachi is the default table.
 
 ### Timing
 
-- Call timer: 30s by default. The host can choose 15s, 30s, 60s, or off.
+- Decision timer: 30s by default, per step (nod, then call). The host can choose 15s,
+  30s, 60s, or off. When it runs out, you pass on the nod and sit out the call.
 - After the showdown, the next hand starts when every connected human taps
-  **Next**, or after 12s.
-- A disconnected human's calls default to Stay. They can rejoin with the same
-  link and reclaim their seat.
+  **Next**, or after 10s.
+- A disconnected human never blocks the table. They can rejoin with the same link
+  and reclaim their seat.
 
 ### Silence
 
 The whole game is built so nobody needs to talk about their cards. The only
-communication besides calls is a few **reactions** (a sake clink, a sigh of
-smoke, a slow nod). Reactions can only be sent in the lobby and after the
-showdown, never during calls.
+signal is the nod. Besides that there are a few **reactions** (a sake clink, a
+sigh of smoke, a wink), sent only in the lobby and after the showdown, never
+during a hand.
 
 ## 3. Art direction
 
@@ -125,9 +109,10 @@ Two worlds:
    margin notes. It should feel like a matchbook from a bar that has no website.
 2. **The night world** (the table). A single paper lantern over a black urushi
    table with a gold maki-e rim. Rain on the window behind the House, neon kanji
-   bleeding through it. The masks across the table catch the lantern light. Cards
-   are ivory stock printed in ink and shu red. Stakes are lacquer tokens stamped
-   with kanji.
+   bleeding through it. The House's mask catches the lantern light. Cards are ivory
+   stock printed in ink and shu red; your own float near the camera, backs out,
+   each marked with a "?". Nods are gold silk threads; In and Out are stamped
+   washi slips.
 
 Moving from the paper world to the night world is the signature moment: the
 paper burns away or slides open like a shoji, and the lantern flickers on.
@@ -140,16 +125,16 @@ paper burns away or slides open like a shoji, and the lantern flickers on.
 | `--washi-2` | `#e6dcc8` | paper shade |
 | `--sumi` | `#1b1a17` | ink, the night |
 | `--sumi-2` | `#2a2824` | raised ink surfaces |
-| `--shu` | `#d2412a` | vermilion, hanko, Raise, hearts and diamonds |
-| `--kin` | `#c9a45c` | gold leaf, the maki-e rim, Take |
-| `--ai` | `#2d4a6b` | indigo, Stay |
+| `--shu` | `#d2412a` | vermilion, hanko, In, hearts and diamonds |
+| `--kin` | `#c9a45c` | gold leaf, the maki-e rim, nods, the door |
+| `--ai` | `#2d4a6b` | indigo, sparingly |
 | `--matcha` | `#7d8b5a` | win states, sparingly |
-| `--neon` | `#ff4f6d` | neon signage, Heat |
+| `--neon` | `#ff4f6d` | neon signage, the sirens |
 
 ### Type
 
 - **Shippori Mincho B1**: display and kanji. Big, high-contrast, editorial.
-- **JetBrains Mono**: microcopy, numbers, counters, labels. Uppercase, tracked out.
+- **JetBrains Mono**: microcopy, numbers, the track, labels. Uppercase, tracked out.
 - **Caveat**: handwritten margin notes, the bartender's chalk. Use it rarely.
 
 ### Sound
@@ -158,7 +143,8 @@ Everything is synthesized with WebAudio. No sample files.
 
 - Rain on glass and a low room hum for ambience.
 - Plucked-string reveals (Karplus-Strong, shamisen-ish).
-- Card flicks, the clack of lacquer tokens, a heavy hanko *thunk* on lock-in.
+- Card flicks, a knuckle knock for a nod, a heavy hanko *thunk* on In (lighter for Out).
+- A rising run of rin chimes when the nods turn over, and a koto shimmer when your own cards flip.
 - A rising taiko roll for the showdown.
 
 ### Copy voice

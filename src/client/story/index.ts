@@ -2,7 +2,7 @@
 //
 //   narrate(prev, next, you)      lines for one view change (pure, shared by every seat)
 //   idleLine(view, tick)          something for the lobby, or nothing
-//   maskFor(table, index, rule)   the mask on each House hand, for the scene
+//   maskFor(table)                the mask the House wears at each table
 //   detectStamps / useMatchbook   hanko stamps kept in localStorage '893:matchbook'
 //   installEggs / useEggs         easter eggs, announced as '893:egg' window events
 //
@@ -15,7 +15,7 @@ import './styles';
 export type { Line, MaskId, Mood, RegularName, Speaker, StoryEvent } from './types';
 export { narrate, idleLine, chapterTitle, holdFor, type NarrateContext } from './narrator';
 export { CHAPTERS, MASTER, CAT, speakerInfo } from './lines';
-export { MASKS, TABLE_MASKS, maskFor, masksFor, type Mask, type MaskPalette } from './masks';
+export { MASKS, TABLE_MASKS, houseMaskFor, maskFor, masksFor, type Mask, type MaskPalette } from './masks';
 export { REGULARS, regularFor, type Regular } from './regulars';
 export { STAMPS, STAMP, detectStamps, useMatchbook, loadMatchbook, MATCHBOOK_KEY, type StampId, type Stamp, type MatchbookData } from './stamps';
 export {

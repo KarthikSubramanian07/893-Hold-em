@@ -86,28 +86,49 @@ for (const [name, desc] of DEVICES) {
   await page.getByRole('button', { name: /start the night/i }).tap();
   step('night started');
 
+  let nods = 0;
   let calls = 0;
   let showdowns = 0;
   let lastSd = '';
+  let shotNod = false;
   let shotCall = false;
+  /** The dock must sit inside the screen, clear of the home indicator. */
+  const dockFits = async (when) => {
+    const dock = await page.locator('.dock').boundingBox().catch(() => null);
+    const vh = page.viewportSize()?.height ?? 0;
+    if (dock && dock.y + dock.height > vh) problems.push(`${name} ${when}: the dock runs off the bottom of the screen`);
+  };
   const t0 = Date.now();
   while (Date.now() - t0 < 240_000) {
     const phase = await page.locator('.table').getAttribute('data-phase').catch(() => null);
     if (phase === 'over') break;
-    if (phase === 'call') {
-      const stay = page.getByRole('button', { name: /^stay/i });
-      if (await stay.isEnabled().catch(() => false)) {
-        if (!shotCall) {
+    if (phase === 'nod') {
+      const mate = page.locator('.dock--nod .mate').first();
+      if (await mate.isEnabled().catch(() => false)) {
+        if (!shotNod) {
           await page.waitForTimeout(2500);
+          await shot('04-nod');
+          await audit(page, name, 'nod');
+          await dockFits('nod');
+          shotNod = true;
+        }
+        // Tap a teammate on most hands; pass now and then.
+        if (nods % 3 === 2) await page.getByRole('button', { name: /^pass/i }).tap().catch(() => {});
+        else await mate.tap().catch(() => {});
+        nods++;
+      }
+    }
+    if (phase === 'call') {
+      const inBtn = page.getByRole('button', { name: /^in\b/i });
+      if (await inBtn.isEnabled().catch(() => false)) {
+        if (!shotCall) {
+          await page.waitForTimeout(2000);
           await shot('04-call');
           await audit(page, name, 'call');
-          // The call dock must sit inside the screen, clear of the home indicator.
-          const dock = await page.locator('.dock').boundingBox().catch(() => null);
-          const vh = page.viewportSize()?.height ?? 0;
-          if (dock && dock.y + dock.height > vh) problems.push(`${name} call: the call dock runs off the bottom of the screen`);
+          await dockFits('call');
           shotCall = true;
         }
-        await stay.tap().catch(() => {});
+        await inBtn.tap().catch(() => {});
         calls++;
       }
     }
@@ -132,7 +153,7 @@ for (const [name, desc] of DEVICES) {
   await shot('06-receipt');
   await audit(page, name, 'receipt');
   if (!receipt) problems.push(`${name}: the night never reached the receipt`);
-  step(`${calls} calls by tap, ${showdowns} showdowns, receipt ${receipt ? 'shown' : 'missing'}`);
+  step(`${nods} nods and ${calls} calls by tap, ${showdowns} showdowns, receipt ${receipt ? 'shown' : 'missing'}`);
 
   await page.goto(`${base}/matchbook`);
   await page.waitForTimeout(2500);

@@ -1,4 +1,4 @@
-//! Timing loop for the evaluator and the odds estimator.
+//! Timing loop for the evaluator and a regular's decisions.
 //!
 //! ```sh
 //! cargo run --release -p hachi-engine --example bench
@@ -9,9 +9,12 @@
 use std::hint::black_box;
 use std::time::Instant;
 
+use hachi_engine::bot::{Temperament, call, nod};
 use hachi_engine::card::{Card, Rng, full_deck};
-use hachi_engine::equity::{Spot, estimate};
 use hachi_engine::eval::{evaluate, score_best};
+use hachi_engine::game::Game;
+use hachi_engine::rules::Difficulty;
+use hachi_engine::view::view_for;
 
 fn main() {
     let mut rng = Rng::seeded(0x893);
@@ -46,39 +49,41 @@ fn main() {
         t.elapsed().as_nanos() as f64 / 100_000.0
     );
 
-    let house = [[None, None]; 3];
-    let spot = Spot {
-        hole: [deck[0], deck[1]],
-        board: &[],
-        board_total: 5,
-        house: &house,
-        dead: &[],
-        lowball: false,
-    };
-    let reps = 2_000;
-    let mut best_us = f64::MAX;
+    // A regular's two decisions at the biggest, hardest table.
+    let mut g = Game::new("K7QX2", 0x893);
+    let a = g.join("pid-aaaaaaaa", "A", "koi").unwrap();
     for _ in 0..5 {
-        let t = Instant::now();
-        for _ in 0..reps {
-            sink =
-                sink.wrapping_add((estimate(black_box(&spot), 2_000, &mut rng).win * 1e6) as u32);
-        }
-        best_us = best_us.min(t.elapsed().as_nanos() as f64 / reps as f64 / 1_000.0);
+        g.add_bot(&a).unwrap();
     }
-    println!("estimate (2000 samples, preflop, 3 House hands): {best_us:6.1} µs");
-
-    let board = [deck[2], deck[3], deck[4]];
-    let spot = Spot {
-        board: &board,
-        ..spot
-    };
-    let t = Instant::now();
+    g.set_config(&a, Some(Difficulty::Oyabun), None).unwrap();
+    g.start(&a, 0).unwrap();
+    let flop = view_for(&g, Some("s1"), 0);
+    for s in ["s0", "s1", "s2", "s3", "s4", "s5"] {
+        g.nod(s, Some(if s == "s0" { "s1" } else { "s0" }), 0)
+            .unwrap();
+    }
+    let river = view_for(&g, Some("s1"), 0);
+    let t = Temperament::for_seat("bot:1");
+    let reps = 500;
+    let start = Instant::now();
     for _ in 0..reps {
-        sink = sink.wrapping_add((estimate(black_box(&spot), 2_000, &mut rng).win * 1e6) as u32);
+        sink = sink.wrapping_add(u32::from(
+            nod(black_box(&flop), "s1", t, &mut rng).is_some(),
+        ));
     }
     println!(
-        "estimate (2000 samples, flop, 3 House hands):    {:6.1} µs",
-        t.elapsed().as_nanos() as f64 / reps as f64 / 1_000.0
+        "regular nod  (300 samples, 6 seats, Oyabun): {:6.1} µs",
+        start.elapsed().as_nanos() as f64 / reps as f64 / 1_000.0
+    );
+    let start = Instant::now();
+    for _ in 0..reps {
+        sink = sink.wrapping_add(u32::from(
+            call(black_box(&river), "s1", t, &mut rng) == hachi_engine::game::Stance::In,
+        ));
+    }
+    println!(
+        "regular call (300 samples, 6 seats, Oyabun): {:6.1} µs",
+        start.elapsed().as_nanos() as f64 / reps as f64 / 1_000.0
     );
     black_box(sink);
 }

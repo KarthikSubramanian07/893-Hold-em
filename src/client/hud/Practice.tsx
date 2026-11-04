@@ -14,7 +14,7 @@ export function PracticeNote() {
         <span className="practice-note__k" aria-hidden="true">
           練習
         </span>
-        Practice. Just you and the regulars, in this tab. No link, no line out.
+        Practice. Just you and the regulars, in this tab. Learn the nod; no link, no line out.
       </p>
       <button
         type="button"

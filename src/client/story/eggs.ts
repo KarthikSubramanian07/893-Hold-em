@@ -119,7 +119,7 @@ export function isThreeAm(date: Date = new Date()): boolean {
 // The hidden card
 // ---------------------------------------------------------------------------
 
-/** The House Rule card that isn't in any deck. Shown by the Konami code. */
+/** The card that isn't in any deck. Shown by the Konami code. */
 export const BUTA_CARD = {
   kanji: '豚',
   romaji: 'Buta',

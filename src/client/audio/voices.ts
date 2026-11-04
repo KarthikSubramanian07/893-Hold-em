@@ -3,7 +3,7 @@
 // for the audio check. Small random nudges keep repeats from sounding canned.
 
 import { type Voice, chain, envelope, filter, gain, karplusStrong, noise, pan, toBuffer, tone } from './dsp';
-import { type Rng, between, cents, degree, pick, vary } from './music';
+import { type Rng, between, cents, degree, vary } from './music';
 
 // ---------------------------------------------------------------------------
 // Instruments
@@ -130,7 +130,7 @@ export const flip: Voice = (ctx, out, t, rng) => {
   return 0.11;
 };
 
-/** Lacquered tokens clacking together as a stake goes up. */
+/** Lacquered tokens clacking together: the sake cups at kanpai. */
 export const chip: Voice = (ctx, out, t, rng) => {
   // Modal synthesis: a small lacquered disc rings at a few inharmonic modes
   // for a few dozen milliseconds, struck by a tiny click.
@@ -171,14 +171,26 @@ function stampAt(ctx: BaseAudioContext, out: AudioNode, t: number, rng: Rng, wei
   return 0.42;
 }
 
-/** Cards pushed away across the felt. */
-export const fold: Voice = (ctx, out, t, rng) => {
-  const slide = filter(ctx, 'bandpass', 1200, 1.1);
-  slide.frequency.setValueAtTime(vary(rng, 1300, 0.1), t);
-  slide.frequency.exponentialRampToValueAtTime(vary(rng, 520, 0.1), t + 0.26);
-  const p = pan(ctx, between(rng, -0.4, 0.4));
-  chain(noise(ctx, t, 0.32, rng, 'pink'), slide, filter(ctx, 'lowpass', 2600), envelope(ctx, t, 0.3, 0.05, 0.24), p, out);
-  return 0.3;
+/** A nod: a soft knuckle on the lacquer and one low koto harmonic. Quiet, private. */
+export const nod: Voice = (ctx, out, t, rng) => {
+  chain(noise(ctx, t, 0.05, rng, 'brown'), filter(ctx, 'lowpass', 520), envelope(ctx, t, 0.5, 0.001, 0.05), out);
+  chain(tone(ctx, t, 0.12, vary(rng, 210, 0.04), 150, 0.05), envelope(ctx, t, 0.18, 0.002, 0.09), out);
+  pluck(ctx, out, t + 0.03, { freq: degree(5) * 2, kind: 'koto', level: 0.14, decay: 1.1, pan: between(rng, -0.2, 0.2) }, rng);
+  return 1.15;
+};
+
+/** Locking In: the hanko lands with a warm string under it. */
+export const lockIn: Voice = (ctx, out, t, rng) => {
+  stampAt(ctx, out, t, rng, 1);
+  pluck(ctx, out, t + 0.02, { freq: degree(3), kind: 'koto', level: 0.2, decay: 1.4 }, rng);
+  return 1.4;
+};
+
+/** Locking Out: a lighter stamp and a low, settling note. */
+export const lockOut: Voice = (ctx, out, t, rng) => {
+  stampAt(ctx, out, t, rng, 0.7);
+  pluck(ctx, out, t + 0.03, { freq: degree(-2), kind: 'koto', level: 0.16, decay: 1.2 }, rng);
+  return 1.2;
 };
 
 /** A wood block for the last five seconds of a call. */
@@ -209,21 +221,29 @@ export const reveal: Voice = (ctx, out, t, rng) => {
   return hit - t + 1.2;
 };
 
-/** The House Rule card turning over: a flip, then a short, sly shamisen phrase. */
-export const rule: Voice = (ctx, out, t, rng) => {
-  flip(ctx, out, t, rng);
-  const phrase = pick(rng, [
-    [3, 4, 5, 6],
-    [4, 3, 5, 6],
-    [2, 3, 4, 6],
-  ]);
-  let at = t + 0.12;
-  phrase.forEach((d, i) => {
-    const last = i === phrase.length - 1;
-    pluck(ctx, out, at, { freq: degree(d), kind: 'shamisen', level: last ? 0.4 : 0.3, decay: last ? 1.6 : 0.8 }, rng);
-    at += last ? 0 : vary(rng, 0.11, 0.1);
+/** The nods turn over: one soft rin per nod, rising, then a breath. */
+export const nodReveal: Voice = (ctx, out, t, rng) => {
+  const run = [2, 4, 5];
+  let at = t;
+  run.forEach((d, i) => {
+    chime(ctx, out, at, degree(d + 7), 0.05 - i * 0.008, rng);
+    at += vary(rng, 0.12, 0.08);
   });
-  return at - t + 1.6;
+  return at - t + 2.4;
+};
+
+/** Your own cards, at last: a quick upward shimmer, brighter for a big hand. */
+export const ownReveal: Voice = (ctx, out, t, rng) => {
+  flip(ctx, out, t, rng);
+  flip(ctx, out, t + 0.22, rng);
+  const run = [0, 3, 5, 7, 10];
+  let at = t + 0.3;
+  run.forEach((d, i) => {
+    pluck(ctx, out, at, { freq: degree(d + 5), kind: 'koto', level: 0.22 - i * 0.02, decay: 1.6, pan: -0.3 + i * 0.15 }, rng);
+    at += vary(rng, 0.05, 0.1);
+  });
+  chime(ctx, out, at + 0.05, degree(15), 0.05, rng);
+  return at - t + 2.4;
 };
 
 /** The crew takes the hand: a warm koto run upward and a chime. */
@@ -296,8 +316,8 @@ export const stingRaid: Voice = (ctx, out, t, rng) => {
   return 2.3;
 };
 
-/** Short of the target: a slow fall down the scale. */
-export const stingShort: Voice = (ctx, out, t, rng) => {
+/** Last orders: the shutters come down at dawn. A slow fall down the scale. */
+export const stingDawn: Voice = (ctx, out, t, rng) => {
   const fall = [4, 3, 2, 1, 0];
   let at = t;
   fall.forEach((d, i) => {
@@ -316,16 +336,19 @@ export const VOICES = {
   chip,
   stamp,
   stampFar,
-  fold,
+  nod,
+  lockIn,
+  lockOut,
   tick,
   reveal,
-  rule,
+  nodReveal,
+  ownReveal,
   win,
   lose,
   tie,
   stingClean,
   stingRaid,
-  stingShort,
+  stingDawn,
 } as const satisfies Record<string, Voice>;
 
 export type VoiceName = keyof typeof VOICES;

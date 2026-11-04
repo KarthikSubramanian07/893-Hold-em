@@ -90,10 +90,6 @@
   gap: 0.35rem;
 }
 
-.top__mid {
-  gap: 2rem;
-}
-
 .top__code {
   font: 600 15px/1 var(--mono);
   letter-spacing: 0.3em;
@@ -154,101 +150,6 @@
   font: 600 16px/1 var(--serif);
 }
 
-.pips,
-.meter {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
-
-.pips__row {
-  display: flex;
-  gap: 5px;
-}
-
-.pips__row i {
-  width: 7px;
-  height: 7px;
-  border: 1px solid var(--night-ink-faint);
-  transform: rotate(45deg);
-}
-
-.pips__row i.done {
-  background: var(--night-ink-soft);
-  border-color: var(--night-ink-soft);
-}
-
-.pips__row i.now {
-  border-color: var(--shu);
-  background: var(--shu);
-  box-shadow: 0 0 8px rgb(210 65 42 / 0.7);
-}
-
-.meter__kanji {
-  margin-left: 0.2em;
-  font-family: var(--serif);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0;
-}
-
-.meter--take .meter__kanji {
-  color: var(--kin);
-}
-
-.meter--heat .meter__kanji {
-  color: var(--neon);
-}
-
-.meter__track {
-  position: relative;
-  width: 112px;
-  height: 4px;
-  background: rgb(201 164 92 / 0.16);
-}
-
-.meter__track::after {
-  content: '';
-  position: absolute;
-  right: -1px;
-  top: -4px;
-  width: 1px;
-  height: 12px;
-  background: var(--kin);
-}
-
-.meter__fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: linear-gradient(90deg, #a8843f, var(--kin-hi));
-  box-shadow: 0 0 10px rgb(228 200 138 / 0.4);
-  transition: width 0.9s var(--ease-out);
-}
-
-.heat {
-  display: flex;
-  gap: 3px;
-}
-
-.heat i {
-  width: 9px;
-  height: 12px;
-  border: 1px solid rgb(255 79 109 / 0.32);
-  transition:
-    background-color 0.4s,
-    box-shadow 0.4s;
-}
-
-.heat i.on {
-  background: var(--neon);
-  border-color: var(--neon);
-  box-shadow: 0 0 8px rgb(255 79 109 / 0.6);
-}
-
-.meter--heat.is-hot .heat i.on {
-  animation: neon-buzz 2.4s infinite;
-}
-
 @keyframes neon-buzz {
   0%,
   100% {
@@ -263,105 +164,6 @@
   53% {
     opacity: 1;
   }
-}
-
-/* House Rule chip and its card. */
-.rule {
-  position: relative;
-  margin-right: 0.5rem;
-}
-
-.rule__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  height: 34px;
-  padding: 0 0.75rem 0 0.3rem;
-  border: 1px solid var(--night-hair-strong);
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--night-ink);
-  transition: border-color 0.2s;
-}
-
-.rule__chip:hover,
-.rule__chip[aria-expanded='true'] {
-  border-color: var(--kin);
-}
-
-.rule__kanji {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  background: var(--shu);
-  color: var(--washi);
-  font-weight: 800;
-  font-size: 15px;
-  line-height: 1;
-}
-
-.rule__chip--boon .rule__kanji {
-  background: transparent;
-  color: var(--shu);
-  box-shadow: inset 0 0 0 1.5px var(--shu);
-}
-
-.rule__chip--wild .rule__kanji {
-  background: var(--kin);
-  color: var(--sumi);
-}
-
-.rule__name {
-  font: 600 10px/1 var(--mono);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.rule__pop {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  z-index: 30;
-  width: 280px;
-  padding: 1.1rem 1.2rem 1.2rem;
-  background: var(--sumi-2);
-  border: 1px solid rgb(201 164 92 / 0.5);
-  box-shadow: 0 20px 40px -20px rgb(0 0 0 / 0.8);
-  animation: pop-in 0.25s var(--ease-out) both;
-}
-
-.rule__k {
-  color: var(--kin);
-}
-
-.rule__title {
-  margin-top: 0.5rem;
-  font-size: 1.3rem;
-  font-weight: 800;
-}
-
-.rule__title > span:first-child {
-  color: var(--shu);
-}
-
-.rule__romaji {
-  font: 500 10px/1 var(--mono);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--night-ink-faint);
-}
-
-.rule__text {
-  margin-top: 0.4rem;
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-.rule__flavor {
-  margin-top: 0.5rem;
-  font-size: 14px;
-  color: var(--kin);
 }
 
 @keyframes pop-in {
@@ -406,280 +208,11 @@
   font: inherit;
 }
 
-/* ---- Call dock -------------------------------------------------------- */
-
-.dock {
-  position: relative;
-  display: grid;
-  grid-template-columns: 150px auto 210px;
-  align-items: center;
-  gap: 1.5rem;
-  width: min(100%, 900px);
-  padding: 1rem 1.4rem;
-  background: var(--night-panel);
-  border: 1px solid var(--night-hair-strong);
-  box-shadow: 0 -1px 0 rgb(201 164 92 / 0.35), 0 24px 50px -20px rgb(0 0 0 / 0.8);
-  animation: rise 0.5s var(--ease-out) both;
-}
-
-.dock::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: -1px;
-  width: 64px;
-  height: 2px;
-  margin-left: -32px;
-  background: var(--kin);
-}
-
 @keyframes rise {
   from {
     opacity: 0;
     transform: translateY(20px);
   }
-}
-
-.dock__meta {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.dock__street {
-  color: var(--kin);
-  white-space: nowrap;
-  line-height: 1.5;
-}
-
-.dock__street span {
-  display: block;
-  color: var(--night-ink-faint);
-}
-
-.stake {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.stake .label {
-  color: var(--night-ink-faint);
-  font-size: 9.5px;
-}
-
-.stake__chips {
-  display: flex;
-  gap: 6px;
-}
-
-.stake__chips i {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px dashed var(--night-hair-strong);
-}
-
-.stake__chips i.on {
-  border: 0;
-  background: radial-gradient(circle at 35% 30%, #3b3a36, #121110 70%);
-  box-shadow:
-    inset 0 0 0 2px var(--kin),
-    inset 0 0 0 4px #121110,
-    inset 0 0 0 5px rgb(201 164 92 / 0.5),
-    0 2px 6px rgb(0 0 0 / 0.6);
-}
-
-.dock__stamps {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(3, 118px);
-  gap: 12px;
-}
-
-.stamp {
-  --c: var(--night-ink-soft);
-  --on: var(--sumi);
-  position: relative;
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 0.4rem;
-  height: 120px;
-  padding: 0 0.4rem;
-  border: 1.5px solid var(--c);
-  border-radius: 3px;
-  background: transparent;
-  color: var(--c);
-  transition:
-    background-color 0.18s,
-    color 0.18s,
-    transform 0.18s var(--ease-out),
-    opacity 0.3s;
-}
-
-.stamp--fold {
-  --c: #cfc6b4;
-}
-
-.stamp--stay {
-  --c: #7fa4cf;
-  --on: #0f1b29;
-}
-
-.stamp--raise {
-  --c: #ff6a50;
-  --on: #2a0d07;
-}
-
-.stamp__kanji {
-  font-size: 40px;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.stamp__label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  font: 600 10px/1 var(--mono);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-}
-
-.stamp .kbd {
-  font-size: 9px;
-}
-
-/* What the call does to you, in plain words, under its name. */
-.stamp__hint {
-  font: 12.5px/1.25 var(--serif);
-  letter-spacing: 0;
-  text-transform: none;
-  text-align: center;
-  opacity: 0.82;
-}
-
-/* One plain-words tip on your first night, across the top of the dock; the
-   bet, the three calls, and the clock keep their row beneath it. */
-.dock:has(> .dock__coach) > :not(.dock__coach) {
-  grid-row: 2;
-}
-
-.dock__coach {
-  grid-column: 1 / -1;
-  grid-row: 1;
-  margin: 0;
-  padding: 0.55rem 0.8rem;
-  border-left: 2px solid var(--kin);
-  background: rgb(201 164 92 / 0.08);
-  font: 14px/1.5 var(--serif);
-  color: var(--night-ink);
-}
-
-.stamp:hover:not(:disabled) {
-  background: var(--c);
-  color: var(--on);
-  transform: translateY(-3px);
-}
-
-.stamp:active:not(:disabled) {
-  transform: translateY(1px) scale(0.98);
-}
-
-.stamp:disabled {
-  opacity: 0.28;
-}
-
-.dock--locked .stamp:disabled {
-  opacity: 0.16;
-}
-
-.dock--locked .stamp.is-chosen {
-  opacity: 1;
-  background: var(--c);
-  color: var(--on);
-}
-
-.hanko {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  margin: -32px 0 0 -32px;
-  pointer-events: none;
-  animation: hanko 0.55s var(--ease-stamp) both;
-}
-
-.hanko > span {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  border: 4px double var(--washi);
-  border-radius: 50%;
-  color: var(--washi);
-  font-size: 32px;
-  font-weight: 800;
-  background: radial-gradient(circle, rgb(210 65 42 / 0.94) 60%, rgb(168 48 29 / 0.94));
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.5);
-}
-
-.hanko--fold {
-  left: calc(49px);
-}
-
-.hanko--stay {
-  left: calc(98px + 12px + 49px);
-}
-
-.hanko--raise {
-  left: calc(2 * (98px + 12px) + 49px);
-}
-
-.hanko--fold > span {
-  background: radial-gradient(circle, rgb(60 57 52 / 0.96) 60%, rgb(30 28 25 / 0.96));
-}
-
-.hanko--stay > span {
-  background: radial-gradient(circle, rgb(45 74 107 / 0.97) 60%, rgb(30 52 77 / 0.97));
-}
-
-@keyframes hanko {
-  0% {
-    opacity: 0;
-    transform: translate(40px, -40px) scale(2.3) rotate(-24deg);
-  }
-  55% {
-    opacity: 1;
-    transform: translate(36px, -36px) scale(0.92) rotate(-10deg);
-  }
-  100% {
-    opacity: 1;
-    transform: translate(36px, -36px) scale(1) rotate(-12deg);
-  }
-}
-
-.dock__side {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 0.9rem;
-}
-
-.dock__status {
-  font-size: 13.5px;
-  line-height: 1.4;
-  color: var(--night-ink-soft);
-}
-
-.dock__status b {
-  color: var(--night-ink);
-}
-
-.dock__notimer {
-  color: var(--night-ink-faint);
 }
 
 .ring {
@@ -722,41 +255,6 @@
 .ring.is-urgent .ring__n {
   color: var(--neon);
   animation: neon-buzz 1s infinite;
-}
-
-.dock--quiet {
-  grid-template-columns: 1fr auto;
-  max-width: 640px;
-}
-
-.dock__quiet {
-  display: flex;
-  align-items: center;
-  gap: 1.1rem;
-}
-
-.dock__quiet-k {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 52px;
-  height: 52px;
-  border: 1px solid var(--night-hair-strong);
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--night-ink-faint);
-}
-
-.dock__quiet > span:last-child {
-  display: grid;
-  gap: 0.2rem;
-  font-size: 14.5px;
-  color: var(--night-ink-soft);
-}
-
-.dock__quiet b {
-  font-size: 1.15rem;
-  color: var(--night-ink);
 }
 
 /* ---- Lobby: a paper menu card on the bar ------------------------------ */
@@ -1315,32 +813,6 @@
   border-top: 1px solid var(--night-hair);
 }
 
-.sd__deltas {
-  display: flex;
-  align-items: baseline;
-  gap: 1.4rem;
-}
-
-.sd__delta {
-  font: 700 1.5rem/1 var(--mono);
-  color: var(--night-ink-faint);
-}
-
-.sd__delta span {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.sd__delta--take.is-on {
-  color: var(--kin-hi);
-}
-
-.sd__delta--heat.is-on {
-  color: var(--neon);
-}
-
 .sd__next {
   display: flex;
   align-items: center;
@@ -1450,6 +922,17 @@
   padding: 0.6rem 0;
   list-style: none;
   border-bottom: 1px dashed var(--hair-strong);
+  /* A long night scrolls inside the receipt, so the verdict stays on screen. */
+  max-height: min(38vh, 24rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 760px) {
+  .receipt__lines {
+    max-height: 24vh;
+  }
 }
 
 .rl {
@@ -1474,13 +957,6 @@
   letter-spacing: 0.08em;
 }
 
-.rl__rule {
-  margin-left: 0.6em;
-  font-weight: 500;
-  color: var(--shu-deep);
-  letter-spacing: 0.04em;
-}
-
 .rl__vs {
   font-size: 11px;
   color: var(--ink-soft);
@@ -1502,32 +978,6 @@
 }
 
 .rl--tie .rl__amt {
-  color: var(--ink-faint);
-}
-
-.receipt__totals {
-  display: grid;
-  gap: 0.25rem;
-  margin: 0;
-  padding: 0.8rem 0;
-  border-bottom: 1px dashed var(--hair-strong);
-}
-
-.receipt__totals > div {
-  display: flex;
-  justify-content: space-between;
-  font-size: 14px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.receipt__totals dd {
-  margin: 0;
-}
-
-.receipt__totals dd span {
-  font-weight: 500;
   color: var(--ink-faint);
 }
 
@@ -1569,7 +1019,7 @@
   border-color: #4f6a2e;
 }
 
-.verdict-stamp--short {
+.verdict-stamp--dawn {
   color: var(--ink-soft);
   border-color: var(--ink-soft);
 }
@@ -1749,11 +1199,6 @@
     gap: 1rem;
   }
 
-  .top__mid {
-    justify-content: center;
-    gap: 1.2rem;
-  }
-
   .top__invite span {
     display: none;
   }
@@ -1764,22 +1209,6 @@
     justify-content: center;
   }
 
-  .meter__track {
-    width: 72px;
-  }
-
-  .rule__name {
-    display: none;
-  }
-
-  .rule__chip {
-    padding-right: 0.3rem;
-  }
-
-  .dock {
-    grid-template-columns: 120px auto 1fr;
-    gap: 1rem;
-  }
 }
 
 @media (max-width: 760px) {
@@ -1802,62 +1231,6 @@
     grid-column: auto;
   }
 
-  .top__mid {
-    grid-area: mid;
-    justify-content: space-between;
-    gap: 0.6rem;
-  }
-
-  .pips .top__k,
-  .pips__row {
-    display: none;
-  }
-
-  .pips::before {
-    content: 'Hand';
-    font: 600 9.5px/1 var(--mono);
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--night-ink-faint);
-  }
-
-  .meter {
-    gap: 0.45rem;
-  }
-
-  .meter__track {
-    width: 46px;
-  }
-
-  .heat {
-    gap: 2px;
-  }
-
-  .heat i {
-    width: 5px;
-    height: 10px;
-  }
-
-  /* On a phone the words win over the ornaments: "Take 3/20", "Heat 1/14",
-     no kanji and no tiny gauges to decode. */
-  .meter__kanji,
-  .meter__track,
-  .heat {
-    display: none;
-  }
-
-  .meter .top__k {
-    font-size: 9.5px;
-  }
-
-  .rule__pop {
-    position: fixed;
-    top: 104px;
-    left: 0.8rem;
-    right: 0.8rem;
-    width: auto;
-  }
-
   .hud__main {
     padding: 0.8rem 0.6rem;
     place-items: start center;
@@ -1865,132 +1238,6 @@
 
   .hud__bottom {
     padding: 0 0.5rem max(0.5rem, env(safe-area-inset-bottom));
-  }
-
-  .dock {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'meta side'
-      'stamps stamps'
-      'status status';
-    gap: 0.8rem 1rem;
-    max-height: none;
-    padding: 0.85rem;
-  }
-
-  .dock__meta {
-    grid-area: meta;
-    grid-template-columns: auto auto;
-    justify-content: start;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .dock__side {
-    display: contents;
-  }
-
-  .dock__side .ring,
-  .dock__notimer {
-    grid-area: side;
-    justify-self: end;
-  }
-
-  .dock__status {
-    grid-area: status;
-    font-size: 12.5px;
-  }
-
-  .dock--quiet .dock__quiet {
-    grid-column: 1;
-  }
-
-  .dock__stamps {
-    grid-area: stamps;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .stamp {
-    height: 100px;
-  }
-
-  .stamp__hint {
-    font-size: 11.5px;
-  }
-
-  .dock__coach {
-    grid-area: coach;
-    font-size: 13px;
-  }
-
-  /* The first-night tip gets its own row. Without these, the desktop rule
-     that drops everything to row 2 stacks the bet on the calls and the clock
-     on the tip. */
-  .dock:has(> .dock__coach) {
-    grid-template-areas:
-      'coach coach'
-      'meta side'
-      'stamps stamps'
-      'status status';
-  }
-
-  .dock:has(> .dock__coach) > .dock__meta {
-    grid-area: meta;
-  }
-
-  .dock:has(> .dock__coach) > .dock__stamps {
-    grid-area: stamps;
-  }
-
-  .stamp__kanji {
-    font-size: 34px;
-  }
-
-  .stake {
-    grid-auto-flow: column;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .stake__chips i {
-    width: 16px;
-    height: 16px;
-  }
-
-  .hanko {
-    width: 66px;
-    height: 66px;
-    margin: -33px 0 0 -33px;
-  }
-
-  .hanko > span {
-    font-size: 32px;
-  }
-
-  .hanko--fold {
-    left: calc(100% / 6);
-  }
-
-  .hanko--stay {
-    left: 50%;
-  }
-
-  .hanko--raise {
-    left: calc(100% * 5 / 6 - 34px);
-  }
-
-  .hanko--stay {
-    left: calc(50% - 20px);
-  }
-
-  .hanko--fold {
-    left: calc(100% / 6 - 10px);
-  }
-
-  .dock--quiet {
-    grid-template-columns: 1fr auto;
-    grid-template-areas: none;
   }
 
   .lobby {
@@ -2048,10 +1295,6 @@
     font-size: 0.98rem;
   }
 
-  .sd__delta {
-    font-size: 1.2rem;
-  }
-
   .tray {
     left: 50%;
     top: 108px;
@@ -2067,10 +1310,6 @@
 
   .verdict-stamp {
     font-size: 1.45rem;
-  }
-
-  .dock__meta {
-    gap: 0.8rem;
   }
 
   [data-phase='lobby'] .tray,
@@ -2252,10 +1491,6 @@
     margin: -8px;
   }
 
-  .rule__chip {
-    height: 44px;
-  }
-
   /* The lobby scrolls inside its panel on short phones; fade the bottom
      edge so it reads as more paper below, not a cut. */
   .hud__main:has(> .lobby) {
@@ -2271,12 +1506,6 @@
   border-top: 1px solid var(--night-hair);
   font: 14px/1.45 var(--serif);
   color: var(--night-ink);
-}
-
-/* The deltas are the crew's; your own share is the line above them. */
-.sd__deltas-k {
-  color: var(--night-ink-faint);
-  font-size: 9.5px;
 }
 
 /* On a phone the showdown panel owns the screen; the personal line carries

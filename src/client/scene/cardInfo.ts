@@ -66,18 +66,14 @@ export function isFace(slot: Slot): slot is Card {
   return slot !== null && slot !== 'back';
 }
 
-export const STANCE_KANJI: Record<Stance | 'hidden', string> = {
-  fold: '降',
-  stay: '待',
-  raise: '攻',
-  hidden: '伏',
+export const STANCE_KANJI: Record<Stance, string> = {
+  in: '入',
+  out: '出',
 };
 
-export const STANCE_INK: Record<Stance | 'hidden', string> = {
-  fold: PALETTE.sumi,
-  stay: PALETTE.ai,
-  raise: PALETTE.shu,
-  hidden: PALETTE.sumi2,
+export const STANCE_INK: Record<Stance, string> = {
+  in: PALETTE.shu,
+  out: PALETTE.sumi,
 };
 
 export const AVATAR_KANJI: Record<Avatar, string> = {

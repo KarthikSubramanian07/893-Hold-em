@@ -2,7 +2,7 @@
 // no sample files. Nothing plays until `unlock()` is called from a user
 // gesture, and the mute choice survives reloads.
 //
-//   voices.ts    one-shot sounds (cards, tokens, hanko, strings, taiko)
+//   voices.ts    one-shot sounds (cards, nods, hanko, strings, taiko)
 //   ambience.ts  the room: rain, hum, the city, the odd train
 //   master.ts    buses, glue compressor, limiter
 //   cues.ts      soundsFor(): which sounds a change in the GameView makes
@@ -33,13 +33,11 @@ export interface Sfx {
   flip(): void;
   chip(): void;
   stamp(): void;
-  fold(): void;
   reveal(): void;
-  rule(): void;
   win(): void;
   lose(): void;
   tick(): void;
-  /** Another seat sealing their call: a distant, muffled stamp. */
+  /** Another seat deciding: a distant, muffled stamp. */
   stampFar(): void;
   /** A tied or walked hand. */
   tie(): void;
@@ -172,15 +170,13 @@ function createSfx(): Sfx {
     flip: () => play('flip'),
     chip: () => play('chip'),
     stamp: () => play('stamp'),
-    fold: () => play('fold'),
     reveal: () => play('reveal'),
-    rule: () => play('rule'),
     win: () => play('win'),
     lose: () => play('lose'),
     tick: () => play('tick'),
     stampFar: () => play('stampFar'),
     tie: () => play('tie'),
-    sting: (verdict) => play(verdict === 'clean' ? 'stingClean' : verdict === 'raid' ? 'stingRaid' : 'stingShort'),
+    sting: (verdict) => play(verdict === 'clean' ? 'stingClean' : verdict === 'raid' ? 'stingRaid' : 'stingDawn'),
   };
 }
 
@@ -203,7 +199,7 @@ export function useGameSounds(view: GameView | null): void {
       clearTicks();
       return;
     }
-    if (view.phase !== 'call' || last?.deadline !== view.deadline) clearTicks();
+    if ((view.phase !== 'nod' && view.phase !== 'call') || last?.deadline !== view.deadline) clearTicks();
 
     for (const cue of soundsFor(last, view, view.you)) schedule(cue);
 

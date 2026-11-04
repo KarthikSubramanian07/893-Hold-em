@@ -127,7 +127,7 @@ try {
   const liveFails = [];
   if (before !== 'locked') liveFails.push(`audio context existed before the first gesture (${before})`);
   if (live.state !== 'running') liveFails.push(`audio context is ${live.state} after the gesture`);
-  const expected = ['deal', 'rule', 'stampFar', 'stamp', 'tick', 'fold', 'chip', 'flip', 'reveal', 'win', 'stingClean'];
+  const expected = ['deal', 'stampFar', 'tick', 'flip', 'nodReveal', 'ownReveal', 'reveal', 'win', 'stingClean'];
   for (const name of expected) if (!live.played.includes(name)) liveFails.push(`never played ${name}`);
   const order = ['reveal', 'win', 'stingClean'].map((n) => live.played.indexOf(n));
   if (!(order[0] < order[1] && order[1] < order[2])) liveFails.push(`showdown out of order: ${live.played.join(' ')}`);

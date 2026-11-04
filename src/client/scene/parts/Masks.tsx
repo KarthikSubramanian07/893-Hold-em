@@ -1,8 +1,8 @@
-// The House: one masked figure per hand, floating in the dark against the
-// rainy window. Each mask is the one maskFor() names for this table (Okame,
-// Kitsune, the Okina, the Oni…), carved from its height field in maskShapes.ts
-// and painted to match. Masks slowly turn to look at the two seats they watch,
-// and at the showdown the one who saw you turns and flares.
+// The House: one masked figure floating in the dark against the rainy window,
+// its 3 to 5 cards in a row before it. The mask is the one this table wears
+// (Okame, Kitsune, the Okina), carved from its height field in maskShapes.ts
+// and painted to match. It glances slowly from seat to seat, and at the
+// showdown it turns to stare down the hand that beat it, or the one it beat.
 
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
@@ -15,7 +15,6 @@ import { MASK_SHAPES, surfacePoint, type MaskShape } from '../maskShapes';
 import { PALETTE } from '../palette';
 import { softDot } from '../textures/canvas';
 import { maskTexture } from '../textures/masks';
-import { gazeIndex } from '../watch';
 import { Card } from './Card';
 
 // ---------------------------------------------------------------------------
@@ -299,10 +298,17 @@ interface MaskProps {
   scale: number;
   target: HouseTarget;
   index: number;
-  /** World anchors of the seats this mask watches. */
+  /** World anchors of the seats it glances between. */
   gaze: Vec3[];
-  /** World anchor of the first seat it saw at the showdown, if any. */
+  /** World anchor of the seat it stares down at the showdown, if any. */
   sawAt: Vec3 | null;
+}
+
+/** Which of its seats the House is looking at, `t` seconds in: it glances between them. */
+export function gazeIndex(t: number, seats: number, phase: number): number {
+  if (seats <= 1) return 0;
+  // Dwell ~4.5 s on each seat, offset so repeat visits never line up.
+  return Math.floor((t + phase) / 4.5) % seats;
 }
 
 function Mask({ id, spot, scale, target, index, gaze, sawAt }: MaskProps) {
@@ -462,22 +468,22 @@ export function House({ house, spots, scale, anchors }: HouseProps) {
       <MaskKey />
       {house.map((h, i) => {
         const spot = spots[i]!;
-        const cards = houseCardSpots(spot);
+        const cards = houseCardSpots(spot, h.cards.length);
         const gaze = h.watches.map((id) => anchors.get(id)).filter((v): v is Vec3 => !!v);
         const sawAt = h.saw.length ? (anchors.get(h.saw[0]!) ?? null) : null;
         return (
           <group key={`${i}:${h.mask}`}>
             <Mask id={h.mask} spot={spot} scale={scale} target={h} index={i} gaze={gaze} sawAt={sawAt} />
             {h.cards.map((slot, k) => {
-              const c = cards[k] ?? cards[0];
+              const c = cards[k] ?? cards[0]!;
               const lift = h.glow[k] ? 0.16 : 0;
               return (
                 <Card
                   key={k}
                   slot={slot}
                   position={[c.x, 0.006 + k * 0.002 + lift, c.z + (h.glow[k] ? 0.1 : 0)]}
-                  rotation={[-Math.PI / 2 + (lift ? 0.5 : 0), 0, (k - 0.5) * 0.12]}
-                  scale={0.82}
+                  rotation={[-Math.PI / 2 + (lift ? 0.5 : 0), 0, (k - (h.cards.length - 1) / 2) * 0.05]}
+                  scale={h.cards.length > 3 ? 0.78 : 0.82}
                   houseGlow={h.glow[k]}
                   dealFrom={[spot.x, 1.0, spot.z + 0.2]}
                   delay={0.25 + i * 0.12 + k * 0.08}

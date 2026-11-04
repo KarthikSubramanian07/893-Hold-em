@@ -4,8 +4,8 @@
 
 import type { Avatar, GameView, Stance, TableConfig } from './engine/types';
 
-export type Reaction = 'clink' | 'smoke' | 'nod' | 'bow' | 'fire' | 'ghost';
-export const REACTIONS: readonly Reaction[] = ['clink', 'smoke', 'nod', 'bow', 'fire', 'ghost'];
+export type Reaction = 'clink' | 'smoke' | 'wink' | 'bow' | 'fire' | 'ghost';
+export const REACTIONS: readonly Reaction[] = ['clink', 'smoke', 'wink', 'bow', 'fire', 'ghost'];
 
 export const AVATARS: readonly Avatar[] = [
   'kitsune',
@@ -26,6 +26,9 @@ export type ClientMessage =
   | { t: 'bot'; op: 'add' | 'remove' } // host only, lobby only
   | { t: 'kick'; seat: string } // host only, lobby only
   | { t: 'start' } // host only
+  /** During `nod`: nod at a teammate's seat id, or `null` to pass. */
+  | { t: 'nod'; at: string | null }
+  /** During `call`: In or Out. */
   | { t: 'call'; stance: Stance }
   | { t: 'next' } // ready for the next hand
   | { t: 'again' } // host: new night, same crew
@@ -54,7 +57,7 @@ export function cleanName(raw: unknown): string {
   return Array.from(cleaned).slice(0, NAME_MAX).join('') || 'Stranger';
 }
 
-const STANCES: readonly Stance[] = ['fold', 'stay', 'raise'];
+const STANCES: readonly Stance[] = ['in', 'out'];
 
 function isAvatar(x: unknown): x is Avatar {
   return typeof x === 'string' && (AVATARS as readonly string[]).includes(x);
@@ -95,6 +98,9 @@ export function parseClientMessage(raw: string): ClientMessage | null {
       return typeof o.seat === 'string' && /^s[0-5]$/.test(o.seat) ? { t: 'kick', seat: o.seat } : null;
     case 'start':
       return { t: 'start' };
+    case 'nod':
+      if (o.at === null) return { t: 'nod', at: null };
+      return typeof o.at === 'string' && /^s[0-5]$/.test(o.at) ? { t: 'nod', at: o.at } : null;
     case 'call':
       return STANCES.includes(o.stance as Stance) ? { t: 'call', stance: o.stance as Stance } : null;
     case 'next':

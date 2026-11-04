@@ -17,29 +17,17 @@ export type Slot = Card | 'back' | null;
 
 export type Difficulty = 'shitamachi' | 'kabukicho' | 'oyabun';
 
-export type RuleId =
-  | 'kiri'
-  | 'kagami'
-  | 'oni'
-  | 'shizuka'
-  | 'homura'
-  | 'kizuna'
-  | 'hebi'
-  | 'kitsune'
-  | 'gyaku';
-
-export type Stance = 'fold' | 'stay' | 'raise';
-
-/** 0 pre-flop, 1 flop, 2 turn, 3 river. */
-export type Street = 0 | 1 | 2 | 3;
+export type Stance = 'in' | 'out';
 
 export type Phase =
   | 'lobby' // seats filling, host configuring
-  | 'call' // a street is open and crew members are choosing
+  | 'nod' // the flop is out; each player may nod at one teammate
+  | 'call' // the river is out; each player picks In or Out
   | 'showdown' // hand resolved, results on the table, waiting for "next"
   | 'over'; // the night is over, verdict shown
 
-export type Verdict = 'clean' | 'raid' | 'short';
+/** clean: the marker reached the door. raid: it reached the sirens. dawn: last orders came first. */
+export type Verdict = 'clean' | 'raid' | 'dawn';
 
 export type HandCategory =
   | 'high'
@@ -81,6 +69,8 @@ export type Avatar =
 
 // ---------------------------------------------------------------------------
 // Views: what one viewer is allowed to know. The server builds one per socket.
+// During a hand you see every teammate's cards but never your own; spectators
+// see no hole cards at all.
 // ---------------------------------------------------------------------------
 
 export interface SeatView {
@@ -91,58 +81,55 @@ export interface SeatView {
   bot: boolean;
   host: boolean;
   connected: boolean;
-  /** Hole cards: real cards for the viewer's own seat, revealed seats, and at the showdown; `'back'` otherwise. */
+  /** Hole cards: real cards for teammates (and everyone at the showdown); `'back'` for your own and for spectators. */
   cards: Slot[];
-  /** Still in this hand (has not folded). */
-  active: boolean;
-  /** Current stake, 1..3. Hidden as `null` under Hush for other seats while calls are open. */
-  stake: number | null;
-  /** Has this seat locked in a call for the current street? */
+  /** Has this seat decided in the current phase (nodded or passed during `nod`, picked In/Out during `call`)? */
   locked: boolean;
-  /** The call this seat made on each street so far, `null` where hidden or not yet made. Index = street. */
-  calls: (Stance | 'hidden' | null)[];
-  /** At the showdown: this seat's evaluated hand (active or not). */
+  /** Seat id this seat nodded at. Others' nods are hidden (null) until every nod is in; your own is always visible. */
+  nod: string | null;
+  /** In or Out. Hidden (null) for others until the showdown; your own locked choice is visible to you. */
+  stance: Stance | null;
+  /** At the showdown: this seat's evaluated hand. */
   hand: HandValue | null;
-  /** At the showdown: true for the one seat whose hand carried the crew (or tied it). */
+  /** At the showdown: this seat's hand carried the crew (several on a tie). */
   champion: boolean;
-  /** Index into `house` of the mask watching this seat: your heat check is against its hand. Null in the lobby. */
-  watcher: number | null;
 }
 
-export interface HouseHandView {
+export interface HouseView {
+  /** The House's cards (3, 4 or 5 by table). The first is face up; the rest are `'back'` until the showdown. Empty in the lobby. */
   cards: Slot[];
   /** At the showdown. */
   hand: HandValue | null;
-  /** At the showdown: the mask whose hand the crew faced. */
-  champion: boolean;
 }
 
 export type HandOutcome = 'crew' | 'house' | 'tie' | 'walked';
 
 export interface HandResult {
   outcome: HandOutcome;
-  /** Change in take this hand (≥ 0). */
-  take: number;
-  /** Change in heat this hand (≥ 0). */
-  heat: number;
+  /** Steps the marker moved: +1 per player In on a win, -1 per player In on a loss, 0 on a tie or when everyone was Out. */
+  moved: number;
+  /** Seat ids that were In. */
+  ins: string[];
   crewBest: HandValue | null;
   houseBest: HandValue;
-  /** Seat ids whose hand was the crew's best (several on a tie). */
+  /** Seat ids whose hand was the crew's best among those In (several on a tie). */
   crewChampions: string[];
-  /** Indexes into `house` of the House's best hand(s). */
-  houseChampions: number[];
-  /** Seat ids that stayed in, lost to the House on their own, and drew heat. */
-  burned: string[];
+  /** Seat ids (In or Out) whose hand beat the House: who could have carried it. */
+  couldHave: string[];
 }
 
 export interface HistoryEntry {
   hand: number;
-  rule: RuleId | null;
   outcome: HandOutcome;
-  take: number;
-  heat: number;
+  moved: number;
+  /** How many were In. */
+  ins: number;
   crewBestName: string | null;
   houseBestName: string;
+  /** Name of the seat whose hand carried the crew, if any. */
+  carrier: string | null;
+  /** Nods the carrier received that hand. */
+  carrierNods: number;
 }
 
 export interface GameView {
@@ -152,21 +139,20 @@ export interface GameView {
   /** Which seat id the viewer holds, or null for a spectator. */
   you: string | null;
   seats: SeatView[];
-  house: HouseHandView[];
-  /** Always five slots. */
+  house: HouseView;
+  /** Always five slots: three face up during `nod`, five from `call` on. */
   board: Slot[];
-  street: Street;
   /** Nights started at this table: 0 before the first, then 1, 2, … */
   night: number;
   /** 1-based hand number; 0 in the lobby. */
   hand: number;
-  hands: number;
-  take: number;
-  heat: number;
-  target: number;
-  heatLimit: number;
-  rule: RuleId | null;
-  /** Epoch ms when the current call times out, or null. */
+  /** The night ends after this many hands if neither end of the track is reached. */
+  lastOrders: number;
+  /** The marker: 0 at the start; reaching `door` escapes, reaching `-sirens` is a raid. */
+  meter: number;
+  door: number;
+  sirens: number;
+  /** Epoch ms when the current decision times out, or null. */
   deadline: number | null;
   /** The showdown result for the current hand, once resolved. */
   result: HandResult | null;

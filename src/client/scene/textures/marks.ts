@@ -1,16 +1,14 @@
-// Small painted things: call slips, lacquer tokens, avatar seals, the candle
-// flame, smoke, and the House Rule card.
+// Small painted things: In/Out slips, avatar seals, the candle flame, smoke.
 
 import type * as THREE from 'three';
-import { RULES } from '../../../engine/rules';
-import type { Avatar, RuleId, Stance } from '../../../engine/types';
+import type { Avatar, Stance } from '../../../engine/types';
 import { AVATAR_KANJI, STANCE_INK, STANCE_KANJI } from '../cardInfo';
-import { MONO, SERIF } from '../fonts';
+import { SERIF } from '../fonts';
 import { PALETTE } from '../palette';
 import { blurFill, cached, inkVoids, makeCanvas, paperGrain, rng, roundRect, toTexture } from './canvas';
 
-/** A torn washi slip stamped with one call: 降 fold, 待 stay, 攻 raise, 伏 hidden. */
-export function stampTexture(stance: Stance | 'hidden'): THREE.CanvasTexture {
+/** A torn washi slip stamped 入 In or 出 Out. */
+export function stampTexture(stance: Stance): THREE.CanvasTexture {
   return cached(`stamp:${stance}`, () => {
     const S = 256;
     const [c, ctx] = makeCanvas(S, S);
@@ -47,30 +45,6 @@ export function stampTexture(stance: Stance | 'hidden'): THREE.CanvasTexture {
     ctx.fillText(STANCE_KANJI[stance], 0, 8);
     ctx.restore();
     inkVoids(ctx, S, S, '#efe6d3', 31 + stance.length, 160);
-    return toTexture(c);
-  });
-}
-
-/** Top face of a vermilion lacquer stake token, stamped 円 in gold. */
-export function tokenTexture(): THREE.CanvasTexture {
-  return cached('token', () => {
-    const S = 128;
-    const [c, ctx] = makeCanvas(S, S);
-    const g = ctx.createRadialGradient(S * 0.4, S * 0.35, 4, S / 2, S / 2, S / 2);
-    g.addColorStop(0, '#e2563a');
-    g.addColorStop(1, '#9e2a17');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, S, S);
-    ctx.strokeStyle = PALETTE.kin;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(S / 2, S / 2, S * 0.4, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = PALETTE.kin;
-    ctx.font = `800 64px ${SERIF}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('円', S / 2, S / 2 + 4);
     return toTexture(c);
   });
 }
@@ -148,85 +122,3 @@ export function smokeTexture(): THREE.CanvasTexture {
   });
 }
 
-/** Rule card ink colour by kind: boons in gold, banes in shu, wild in teal. */
-export function ruleInk(id: RuleId): string {
-  const kind = RULES[id].kind;
-  return kind === 'boon' ? PALETTE.kin : kind === 'bane' ? PALETTE.neon : PALETTE.teal;
-}
-
-/** Face of the tall House Rule card: black lacquer, a glowing kanji, the name in mono. */
-export function ruleTexture(id: RuleId): THREE.CanvasTexture {
-  return cached(`rule:${id}`, () => {
-    const W = 320;
-    const H = 560;
-    const [c, ctx] = makeCanvas(W, H);
-    const info = RULES[id];
-    const ink = ruleInk(id);
-    roundRect(ctx, 3, 3, W - 6, H - 6, 22);
-    ctx.save();
-    ctx.clip();
-    ctx.fillStyle = '#100d0b';
-    ctx.fillRect(0, 0, W, H);
-    paperGrain(ctx, W, H, 21, 0.6);
-    ctx.strokeStyle = PALETTE.kin;
-    ctx.lineWidth = 3;
-    roundRect(ctx, 18, 18, W - 36, H - 36, 14);
-    ctx.stroke();
-    ctx.lineWidth = 1;
-    roundRect(ctx, 26, 26, W - 52, H - 52, 10);
-    ctx.stroke();
-    ctx.fillStyle = PALETTE.kin;
-    ctx.font = `600 18px ${MONO}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('H O U S E   R U L E', W / 2, 62);
-    // The kanji, glowing.
-    ctx.font = `800 220px ${SERIF}`;
-    for (const [blur, alpha] of [
-      [36, 0.8],
-      [12, 1],
-      [0, 1],
-    ] as const) {
-      ctx.save();
-      ctx.shadowColor = ink;
-      ctx.shadowBlur = blur;
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = blur === 0 ? '#fff4ea' : ink;
-      ctx.fillText(info.kanji, W / 2, H * 0.47);
-      ctx.restore();
-    }
-    ctx.fillStyle = PALETTE.washi;
-    ctx.font = `800 40px ${SERIF}`;
-    ctx.fillText(info.name, W / 2, H * 0.76);
-    ctx.fillStyle = ink;
-    ctx.font = `600 18px ${MONO}`;
-    ctx.fillText(info.romaji.toUpperCase().split('').join(' '), W / 2, H * 0.84);
-    ctx.restore();
-    return toTexture(c);
-  });
-}
-
-/** Back of the House Rule card: lacquer with a gold 掟 (the House's law). */
-export function ruleBackTexture(): THREE.CanvasTexture {
-  return cached('rule:back', () => {
-    const W = 320;
-    const H = 560;
-    const [c, ctx] = makeCanvas(W, H);
-    roundRect(ctx, 3, 3, W - 6, H - 6, 22);
-    ctx.save();
-    ctx.clip();
-    ctx.fillStyle = '#120e0c';
-    ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = PALETTE.kin;
-    ctx.lineWidth = 3;
-    roundRect(ctx, 18, 18, W - 36, H - 36, 14);
-    ctx.stroke();
-    ctx.fillStyle = PALETTE.kin;
-    ctx.font = `800 150px ${SERIF}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('掟', W / 2, H / 2);
-    ctx.restore();
-    return toTexture(c);
-  });
-}

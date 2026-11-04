@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { sfx, useGameSounds } from '../audio';
 import { Link } from '../app/router';
 import { Banner, bartender } from '../hud/Banner';
-import { CallDock } from '../hud/CallDock';
+import { Dock } from '../hud/Dock';
 import { Lobby } from '../hud/Lobby';
 import { ReactionFloats, ReactionsTray } from '../hud/Reactions';
 import { Receipt } from '../hud/Receipt';
@@ -21,6 +21,7 @@ import { Seal } from '../ui/Seal';
 import './table.css';
 import { useTableStory } from '../hud/useTableStory';
 import '../hud/hud.css';
+import '../hud/play.css';
 
 const NO_LINES: readonly Line[] = [];
 
@@ -141,7 +142,7 @@ export function TablePage({ code }: { code: string }) {
           </main>
           {slot !== 'aside' && subtitles}
           <div className="hud__bottom">
-            {view.phase === 'call' && <CallDock view={view} />}
+            {(view.phase === 'nod' || view.phase === 'call') && <Dock view={view} />}
             {view.phase === 'showdown' && <Showdown view={view} />}
           </div>
           <ReactionsTray view={view} />

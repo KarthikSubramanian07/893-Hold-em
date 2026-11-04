@@ -1,13 +1,13 @@
-// Who sits across the table. The House plays one hand per mask, and which mask
-// holds which hand is fixed per table, so the 3D scene, the narrator, and the
-// docs always agree on who just took your money.
+// Who sits across the table. The House is one masked figure, and which mask it
+// wears is fixed per table, so the 3D scene, the narrator, and the docs always
+// agree on who just took your night. The other faces are friends of the family.
 //
-//   Shitamachi  Okame, Hyottoko, Ebisu       the collectors
-//   Kabukichō   Kitsune, Tengu, Hannya       the lieutenants
-//   Oyabun      Okina, Hannya, Kitsune       the boss, flanked by his two best
-//   any table   Oni                          the extra seat, under the Oni rule
+//   Shitamachi  Okame (the House), Hyottoko, Ebisu
+//   Kabukichō   Kitsune (the House), Tengu, Hannya
+//   Oyabun      Okina (the House), Hannya, Kitsune
+//   any table   Oni, who turns up in the stories
 
-import type { Difficulty, RuleId } from '../../engine/types';
+import type { Difficulty } from '../../engine/types';
 import type { MaskId } from './types';
 
 export interface MaskPalette {
@@ -219,20 +219,20 @@ export const TABLE_MASKS: Record<Difficulty, readonly MaskId[]> = {
 };
 
 /**
- * The mask holding House hand `index` at `table`. Under the Oni rule the last
- * hand belongs to the Oni: pass `count` (the number of House hands this hand)
- * when you know it, otherwise any index past the table's three seats is his.
+ * The mask at `table`. The House wears the first one; the others are the
+ * friends of the family who drift past (the lab and the story use them).
  */
-export function maskFor(table: Difficulty, index: number, rule: RuleId | null, count?: number): Mask {
+export function maskFor(table: Difficulty, index = 0): Mask {
   const seats = TABLE_MASKS[table];
-  if (rule === 'oni') {
-    const last = count !== undefined ? count - 1 : seats.length;
-    if (index >= last) return MASKS.oni;
-  }
   return MASKS[seats[Math.max(0, Math.min(index, seats.length - 1))]!];
 }
 
-/** Every mask at the table this hand, in House-hand order. */
-export function masksFor(table: Difficulty, count: number, rule: RuleId | null): Mask[] {
-  return Array.from({ length: count }, (_, i) => maskFor(table, i, rule, count));
+/** The first `count` masks at the table, House first. */
+export function masksFor(table: Difficulty, count: number): Mask[] {
+  return Array.from({ length: count }, (_, i) => maskFor(table, i));
+}
+
+/** The face the House wears tonight. */
+export function houseMaskFor(table: Difficulty): Mask {
+  return maskFor(table, 0);
 }

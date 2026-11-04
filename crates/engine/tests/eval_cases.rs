@@ -383,3 +383,90 @@ fn best_five_reads_made_part_first_then_kickers_high_to_low() {
         }
     }
 }
+
+// The House can hold up to five cards, so with the board a hand can be ten
+// cards. Past seven, a flush no longer rules out a full house or quads.
+#[test]
+fn ten_cards_full_house_beats_a_flush_on_the_same_table() {
+    check(
+        "Ah Kh 9h 5h 2h As Ad Ks Kd 3c",
+        Category::FullHouse,
+        "Full house, aces full of kings",
+        "As Ah Ad Ks Kh",
+    );
+}
+
+#[test]
+fn ten_cards_quads_beat_a_flush() {
+    check(
+        "Qh Jh 8h 6h 3h Qs Qd Qc 7c 2s",
+        Category::Quads,
+        "Four queens",
+        "Qs Qh Qd Qc Jh",
+    );
+}
+
+#[test]
+fn ten_cards_two_flush_suits_take_the_better_one() {
+    check(
+        "Ah Jh 9h 7h 4h Ks Qs Ts 8s 6s",
+        Category::Flush,
+        "Flush, ace high",
+        "Ah Jh 9h 7h 4h",
+    );
+    check(
+        "9s 8s 7s 6s 5s Ah Kh Qh Jh 2h",
+        Category::StraightFlush,
+        "Straight flush, nine high",
+        "9s 8s 7s 6s 5s",
+    );
+}
+
+#[test]
+fn ten_cards_agree_with_the_best_five_card_subset() {
+    let mut rng = Rng::seeded(31);
+    for _ in 0..3000 {
+        let mut deck = full_deck();
+        rng.shuffle(&mut deck);
+        let hand: Vec<Card> = deck[..10].to_vec();
+        let mut best = 0;
+        for a in 0..10 {
+            for b in a + 1..10 {
+                for c in b + 1..10 {
+                    for d in c + 1..10 {
+                        for e in d + 1..10 {
+                            best = best.max(score5([hand[a], hand[b], hand[c], hand[d], hand[e]]));
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(score_best(&hand), best, "{hand:?}");
+        assert_eq!(evaluate(&hand).score, best);
+    }
+}
+
+#[test]
+fn twelve_cards_agree_with_the_best_five_card_subset() {
+    // The House holds up to seven cards at a full Oyabun table.
+    let mut rng = Rng::seeded(37);
+    for _ in 0..400 {
+        let mut deck = full_deck();
+        rng.shuffle(&mut deck);
+        let hand: Vec<Card> = deck[..12].to_vec();
+        let mut best = 0;
+        for a in 0..12 {
+            for b in a + 1..12 {
+                for c in b + 1..12 {
+                    for d in c + 1..12 {
+                        for e in d + 1..12 {
+                            best = best.max(score5([hand[a], hand[b], hand[c], hand[d], hand[e]]));
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(score_best(&hand), best, "{hand:?}");
+        assert_eq!(evaluate(&hand).score, best);
+    }
+}

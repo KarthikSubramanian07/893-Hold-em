@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { hash, listNames, pick } from './hash';
 import * as LINES from './lines';
-import { MASKS, TABLE_MASKS, maskFor, masksFor } from './masks';
+import { MASKS, TABLE_MASKS, houseMaskFor, maskFor, masksFor } from './masks';
 import { REGULARS } from './regulars';
 
 /** Every string reachable from a value, with a path for the failure message. */
@@ -63,12 +63,11 @@ describe('picking', () => {
 });
 
 describe('masks', () => {
-  it('seats three masks at each table and the Oni on the extra stool', () => {
-    expect(masksFor('shitamachi', 3, null).map((m) => m.id)).toEqual(['okame', 'hyottoko', 'ebisu']);
-    expect(masksFor('kabukicho', 2, 'oni').map((m) => m.id)).toEqual(['kitsune', 'oni']);
-    expect(masksFor('oyabun', 4, 'oni').map((m) => m.id)).toEqual(['okina', 'hannya', 'kitsune', 'oni']);
-    expect(maskFor('oyabun', 0, null).id).toBe('okina');
-    expect(maskFor('kabukicho', 3, 'oni').id).toBe('oni');
+  it('puts one House mask at each table, with its friends behind it', () => {
+    expect(masksFor('shitamachi', 3).map((m) => m.id)).toEqual(['okame', 'hyottoko', 'ebisu']);
+    expect(houseMaskFor('kabukicho').id).toBe('kitsune');
+    expect(maskFor('oyabun').id).toBe('okina');
+    expect(maskFor('oyabun', 9).id).toBe('kitsune');
   });
 
   it('gives every mask a palette and something to say in every situation', () => {

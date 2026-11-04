@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { GameView, HistoryEntry } from '../../engine/types';
-import { fixture, hv, seatOver, withResult } from './fixtures';
+import type { GameView } from '../../engine/types';
+import { entry, fixture, hv, seatOver, withResult } from './fixtures';
 import {
   EMPTY_MATCHBOOK,
   type KeyValue,
@@ -15,7 +15,7 @@ import {
 
 const EVENING = new Date(2026, 10, 1, 21, 0);
 const ctx = { now: EVENING };
-const river = () => fixture('river');
+const call = () => fixture('call');
 const showdown = (edit: (v: GameView) => GameView = (v) => v) => edit(fixture('showdown'));
 const detect = (prev: GameView | null, next: GameView, you = 's0', c = ctx) => detectStamps(prev, next, you, c).sort();
 
@@ -24,13 +24,11 @@ function memory(): KeyValue & { map: Map<string, string> } {
   return { map, getItem: (k) => map.get(k) ?? null, setItem: (k, v) => void map.set(k, v) };
 }
 
-const history = (outcomes: HistoryEntry['outcome'][], take = 4): HistoryEntry[] =>
-  outcomes.map((outcome, i) => ({ hand: i + 1, rule: null, outcome, take: outcome === 'crew' ? take : 0, heat: 0, crewBestName: null, houseBestName: 'King high' }));
 
 describe('the stamps', () => {
   it('has around twenty, each with kanji, a name, and a verse', () => {
     expect(STAMPS.length).toBeGreaterThanOrEqual(16);
-    expect(STAMPS.length).toBeLessThanOrEqual(21);
+    expect(STAMPS.length).toBeLessThanOrEqual(24);
     expect(new Set(STAMPS.map((s) => s.id)).size).toBe(STAMPS.length);
     for (const s of STAMPS) {
       expect(s.kanji.length).toBeGreaterThan(0);
@@ -42,89 +40,92 @@ describe('the stamps', () => {
 
 describe('detectStamps', () => {
   it('earns nothing for spectators or on a quiet step', () => {
-    expect(detect(river(), showdown(), null as unknown as string)).toEqual([]);
-    expect(detect(river(), river())).toEqual([]);
+    expect(detect(call(), showdown(), null as unknown as string)).toEqual([]);
+    expect(detect(call(), call())).toEqual([]);
   });
 
-  it('presses Ya-ku-za when you win with 8, 9 and 3 between your hand and the board', () => {
-    const v = showdown((s) => seatOver({ ...s, board: ['3c', 'Kh', '7s', '2c', 'Qh'] }, 's0', { cards: ['8h', '9d'] }));
-    expect(detect(river(), v)).toContain('yakuza');
-    // Not when the House took it.
-    expect(detect(river(), withResult(v, { outcome: 'house' }))).not.toContain('yakuza');
-    // Not when you folded.
-    expect(detect(river(), seatOver(v, 's0', { active: false }))).not.toContain('yakuza');
+  it('presses The Nod when you carry a hand you were nodded on', () => {
+    // s1 carried with two nods.
+    expect(detect(call(), showdown(), 's1')).toContain('the-nod');
+    expect(detect(call(), showdown(), 's1')).not.toContain('blind-faith');
   });
 
-  it('presses Ride or Die when you are paid holding the worst hand at the table', () => {
-    // The fixture's s0 (two pair) beats Daichi's pair; give s0 the weakest hand.
-    const worst = showdown((s) => seatOver(s, 's0', { hand: hv(1_000_000, 'high', 'Ace high', ['Ah', 'Kd', 'Qh', '7s', '2c']) }));
-    expect(detect(river(), worst)).toContain('ride-or-die');
-    expect(detect(river(), showdown())).not.toContain('ride-or-die');
-    expect(detect(river(), { ...worst, rule: 'gyaku' })).not.toContain('ride-or-die');
+  it('presses Blind Faith when you carry with no nods at all', () => {
+    const v = showdown((s) => ({ ...s, seats: s.seats.map((x) => ({ ...x, nod: null })) }));
+    expect(detect(call(), v, 's1')).toContain('blind-faith');
+    expect(detect(call(), v, 's1')).not.toContain('the-nod');
   });
 
-  it('presses Lone Rider when you were the only one in, and won', () => {
-    const alone = showdown((s) => ({ ...s, seats: s.seats.map((x) => ({ ...x, active: x.id === 's0' })) }));
-    expect(detect(river(), alone)).toContain('lone-rider');
+  it('presses Good Eye when your nod went to the carrier', () => {
+    expect(detect(call(), showdown(), 's0')).toContain('good-eye');
+    expect(detect(call(), showdown(), 's3')).not.toContain('good-eye');
+    expect(detect(call(), showdown((s) => withResult(s, { outcome: 'house' })), 's0')).not.toContain('good-eye');
+  });
+
+  it('presses Full House In when every stool went In and won', () => {
+    expect(detect(call(), showdown((s) => withResult(s, { ins: ['s0', 's1', 's2', 's3'] })))).toContain('all-in');
+    expect(detect(call(), showdown())).not.toContain('all-in');
+  });
+
+  it('presses Ya-ku-za when you carry with 8, 9 and 3 between your hand and the board', () => {
+    const v = showdown((s) => seatOver({ ...s, board: ['3c', 'Kh', '7s', '2c', 'Qh'] }, 's1', { cards: ['8h', '9d'] }));
+    expect(detect(call(), v, 's1')).toContain('yakuza');
+    expect(detect(call(), withResult(v, { outcome: 'house' }), 's1')).not.toContain('yakuza');
   });
 
   it('presses Royal for the crew’s royal flush, not the House’s', () => {
     const royal = hv(9_000_000, 'straight-flush', 'Royal flush', ['Ah', 'Kh', 'Qh', 'Jh', 'Th']);
-    expect(detect(river(), showdown((s) => withResult(s, { crewBest: royal })))).toContain('royal');
-    expect(detect(river(), showdown((s) => withResult(s, { outcome: 'house', houseBest: royal })))).not.toContain('royal');
+    expect(detect(call(), showdown((s) => withResult(s, { crewBest: royal })), 's1')).toContain('royal');
+    expect(detect(call(), showdown((s) => withResult(s, { outcome: 'house', houseBest: royal })), 's1')).not.toContain('royal');
   });
 
-  it('presses Ghosts when everyone walks', () => {
-    expect(detect(river(), showdown((s) => withResult(s, { outcome: 'walked', crewBest: null })))).toContain('ghosts');
+  it('presses Never Knew when your own straight or better turns over', () => {
+    expect(detect(call(), showdown(), 's1')).toContain('never-knew');
+    expect(detect(call(), showdown(), 's0')).not.toContain('never-knew');
   });
 
-  it('presses Snakebit and Upside Down for the boss’s favourite rules', () => {
-    const same = hv(3_000_000, 'two-pair', 'Two pair', ['Kh', 'Kd', '7s', '7d', 'Ah']);
-    expect(detect(river(), showdown((s) => withResult({ ...s, rule: 'hebi' }, { outcome: 'house', crewBest: same, houseBest: same })))).toContain('snakebit');
-    expect(detect(river(), showdown((s) => ({ ...s, rule: 'gyaku' })))).toContain('upside-down');
+  it('presses So Close when you sat out holding the winner and the crew lost', () => {
+    const lost = showdown((s) => withResult(s, { outcome: 'house', couldHave: ['s2'] }));
+    expect(detect(call(), lost, 's2')).toContain('so-close');
+    expect(detect(call(), showdown((s) => withResult(s, { couldHave: ['s2'] })), 's2')).not.toContain('so-close');
   });
 
-  it('presses You Were Seen when you draw heat on a winning hand', () => {
-    expect(detect(river(), showdown((s) => withResult(s, { burned: ['s0'] })))).toContain('seen');
-    expect(detect(river(), showdown((s) => withResult(s, { burned: ['s3'] })))).not.toContain('seen');
+  it('presses Ghosts when everyone sits out', () => {
+    expect(detect(call(), showdown((s) => withResult(s, { outcome: 'walked', crewBest: null, ins: [] })))).toContain('ghosts');
   });
 
   it('presses Night Owl only between three and four in the morning', () => {
-    expect(detect(river(), showdown(), 's0', { now: new Date(2026, 10, 1, 3, 30) })).toContain('night-owl');
-    expect(detect(river(), showdown(), 's0', { now: new Date(2026, 10, 1, 4, 0) })).not.toContain('night-owl');
+    expect(detect(call(), showdown(), 's0', { now: new Date(2026, 10, 1, 3, 30) })).toContain('night-owl');
+    expect(detect(call(), showdown(), 's0', { now: new Date(2026, 10, 1, 4, 0) })).not.toContain('night-owl');
     expect(detect(null, fixture('lobby'), 's0', { now: new Date(2026, 10, 1, 3, 30) })).not.toContain('night-owl');
   });
 
-  it('presses Full House when six people and no regulars sit down to play', () => {
-    const six = fixture('preflop', { seats: Array.from({ length: 6 }, (_, i) => ({ ...fixture('preflop').seats[0]!, id: `s${i}`, bot: false })) });
-    expect(detect(fixture('lobby'), six)).toContain('full-house');
+  it('presses Full Bar when six people and no regulars sit down to play', () => {
+    const six = fixture('nod', { seats: Array.from({ length: 6 }, (_, i) => ({ ...fixture('nod').seats[0]!, id: `s${i}`, bot: false })) });
+    expect(detect(fixture('lobby'), six)).toContain('full-bar');
     const withBot = { ...six, seats: six.seats.map((s, i) => (i === 5 ? { ...s, bot: true } : s)) };
-    expect(detect(fixture('lobby'), withBot)).not.toContain('full-house');
+    expect(detect(fixture('lobby'), withBot)).not.toContain('full-bar');
   });
 
   describe('at the end of the night', () => {
     const end = (over: Partial<GameView>) => detect(fixture('showdown', { hand: 6 }), fixture('over', over));
 
-    it('presses First Night and the chapter stamp for a clean getaway', () => {
-      expect(end({})).toEqual(expect.arrayContaining(['first-night', 'neon']));
-      expect(end({ config: { difficulty: 'shitamachi', timer: 30 } })).toContain('corner');
+    it('presses First Night, Clean Getaway and the chapter stamp for a clean getaway', () => {
+      expect(end({})).toEqual(expect.arrayContaining(['first-night', 'getaway', 'corner']));
+      expect(end({ config: { difficulty: 'kabukicho', timer: 30 } })).toContain('neon');
       expect(end({ config: { difficulty: 'oyabun', timer: 30 } })).toContain('oyabun');
-      expect(end({ verdict: 'short' })).not.toContain('neon');
+      expect(end({ verdict: 'dawn' })).not.toContain('corner');
+      expect(end({ verdict: 'dawn' })).toContain('last-orders');
     });
 
-    it('presses Close Call one heat from the raid', () => {
-      expect(end({ heat: 7, heatLimit: 8 })).toContain('close-call');
-      expect(end({ heat: 6, heatLimit: 8 })).not.toContain('close-call');
+    it('presses Close Shave after a step from the sirens', () => {
+      expect(end({ history: [entry(1, 'house', -7, 4), entry(2, 'crew', 4, 4)] })).toContain('close-shave');
+      expect(end({ history: [entry(1, 'house', -6, 4), entry(2, 'crew', 4, 4)] })).not.toContain('close-shave');
     });
 
-    it('presses Clean Sweep for six wins out of six', () => {
-      expect(end({ history: history(['crew', 'crew', 'crew', 'crew', 'crew', 'crew']) })).toContain('sweep');
-      expect(end({ history: history(['crew', 'crew', 'tie', 'crew', 'crew', 'crew']) })).not.toContain('sweep');
-    });
-
-    it('presses Under the Wire when the last hand covered the debt', () => {
-      expect(end({ take: 24, target: 20, history: history(['crew', 'house', 'crew', 'house', 'house', 'crew'], 8) })).toContain('under-the-wire');
-      expect(end({ take: 24, target: 20, history: history(['crew', 'crew', 'crew', 'house', 'house', 'house'], 8) })).not.toContain('under-the-wire');
+    it('presses Clean Sweep for a night with no step toward the sirens', () => {
+      expect(end({ history: [entry(1, 'crew', 4, 4), entry(2, 'crew', 4, 4), entry(3, 'crew', 3, 3)] })).toContain('sweep');
+      expect(end({})).not.toContain('sweep');
     });
 
     it('presses The Knock for a raid', () => {
@@ -181,7 +182,7 @@ describe('the matchbook', () => {
       book = r.data;
       return r.fresh;
     };
-    expect(step(fixture('showdown', { hand: 6 }), fixture('over', { verdict: 'short' }))).toContain('first-night');
+    expect(step(fixture('showdown', { hand: 6 }), fixture('over', { verdict: 'dawn' }))).toContain('first-night');
     expect(book).toMatchObject({ nights: 1, cleared: [] });
     expect(step(fixture('showdown', { hand: 6 }), fixture('over', { config: { difficulty: 'shitamachi', timer: 30 } }))).toContain('corner');
     expect(book).toMatchObject({ nights: 2, cleared: ['shitamachi'] });

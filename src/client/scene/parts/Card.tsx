@@ -34,6 +34,8 @@ export interface CardProps {
   emissive?: number;
   /** Delay (s) before a deal starts, to stagger cards. */
   delay?: number;
+  /** Your own card: its back carries a "?" until it turns over. */
+  mystery?: boolean;
 }
 
 export function Card({
@@ -47,6 +49,7 @@ export function Card({
   dealFrom = [0, 1.4, -2.4],
   emissive = 0,
   delay = 0,
+  mystery = false,
 }: CardProps) {
   const root = useRef<THREE.Group>(null);
   const flip = useRef<THREE.Group>(null);
@@ -68,14 +71,14 @@ export function Card({
   const backMat = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
-        map: cardTexture('back'),
+        map: cardTexture(mystery ? 'mystery' : 'back'),
         roughness: 0.45,
         alphaTest: 0.5,
         emissive: new THREE.Color('#ffffff'),
-        emissiveMap: cardTexture('back'),
+        emissiveMap: cardTexture(mystery ? 'mystery' : 'back'),
         emissiveIntensity: 0,
       }),
-    [],
+    [mystery],
   );
   const glowMats = useMemo(
     () =>

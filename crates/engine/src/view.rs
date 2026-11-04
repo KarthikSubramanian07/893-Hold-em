@@ -2,8 +2,12 @@
 //!
 //! `view_for` turns the full `Game` into a `GameView` for one seat (or a
 //! spectator). It is the only path from hidden state to the wire, so every
-//! secrecy rule lives here: other seats' hole cards, the House's cards, the
-//! undealt board, Fog's face-down river, and Hush's hidden calls.
+//! secrecy rule lives here:
+//!
+//! - During a hand you see every teammate's cards but never your own.
+//! - Spectators see no hole cards at all, so a second tab can't peek at yours.
+//! - The House shows its first card; the rest wait for the showdown.
+//! - Nods stay secret until everyone has nodded; In and Out until the showdown.
 //!
 //! The JSON shape matches `GameView` in `src/engine/types.ts` exactly.
 
@@ -12,7 +16,7 @@ use serde::{Serialize, Serializer};
 use crate::card::Card;
 use crate::eval::HandValue;
 use crate::game::{Config, Game, HandResult, HistoryEntry, Ms, Phase, Stance, Verdict};
-use crate::rules::{HANDS_PER_NIGHT, RuleId};
+use crate::rules::{HOUSE_UP, LAST_ORDERS};
 
 /// A card slot: a real card, a face-down card, or nothing dealt.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -32,21 +36,6 @@ impl Serialize for Slot {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CallView {
-    Made(Stance),
-    Hidden,
-}
-
-impl Serialize for CallView {
-    fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            CallView::Made(st) => st.serialize(s),
-            CallView::Hidden => s.serialize_str("hidden"),
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct SeatView {
     pub id: String,
@@ -56,21 +45,23 @@ pub struct SeatView {
     pub host: bool,
     pub connected: bool,
     pub cards: Vec<Slot>,
-    pub active: bool,
-    pub stake: Option<u8>,
+    /// Has this seat decided in the current phase (nodded, or picked In/Out)?
     pub locked: bool,
-    pub calls: Vec<Option<CallView>>,
+    /// Who this seat nodded at. Hidden from others until every nod is in.
+    pub nod: Option<String>,
+    /// In or Out. Hidden from others until the showdown.
+    pub stance: Option<Stance>,
+    /// At the showdown: this seat's hand.
     pub hand: Option<HandValue>,
+    /// At the showdown: this seat's hand carried the crew.
     pub champion: bool,
-    /// Index into `house` of the mask watching this seat (its heat check).
-    pub watcher: Option<usize>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
-pub struct HouseHandView {
+pub struct HouseView {
     pub cards: Vec<Slot>,
+    /// At the showdown.
     pub hand: Option<HandValue>,
-    pub champion: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -81,18 +72,15 @@ pub struct GameView {
     pub config: Config,
     pub you: Option<String>,
     pub seats: Vec<SeatView>,
-    pub house: Vec<HouseHandView>,
+    pub house: HouseView,
     pub board: Vec<Slot>,
-    pub street: u8,
     /// Nights started at this table (1 for the first).
     pub night: u32,
     pub hand: u8,
-    pub hands: u8,
-    pub take: u32,
-    pub heat: u32,
-    pub target: u32,
-    pub heat_limit: u32,
-    pub rule: Option<RuleId>,
+    pub last_orders: u8,
+    pub meter: i32,
+    pub door: u32,
+    pub sirens: u32,
     pub deadline: Option<Ms>,
     pub result: Option<HandResult>,
     pub history: Vec<HistoryEntry>,
@@ -104,7 +92,7 @@ pub struct GameView {
 /// Build the view for `you` (a seat id) or a spectator (`None`).
 pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
     let open = matches!(g.phase, Phase::Showdown | Phase::Over) && !g.board.is_empty();
-    let hush = g.rule == Some(RuleId::Shizuka) && g.phase == Phase::Call;
+    let nods_public = !matches!(g.phase, Phase::Lobby | Phase::Nod);
     let result = g.result.as_ref();
 
     let seats = g
@@ -112,24 +100,18 @@ pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
         .iter()
         .map(|s| {
             let mine = you == Some(s.id.as_str());
-            let public = open || mine || g.fox.as_deref() == Some(s.id.as_str());
+            // Seated players see their teammates; nobody sees their own hand.
+            let visible = open || (you.is_some() && !mine);
             let cards = s
                 .hole
                 .iter()
-                .map(|&c| if public { Slot::Card(c) } else { Slot::Back })
+                .map(|&c| if visible { Slot::Card(c) } else { Slot::Back })
                 .collect();
-            let calls = s
-                .calls
-                .iter()
-                .map(|c| {
-                    c.map(|st| match st {
-                        // Under Hush, only folds are visible to the rest of the crew.
-                        Stance::Fold => CallView::Made(st),
-                        _ if hush && !mine => CallView::Hidden,
-                        _ => CallView::Made(st),
-                    })
-                })
-                .collect();
+            let locked = match g.phase {
+                Phase::Nod => s.nodded,
+                Phase::Call => s.locked.is_some(),
+                _ => false,
+            };
             SeatView {
                 id: s.id.clone(),
                 name: s.name.clone(),
@@ -138,47 +120,46 @@ pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
                 host: g.host.as_deref() == Some(s.id.as_str()),
                 connected: s.connected,
                 cards,
-                active: s.active,
-                stake: if hush && !mine { None } else { Some(s.stake) },
-                locked: s.locked.is_some(),
-                calls,
+                locked,
+                nod: if nods_public || mine {
+                    s.nod.clone()
+                } else {
+                    None
+                },
+                stance: if open {
+                    s.stance
+                } else if mine {
+                    s.locked
+                } else {
+                    None
+                },
                 hand: (open && s.hole.len() == 2).then(|| g.evaluate_seat(s)),
                 champion: result.is_some_and(|r| r.crew_champions.contains(&s.id)),
-                watcher: g.watcher_of(&s.id),
             }
         })
         .collect();
 
-    let mirror = g.rule == Some(RuleId::Kagami);
-    let house = g
-        .house
-        .iter()
-        .enumerate()
-        .map(|(i, h)| HouseHandView {
-            cards: h
-                .iter()
-                .enumerate()
-                .map(|(j, &c)| {
-                    if open || (mirror && j == 0) {
-                        Slot::Card(c)
-                    } else {
-                        Slot::Back
-                    }
-                })
-                .collect(),
-            hand: open.then(|| g.house_value(i)),
-            champion: result.is_some_and(|r| r.house_champions.contains(&i)),
-        })
-        .collect();
+    let house = HouseView {
+        cards: g
+            .house
+            .iter()
+            .enumerate()
+            .map(|(i, &c)| {
+                if open || i < HOUSE_UP {
+                    Slot::Card(c)
+                } else {
+                    Slot::Back
+                }
+            })
+            .collect(),
+        hand: (open && !g.house.is_empty()).then(|| g.house_value()),
+    };
 
     let dealt = g.dealt_board();
-    let fog = g.rule == Some(RuleId::Kiri) && !open;
     let board = (0..5)
         .map(|i| match g.board.get(i) {
-            Some(_) if i >= dealt => Slot::Empty,
-            Some(_) if i == 4 && fog => Slot::Back,
-            Some(&c) => Slot::Card(c),
-            None => Slot::Empty,
+            Some(&c) if i < dealt => Slot::Card(c),
+            _ => Slot::Empty,
         })
         .collect();
 
@@ -190,23 +171,12 @@ pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
         seats,
         house,
         board,
-        street: g.street,
         night: g.night,
         hand: g.hand,
-        hands: HANDS_PER_NIGHT,
-        take: g.take,
-        heat: g.heat,
-        target: if g.target > 0 && g.phase != Phase::Lobby {
-            g.target
-        } else {
-            crate::rules::target_for(g.config.difficulty, g.seats.len().max(2))
-        },
-        heat_limit: if g.phase == Phase::Lobby {
-            crate::rules::heat_limit_for(g.config.difficulty, g.seats.len().max(2))
-        } else {
-            g.heat_limit
-        },
-        rule: g.rule,
+        last_orders: LAST_ORDERS,
+        meter: g.meter,
+        door: g.door,
+        sirens: g.sirens,
         deadline: g.deadline,
         result: g.result.clone(),
         history: g.history.clone(),
@@ -219,18 +189,13 @@ pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::Stance;
 
-    fn running(rule: Option<RuleId>) -> Game {
+    fn running() -> Game {
         let mut g = Game::new("K7QX2", 9);
         let a = g.join("pid-aaaaaaaa", "A", "koi").unwrap();
         g.join("pid-bbbbbbbb", "B", "tora").unwrap();
         g.add_bot(&a).unwrap();
         g.start(&a, 0).unwrap();
-        g.rule = rule;
-        if rule == Some(RuleId::Kitsune) {
-            g.fox = Some("s2".into());
-        }
         g
     }
 
@@ -239,35 +204,32 @@ mod tests {
     }
 
     #[test]
-    fn you_see_your_cards_and_nobody_elses() {
-        let g = running(None);
+    fn you_see_everyone_but_yourself() {
+        let g = running();
         let v = view_for(&g, Some("s0"), 5);
-        assert!(matches!(v.seats[0].cards[0], Slot::Card(_)));
-        assert_eq!(v.seats[1].cards, vec![Slot::Back, Slot::Back]);
-        assert_eq!(v.seats[2].cards, vec![Slot::Back, Slot::Back]);
-        // No hidden card may appear anywhere in the serialized view.
+        assert_eq!(v.seats[0].cards, vec![Slot::Back, Slot::Back]);
+        assert!(matches!(v.seats[1].cards[0], Slot::Card(_)));
+        assert!(matches!(v.seats[2].cards[1], Slot::Card(_)));
         let text = json(&v);
-        for s in &g.seats[1..] {
-            for c in &s.hole {
-                assert!(!text.contains(&format!("\"{c}\"")), "leaked {c}");
-            }
+        for c in &g.seats[0].hole {
+            assert!(!text.contains(&format!("\"{c}\"")), "leaked own card {c}");
         }
-        for h in &g.house {
-            for c in h {
-                assert!(!text.contains(&format!("\"{c}\"")), "leaked House card {c}");
-            }
+        for c in &g.house[HOUSE_UP..] {
+            assert!(!text.contains(&format!("\"{c}\"")), "leaked House card {c}");
         }
-        for c in &g.board {
+        for c in &g.board[3..] {
             assert!(
                 !text.contains(&format!("\"{c}\"")),
-                "leaked undealt board card {c}"
+                "leaked the turn or river {c}"
             );
         }
+        assert!(matches!(v.house.cards[0], Slot::Card(_)));
+        assert!(v.house.cards[HOUSE_UP..].iter().all(|c| *c == Slot::Back));
     }
 
     #[test]
     fn spectators_see_no_hole_cards() {
-        let g = running(None);
+        let g = running();
         let v = view_for(&g, None, 5);
         assert!(
             v.seats
@@ -278,74 +240,62 @@ mod tests {
     }
 
     #[test]
-    fn board_reveals_street_by_street_and_fog_hides_the_river() {
-        let mut g = running(Some(RuleId::Kiri));
+    fn the_board_shows_the_flop_then_all_five() {
+        let mut g = running();
         let count = |v: &GameView| {
             v.board
                 .iter()
                 .filter(|s| matches!(s, Slot::Card(_)))
                 .count()
         };
-        assert_eq!(count(&view_for(&g, Some("s0"), 0)), 0);
-        for (street, expect) in [(1, 3), (2, 4), (3, 4)] {
-            g.street = street;
-            let v = view_for(&g, Some("s0"), 0);
-            assert_eq!(count(&v), expect);
+        assert_eq!(count(&view_for(&g, Some("s0"), 0)), 3);
+        for id in ["s0", "s1", "s2"] {
+            g.nod(id, None, 1).unwrap();
         }
-        assert_eq!(view_for(&g, Some("s0"), 0).board[4], Slot::Back);
+        assert_eq!(count(&view_for(&g, Some("s0"), 0)), 5);
     }
 
     #[test]
-    fn mirror_shows_one_card_per_mask() {
-        let g = running(Some(RuleId::Kagami));
-        let v = view_for(&g, Some("s0"), 0);
-        for h in &v.house {
-            assert!(matches!(h.cards[0], Slot::Card(_)));
-            assert_eq!(h.cards[1], Slot::Back);
+    fn nods_stay_secret_until_everyone_has_nodded() {
+        let mut g = running();
+        g.nod("s0", Some("s1"), 1).unwrap();
+        let theirs = view_for(&g, Some("s1"), 2);
+        assert!(theirs.seats[0].locked);
+        assert_eq!(theirs.seats[0].nod, None);
+        let mine = view_for(&g, Some("s0"), 2);
+        assert_eq!(mine.seats[0].nod.as_deref(), Some("s1"));
+        g.nod("s1", None, 3).unwrap();
+        g.nod("s2", Some("s1"), 3).unwrap();
+        let v = view_for(&g, Some("s1"), 4);
+        assert_eq!(v.seats[0].nod.as_deref(), Some("s1"));
+        assert_eq!(v.seats[2].nod.as_deref(), Some("s1"));
+    }
+
+    #[test]
+    fn calls_stay_secret_until_the_showdown() {
+        let mut g = running();
+        for id in ["s0", "s1", "s2"] {
+            g.nod(id, None, 1).unwrap();
         }
-    }
-
-    #[test]
-    fn fox_reveals_one_seat_to_everyone() {
-        let g = running(Some(RuleId::Kitsune));
-        let v = view_for(&g, Some("s1"), 0);
-        assert!(matches!(v.seats[2].cards[0], Slot::Card(_)));
-        assert_eq!(v.seats[0].cards[0], Slot::Back);
-    }
-
-    #[test]
-    fn hush_hides_stakes_and_calls_but_not_folds() {
-        let mut g = running(Some(RuleId::Shizuka));
-        g.call("s0", Stance::Raise, 1).unwrap();
-        g.call("s1", Stance::Fold, 1).unwrap();
-        g.call("s2", Stance::Stay, 1).unwrap();
-        let v = view_for(&g, Some("s2"), 2);
-        assert_eq!(v.seats[0].stake, None);
-        assert_eq!(v.seats[0].calls[0], Some(CallView::Hidden));
-        assert_eq!(v.seats[1].calls[0], Some(CallView::Made(Stance::Fold)));
-        assert!(!v.seats[1].active);
-        // Your own calls are always yours to see.
-        assert_eq!(v.seats[2].calls[0], Some(CallView::Made(Stance::Stay)));
-        assert!(!json(&v).contains("\"raise\""));
-    }
-
-    #[test]
-    fn locked_calls_stay_secret_until_the_street_flips() {
-        let mut g = running(None);
-        g.call("s0", Stance::Raise, 1).unwrap();
-        let v = view_for(&g, Some("s1"), 2);
+        g.call("s0", Stance::In, 2).unwrap();
+        let v = view_for(&g, Some("s1"), 3);
         assert!(v.seats[0].locked);
-        assert_eq!(v.seats[0].calls[0], None);
-        assert_eq!(v.seats[0].stake, Some(1));
+        assert_eq!(v.seats[0].stance, None);
+        assert_eq!(
+            view_for(&g, Some("s0"), 3).seats[0].stance,
+            Some(Stance::In)
+        );
+        assert!(!json(&v).contains("\"in\""));
     }
 
     #[test]
     fn showdown_opens_everything() {
-        let mut g = running(None);
-        for _ in 0..4 {
-            for id in ["s0", "s1", "s2"] {
-                let _ = g.call(id, Stance::Stay, 1);
-            }
+        let mut g = running();
+        for id in ["s0", "s1", "s2"] {
+            g.nod(id, None, 1).unwrap();
+        }
+        for id in ["s0", "s1", "s2"] {
+            g.call(id, Stance::In, 2).unwrap();
         }
         assert!(matches!(g.phase, Phase::Showdown | Phase::Over));
         let v = view_for(&g, None, 2);
@@ -354,22 +304,24 @@ mod tests {
                 .iter()
                 .all(|s| s.hand.is_some() && matches!(s.cards[0], Slot::Card(_)))
         );
-        assert!(v.house.iter().all(|h| h.hand.is_some()));
+        assert!(v.house.hand.is_some());
+        assert!(v.house.cards.iter().all(|c| matches!(c, Slot::Card(_))));
         assert!(v.board.iter().all(|s| matches!(s, Slot::Card(_))));
+        assert!(v.seats.iter().all(|s| s.stance == Some(Stance::In)));
         assert!(v.result.is_some());
-        assert!(v.seats.iter().any(|s| s.champion) || v.result.unwrap().crew_best.is_none());
     }
 
     #[test]
     fn view_json_uses_the_typescript_field_names() {
-        let g = running(None);
+        let g = running();
         let text = json(&view_for(&g, Some("s0"), 0));
         for key in [
-            "\"heatLimit\"",
+            "\"lastOrders\"",
+            "\"meter\":0",
             "\"you\":\"s0\"",
-            "\"phase\":\"call\"",
-            "\"difficulty\":\"kabukicho\"",
-            "\"board\":[null,null,null,null,null]",
+            "\"phase\":\"nod\"",
+            "\"difficulty\":\"shitamachi\"",
+            "\"house\":{\"cards\":[",
         ] {
             assert!(text.contains(key), "missing {key} in {text}");
         }

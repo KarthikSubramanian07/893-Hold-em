@@ -61,7 +61,7 @@ export function MatchbookPage() {
 
         <p className="mbp__caption">
           {stamped === 0
-            ? 'Every stool starts empty. Play a night and the Master will press the first one.'
+            ? 'Every stool starts empty. Play a night, nod at the right hand, and the Master will press the first one.'
             : `${stamped} of ${STAMPS.length} pressed. ${data.nights} ${data.nights === 1 ? 'night' : 'nights'} at the bar. The rest are out there somewhere.`}
         </p>
 

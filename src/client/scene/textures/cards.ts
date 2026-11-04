@@ -220,8 +220,32 @@ function paintBlank(): HTMLCanvasElement {
   return c;
 }
 
-export function cardTexture(slot: Card | 'back' | 'blank'): THREE.CanvasTexture {
+/** Your own card back: the same back with a washi disc and a brushed "?", the one hand you can't read. */
+function paintMystery(): HTMLCanvasElement {
+  const c = paintBack();
+  const ctx = c.getContext('2d')!;
+  const { w, h } = CARD_PX;
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  ctx.beginPath();
+  ctx.arc(0, 0, w * 0.26, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(239,230,211,0.96)';
+  ctx.fill();
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = 'rgba(27,26,23,0.85)';
+  ctx.stroke();
+  ctx.fillStyle = '#1b1a17';
+  ctx.font = `800 ${Math.round(w * 0.36)}px ${SERIF}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('?', 0, w * 0.02);
+  ctx.restore();
+  return c;
+}
+
+export function cardTexture(slot: Card | 'back' | 'blank' | 'mystery'): THREE.CanvasTexture {
   if (slot === 'blank') return cached('card:blank', () => toTexture(paintBlank()));
+  if (slot === 'mystery') return cached('card:mystery', () => toTexture(paintMystery()));
   const key = cardTextureKey(slot)!;
   return cached(`card:${key}`, () => toTexture(slot === 'back' ? paintBack() : paintFace(slot)));
 }
