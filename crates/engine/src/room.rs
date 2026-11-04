@@ -21,7 +21,7 @@ pub const NAME_MAX: usize = 16;
 pub const AVATARS: [&str; 8] = [
     "kitsune", "tanuki", "koi", "tsuru", "tora", "usagi", "karasu", "hebi",
 ];
-pub const REACTIONS: [&str; 6] = ["clink", "smoke", "nod", "bow", "fire", "ghost"];
+pub const REACTIONS: [&str; 6] = ["clink", "smoke", "wink", "bow", "fire", "ghost"];
 
 /// A validated client message.
 #[derive(Clone, Debug, PartialEq)]

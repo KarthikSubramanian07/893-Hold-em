@@ -1,4 +1,12 @@
-//! The night: seats, the deal, simultaneous calls, the showdown, the verdict.
+//! The night: seats, the deal, the nod, In or Out, the showdown, the verdict.
+//!
+//! The rules in four lines:
+//!
+//! 1. Everyone sees every hand but their own. The House shows one card.
+//! 2. After the flop, each player may nod at one teammate: "you're good".
+//! 3. After the river, everyone picks In or Out at once.
+//! 4. The best hand that's In against the House: a win moves the marker one
+//!    step toward the door per player in, a loss one step toward the sirens.
 //!
 //! `Game` is the whole truth, including every hidden card. It is pure: time is
 //! passed in as epoch milliseconds, randomness comes from the seeded `Rng` it
@@ -13,8 +21,8 @@ use serde::{Deserialize, Serialize};
 use crate::card::{Card, Rng, full_deck};
 use crate::eval::{HandValue, evaluate};
 use crate::rules::{
-    Difficulty, HANDS_PER_NIGHT, MAX_CREW, MAX_STAKE, MIN_CREW, RuleId, SHOWDOWN_SECONDS,
-    heat_limit_for, house_hands, table, target_for,
+    Difficulty, LAST_ORDERS, MAX_CREW, MIN_CREW, SHOWDOWN_SECONDS, door_for, house_cards,
+    sirens_for,
 };
 
 pub type Ms = u64;
@@ -22,15 +30,17 @@ pub type Ms = u64;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Stance {
-    Fold,
-    Stay,
-    Raise,
+    In,
+    Out,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Phase {
     Lobby,
+    /// The flop is out; each player may nod at one teammate.
+    Nod,
+    /// The river is out; each player picks In or Out.
     Call,
     Showdown,
     Over,
@@ -39,9 +49,12 @@ pub enum Phase {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Verdict {
+    /// The marker reached the door.
     Clean,
+    /// The marker reached the sirens.
     Raid,
-    Short,
+    /// Last orders came first.
+    Dawn,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -57,14 +70,14 @@ pub enum Outcome {
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     pub difficulty: Difficulty,
-    /// Seconds per call; 0 = no timer.
+    /// Seconds per decision; 0 = no timer.
     pub timer: u8,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
-            difficulty: Difficulty::Kabukicho,
+            difficulty: Difficulty::Shitamachi,
             timer: 30,
         }
     }
@@ -81,40 +94,72 @@ pub struct Seat {
     pub bot: bool,
     pub connected: bool,
     pub hole: Vec<Card>,
-    pub active: bool,
-    pub stake: u8,
-    /// Calls made on each street this hand.
-    pub calls: [Option<Stance>; 4],
-    /// The call locked in for the current street, not yet revealed.
+    /// Has this seat settled its nod this hand (a nod or a pass)?
+    pub nodded: bool,
+    /// Who this seat nodded at this hand, if anyone.
+    pub nod: Option<String>,
+    /// In or Out, chosen during the call and not yet revealed.
     pub locked: Option<Stance>,
+    /// In or Out, revealed at the showdown.
+    pub stance: Option<Stance>,
+}
+
+impl Seat {
+    fn fresh(id: String, pid: String, name: &str, avatar: &str, bot: bool) -> Seat {
+        Seat {
+            id,
+            pid,
+            name: name.to_string(),
+            avatar: avatar.to_string(),
+            bot,
+            connected: true,
+            hole: Vec::new(),
+            nodded: false,
+            nod: None,
+            locked: None,
+            stance: None,
+        }
+    }
+
+    fn clear_hand(&mut self) {
+        self.hole.clear();
+        self.nodded = false;
+        self.nod = None;
+        self.locked = None;
+        self.stance = None;
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HandResult {
     pub outcome: Outcome,
-    pub take: u32,
-    pub heat: u32,
+    /// Steps the marker moved: positive toward the door, negative toward the sirens.
+    pub moved: i32,
+    /// Seat ids that were In.
+    pub ins: Vec<String>,
     pub crew_best: Option<HandValue>,
     pub house_best: HandValue,
     /// Seat ids whose hand was the crew's best (more than one on a tie).
     pub crew_champions: Vec<String>,
-    /// Indexes into `house` of the House's best hand(s).
-    pub house_champions: Vec<usize>,
-    /// Seat ids that stayed in, lost to the House on their own, and drew heat.
-    pub burned: Vec<String>,
+    /// Seat ids whose hand would have beaten the House had they been In.
+    pub could_have: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HistoryEntry {
     pub hand: u8,
-    pub rule: Option<RuleId>,
     pub outcome: Outcome,
-    pub take: u32,
-    pub heat: u32,
+    pub moved: i32,
+    /// How many were In.
+    pub ins: u32,
     pub crew_best_name: Option<String>,
     pub house_best_name: String,
+    /// The name of the seat whose hand carried the crew, if any.
+    pub carrier: Option<String>,
+    /// Nods the carrier received this hand.
+    pub carrier_nods: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -123,9 +168,8 @@ pub enum GameError {
     NotHost,
     BadPhase,
     NotSeated,
-    NotActive,
     AlreadyLocked,
-    StakeCapped,
+    SelfNod,
     TooFew,
 }
 
@@ -149,20 +193,15 @@ pub struct Game {
     /// Seat id of the host.
     pub host: Option<String>,
     pub rng: Rng,
-    /// Full board for this hand, dealt up front and revealed street by street.
+    /// Full board for this hand, dealt up front and revealed in two steps.
     pub board: Vec<Card>,
-    pub house: Vec<[Card; 2]>,
-    pub street: u8,
+    /// The House's cards; the first `HOUSE_UP` are face up.
+    pub house: Vec<Card>,
     pub hand: u8,
-    pub take: u32,
-    pub heat: u32,
-    pub target: u32,
-    pub heat_limit: u32,
-    pub rule: Option<RuleId>,
-    /// House Rules still to draw this night; refilled and reshuffled when empty.
-    pub rule_pile: Vec<RuleId>,
-    /// Under Fox: the seat whose cards are public.
-    pub fox: Option<String>,
+    /// Where the marker stands: 0 at the start, `door` to escape, `-sirens` for a raid.
+    pub meter: i32,
+    pub door: u32,
+    pub sirens: u32,
     pub deadline: Option<Ms>,
     pub result: Option<HandResult>,
     pub history: Vec<HistoryEntry>,
@@ -173,12 +212,7 @@ pub struct Game {
     /// Bumps on every change, so clients and the room can drop stale work.
     pub version: u64,
     /// Nights started at this table, so a second night reads differently.
-    #[serde(default)]
     pub night: u32,
-    /// Simulator only: play all six hands even past the heat limit, so a
-    /// night's whole trajectory can be measured.
-    #[serde(default)]
-    pub endless: bool,
 }
 
 const BOT_NAMES: [&str; 12] = [
@@ -191,27 +225,19 @@ const AVATARS: [&str; 8] = [
 impl Game {
     pub fn new(code: &str, seed: u64) -> Game {
         let config = Config::default();
-        let heat_limit = heat_limit_for(config.difficulty, MIN_CREW);
         Game {
             code: code.to_string(),
             phase: Phase::Lobby,
+            door: door_for(config.difficulty, MIN_CREW),
+            sirens: sirens_for(config.difficulty, MIN_CREW),
             config,
             seats: Vec::new(),
             host: None,
             rng: Rng::seeded(seed),
             board: Vec::new(),
             house: Vec::new(),
-            street: 0,
             hand: 0,
-            take: 0,
-            heat: 0,
-            target: 0,
-            heat_limit,
-            night: 0,
-            endless: false,
-            rule: None,
-            rule_pile: Vec::new(),
-            fox: None,
+            meter: 0,
             deadline: None,
             result: None,
             history: Vec::new(),
@@ -219,6 +245,7 @@ impl Game {
             ready: Vec::new(),
             bots_made: 0,
             version: 0,
+            night: 0,
         }
     }
 
@@ -263,6 +290,14 @@ impl Game {
         self.seats.sort_by(|a, b| a.id.cmp(&b.id));
     }
 
+    /// Nods this seat received this hand (only meaningful once nods are revealed).
+    pub fn nods_on(&self, seat: &str) -> u32 {
+        self.seats
+            .iter()
+            .filter(|s| s.nod.as_deref() == Some(seat))
+            .count() as u32
+    }
+
     // ------------------------------------------------------------------ lobby
 
     /// Take a seat, or reclaim the one this `pid` already holds. Returns the seat
@@ -280,23 +315,13 @@ impl Game {
             return None;
         }
         let id = self.free_seat_id()?;
-        self.seats.push(Seat {
-            id: id.clone(),
-            pid: pid.to_string(),
-            name: name.to_string(),
-            avatar: avatar.to_string(),
-            bot: false,
-            connected: true,
-            hole: Vec::new(),
-            active: true,
-            stake: 1,
-            calls: [None; 4],
-            locked: None,
-        });
+        self.seats
+            .push(Seat::fresh(id.clone(), pid.to_string(), name, avatar, false));
         self.sort_seats();
         if self.host.is_none() {
             self.host = Some(id.clone());
         }
+        self.retrack();
         self.touch();
         Some(id)
     }
@@ -309,8 +334,8 @@ impl Game {
         }
     }
 
-    /// A socket for this seat opened or closed. During a call, a seat that
-    /// drops can unblock the street, so this may advance the game.
+    /// A socket for this seat opened or closed. Mid-hand, a seat that drops
+    /// can unblock the table, so this may advance the game.
     pub fn set_connected(&mut self, seat: &str, connected: bool, now: Ms) {
         let Some(s) = self.seat_mut(seat) else { return };
         if s.connected == connected {
@@ -318,13 +343,12 @@ impl Game {
         }
         s.connected = connected;
         self.touch();
-        if self.phase == Phase::Lobby && !connected {
+        match self.phase {
             // Leaving the lobby frees the chair, so a closed tab doesn't hold a seat forever.
-            self.remove_seat(seat);
-        } else if self.phase == Phase::Call {
-            self.maybe_resolve_street(now);
-        } else if self.phase == Phase::Showdown {
-            self.maybe_advance_showdown(now);
+            Phase::Lobby if !connected => self.remove_seat(seat),
+            Phase::Nod | Phase::Call => self.maybe_resolve(now),
+            Phase::Showdown => self.maybe_advance_showdown(now),
+            _ => {}
         }
     }
 
@@ -333,7 +357,17 @@ impl Game {
         if self.host.as_deref() == Some(seat) {
             self.host = self.seats.iter().find(|s| !s.bot).map(|s| s.id.clone());
         }
+        self.retrack();
         self.touch();
+    }
+
+    /// The track's length follows the table and the crew while in the lobby.
+    fn retrack(&mut self) {
+        if self.phase == Phase::Lobby {
+            let crew = self.seats.len().max(MIN_CREW);
+            self.door = door_for(self.config.difficulty, crew);
+            self.sirens = sirens_for(self.config.difficulty, crew);
+        }
     }
 
     pub fn kick(&mut self, by: &str, seat: &str) -> Result<(), GameError> {
@@ -370,20 +404,11 @@ impl Game {
             .find(|a| !used.contains(a))
             .unwrap_or(&AVATARS[0]);
         self.bots_made += 1;
-        self.seats.push(Seat {
-            id: id.clone(),
-            pid: format!("bot:{}", self.bots_made),
-            name: name.to_string(),
-            avatar: avatar.to_string(),
-            bot: true,
-            connected: true,
-            hole: Vec::new(),
-            active: true,
-            stake: 1,
-            calls: [None; 4],
-            locked: None,
-        });
+        let pid = format!("bot:{}", self.bots_made);
+        self.seats
+            .push(Seat::fresh(id.clone(), pid, name, avatar, true));
         self.sort_seats();
+        self.retrack();
         self.touch();
         Ok(id)
     }
@@ -424,7 +449,7 @@ impl Game {
         if let Some(t) = timer.filter(|t| matches!(t, 0 | 15 | 30 | 60)) {
             self.config.timer = t;
         }
-        self.heat_limit = heat_limit_for(self.config.difficulty, self.seats.len());
+        self.retrack();
         self.touch();
         Ok(())
     }
@@ -441,16 +466,12 @@ impl Game {
         if self.seats.len() < MIN_CREW {
             return Err(GameError::TooFew);
         }
+        self.retrack();
         self.night += 1;
-        self.take = 0;
-        self.heat = 0;
+        self.meter = 0;
         self.hand = 0;
-        self.heat_limit = heat_limit_for(self.config.difficulty, self.seats.len());
-        self.target = target_for(self.config.difficulty, self.seats.len());
         self.history.clear();
         self.verdict = None;
-        self.rule = None;
-        self.rule_pile.clear();
         self.deal(now);
         Ok(())
     }
@@ -475,293 +496,222 @@ impl Game {
             self.remove_seat(&id);
         }
         for s in &mut self.seats {
-            s.hole.clear();
-            s.active = true;
-            s.stake = 1;
-            s.calls = [None; 4];
-            s.locked = None;
+            s.clear_hand();
         }
         self.board.clear();
         self.house.clear();
-        self.street = 0;
         self.hand = 0;
-        self.take = 0;
-        self.heat = 0;
-        self.rule = None;
-        self.fox = None;
+        self.meter = 0;
         self.result = None;
         self.history.clear();
         self.verdict = None;
         self.ready.clear();
         self.deadline = None;
+        self.retrack();
         self.touch();
         Ok(())
     }
 
-    fn draw_rule(&mut self) -> Option<RuleId> {
-        let spec = table(self.config.difficulty);
-        if self.hand < spec.rule_from {
-            return None;
-        }
-        if self.rule_pile.is_empty() {
-            self.rule_pile = spec.deck.to_vec();
-            self.rng.shuffle(&mut self.rule_pile);
-            // Never the same rule twice in a row across a reshuffle.
-            if self.rule_pile.len() > 1 && self.rule_pile.last() == self.rule.as_ref() {
-                let n = self.rule_pile.len();
-                self.rule_pile.swap(0, n - 1);
-            }
-        }
-        self.rule_pile.pop()
-    }
-
     fn deal(&mut self, now: Ms) {
         self.hand += 1;
-        self.rule = self.draw_rule();
         let mut deck = full_deck();
         self.rng.shuffle(&mut deck);
         let mut draw = || {
             deck.pop()
-                .expect("52 cards cover 6 seats, 4 masks, and a board")
+                .expect("52 cards cover 6 seats, the House, and a board")
         };
-
         for i in 0..self.seats.len() {
             let hole = vec![draw(), draw()];
             let s = &mut self.seats[i];
+            s.clear_hand();
             s.hole = hole;
-            s.active = true;
-            s.stake = 1;
-            s.calls = [None; 4];
-            s.locked = None;
         }
-        let masks = house_hands(self.seats.len(), self.rule);
-        self.house = (0..masks).map(|_| [draw(), draw()]).collect();
+        self.house = (0..house_cards(self.config.difficulty))
+            .map(|_| draw())
+            .collect();
         self.board = (0..5).map(|_| draw()).collect();
-
-        self.fox = if self.rule == Some(RuleId::Kitsune) && !self.seats.is_empty() {
-            let i = self.rng.below(self.seats.len() as u32) as usize;
-            Some(self.seats[i].id.clone())
-        } else {
-            None
-        };
-        self.street = 0;
         self.result = None;
         self.ready.clear();
-        self.phase = Phase::Call;
-        self.deadline = self.call_deadline(now);
+        self.phase = Phase::Nod;
+        self.deadline = self.decision_deadline(now);
         self.touch();
     }
 
-    fn call_deadline(&self, now: Ms) -> Option<Ms> {
+    fn decision_deadline(&self, now: Ms) -> Option<Ms> {
         (self.config.timer > 0).then(|| now + u64::from(self.config.timer) * 1000)
     }
 
-    /// Seats that still owe a call on this street.
+    /// Seats that still owe a decision in the current phase.
     pub fn awaiting(&self) -> Vec<&Seat> {
-        if self.phase != Phase::Call {
-            return Vec::new();
+        match self.phase {
+            Phase::Nod => self.seats.iter().filter(|s| !s.nodded).collect(),
+            Phase::Call => self.seats.iter().filter(|s| s.locked.is_none()).collect(),
+            _ => Vec::new(),
         }
-        self.seats
-            .iter()
-            .filter(|s| s.active && s.locked.is_none())
-            .collect()
     }
 
+    /// Nod at a teammate (`Some(seat)`), or pass (`None`).
+    pub fn nod(&mut self, seat: &str, at: Option<&str>, now: Ms) -> Result<(), GameError> {
+        if self.phase != Phase::Nod {
+            return Err(GameError::BadPhase);
+        }
+        if at == Some(seat) {
+            return Err(GameError::SelfNod);
+        }
+        if let Some(t) = at
+            && self.seat(t).is_none()
+        {
+            return Err(GameError::NotSeated);
+        }
+        let s = self.seat_mut(seat).ok_or(GameError::NotSeated)?;
+        if s.nodded {
+            return Err(GameError::AlreadyLocked);
+        }
+        s.nodded = true;
+        s.nod = at.map(str::to_string);
+        self.touch();
+        self.maybe_resolve(now);
+        Ok(())
+    }
+
+    /// Pick In or Out.
     pub fn call(&mut self, seat: &str, stance: Stance, now: Ms) -> Result<(), GameError> {
         if self.phase != Phase::Call {
             return Err(GameError::BadPhase);
         }
         let s = self.seat_mut(seat).ok_or(GameError::NotSeated)?;
-        if !s.active {
-            return Err(GameError::NotActive);
-        }
         if s.locked.is_some() {
             return Err(GameError::AlreadyLocked);
         }
-        if stance == Stance::Raise && s.stake >= MAX_STAKE {
-            return Err(GameError::StakeCapped);
-        }
         s.locked = Some(stance);
         self.touch();
-        self.maybe_resolve_street(now);
+        self.maybe_resolve(now);
         Ok(())
     }
 
-    /// Resolve the street once every connected active seat has locked in.
-    /// Disconnected seats never hold up the table; they count as Stay.
-    fn maybe_resolve_street(&mut self, now: Ms) {
-        if self.phase != Phase::Call {
-            return;
-        }
-        let blocked = self
-            .seats
-            .iter()
-            .any(|s| s.active && s.locked.is_none() && s.connected);
+    /// Move on once every connected seat has decided. Disconnected seats
+    /// never hold up the table: they pass on the nod and sit Out.
+    fn maybe_resolve(&mut self, now: Ms) {
+        let blocked = self.awaiting().iter().any(|s| s.connected);
         if !blocked {
-            self.resolve_street(now);
+            self.resolve(now);
         }
     }
 
-    fn resolve_street(&mut self, now: Ms) {
-        let street = self.street as usize;
-        let bond = self.rule == Some(RuleId::Kizuna);
-        let mut raises = 0u8;
-        for s in self.seats.iter_mut().filter(|s| s.active) {
-            let stance = s.locked.take().unwrap_or(Stance::Stay);
-            s.calls[street] = Some(stance);
-            match stance {
-                Stance::Fold => s.active = false,
-                Stance::Raise => {
-                    raises += 1;
-                    if !bond {
-                        s.stake = (s.stake + 1).min(MAX_STAKE);
-                    }
+    fn resolve(&mut self, now: Ms) {
+        match self.phase {
+            Phase::Nod => {
+                for s in &mut self.seats {
+                    s.nodded = true;
                 }
-                Stance::Stay => {}
+                self.phase = Phase::Call;
+                self.deadline = self.decision_deadline(now);
+                self.touch();
             }
-        }
-        if bond && raises > 0 {
-            for s in self.seats.iter_mut().filter(|s| s.active) {
-                s.stake = (s.stake + raises).min(MAX_STAKE);
+            Phase::Call => {
+                for s in &mut self.seats {
+                    s.stance = Some(s.locked.take().unwrap_or(Stance::Out));
+                }
+                self.showdown(now);
             }
+            _ => {}
         }
-        let anyone_in = self.seats.iter().any(|s| s.active);
-        if self.street >= 3 || !anyone_in {
-            self.showdown(now);
-        } else {
-            self.street += 1;
-            self.deadline = self.call_deadline(now);
-            self.touch();
-        }
+    }
+
+    pub fn evaluate_seat(&self, s: &Seat) -> HandValue {
+        let mut cards = s.hole.clone();
+        cards.extend_from_slice(&self.board);
+        evaluate(&cards)
+    }
+
+    pub fn house_value(&self) -> HandValue {
+        let mut cards = self.house.clone();
+        cards.extend_from_slice(&self.board);
+        evaluate(&cards)
     }
 
     fn showdown(&mut self, now: Ms) {
-        let lowball = self.rule == Some(RuleId::Gyaku);
-        let better = |a: u32, b: u32| if lowball { a < b } else { a > b };
-
-        let house_values: Vec<HandValue> = self
-            .house
-            .iter()
-            .map(|h| {
-                evaluate(&[
-                    h[0],
-                    h[1],
-                    self.board[0],
-                    self.board[1],
-                    self.board[2],
-                    self.board[3],
-                    self.board[4],
-                ])
-            })
-            .collect();
-        let house_top = house_values
-            .iter()
-            .map(|v| v.score)
-            .reduce(|a, b| if better(a, b) { a } else { b })
-            .expect("the House always sits at least one hand");
-        let house_champions: Vec<usize> = (0..house_values.len())
-            .filter(|&i| house_values[i].score == house_top)
-            .collect();
-        let house_best = house_values[house_champions[0]].clone();
-
-        let crew: Vec<(String, HandValue)> = self
+        let house_best = self.house_value();
+        let values: Vec<(String, HandValue)> = self
             .seats
             .iter()
-            .filter(|s| s.active)
             .map(|s| (s.id.clone(), self.evaluate_seat(s)))
             .collect();
-        let crew_top = crew
+        let ins: Vec<String> = self
+            .seats
             .iter()
+            .filter(|s| s.stance == Some(Stance::In))
+            .map(|s| s.id.clone())
+            .collect();
+        let crew_top = values
+            .iter()
+            .filter(|(id, _)| ins.contains(id))
             .map(|(_, v)| v.score)
-            .reduce(|a, b| if better(a, b) { a } else { b });
+            .max();
         let crew_champions: Vec<String> = match crew_top {
-            Some(top) => crew
+            Some(top) => values
                 .iter()
-                .filter(|(_, v)| v.score == top)
+                .filter(|(id, v)| ins.contains(id) && v.score == top)
                 .map(|(id, _)| id.clone())
                 .collect(),
             None => Vec::new(),
         };
         let crew_best = crew_top
-            .and_then(|top| crew.iter().find(|(_, v)| v.score == top))
+            .and_then(|top| values.iter().find(|(_, v)| v.score == top))
             .map(|(_, v)| v.clone());
+        let could_have: Vec<String> = values
+            .iter()
+            .filter(|(_, v)| v.score > house_best.score)
+            .map(|(id, _)| id.clone())
+            .collect();
 
-        let mult = if self.rule == Some(RuleId::Homura) {
-            2
-        } else {
-            1
-        };
-        let serpent = self.rule == Some(RuleId::Hebi);
+        let n = ins.len() as i32;
         let outcome = match crew_top {
             None => Outcome::Walked,
-            Some(c) if better(c, house_top) => Outcome::Crew,
-            Some(c) if c == house_top && !serpent => Outcome::Tie,
+            Some(c) if c > house_best.score => Outcome::Crew,
+            Some(c) if c == house_best.score => Outcome::Tie,
             Some(_) => Outcome::House,
         };
-        // Take: when the champion wins, every stake still in gets paid.
-        let stakes: u32 = self
-            .seats
-            .iter()
-            .filter(|s| s.active)
-            .map(|s| u32::from(s.stake))
-            .sum();
-        // Heat: each mask watches two seats. Anyone still in whose own hand
-        // loses to the mask watching them was seen, even if the champion
-        // carried the hand. Under Serpent a tie is a loss.
-        let burned: Vec<(String, u32)> = crew
-            .iter()
-            .filter(|(id, v)| {
-                let watcher = self
-                    .watcher_of(id)
-                    .map_or(house_top, |w| house_values[w].score);
-                better(watcher, v.score) || (serpent && v.score == watcher)
-            })
-            .map(|(id, _)| {
-                let stake = self.seat(id).map_or(1, |s| u32::from(s.stake));
-                (id.clone(), stake)
-            })
-            .collect();
-        let take = if outcome == Outcome::Crew {
-            stakes * mult
-        } else {
-            0
+        let moved = match outcome {
+            Outcome::Crew => n,
+            Outcome::House => -n,
+            Outcome::Tie => 0,
+            // An empty table is a bad look.
+            Outcome::Walked => -1,
         };
-        let heat = match outcome {
-            Outcome::Walked => mult,
-            _ => burned.iter().map(|(_, s)| s).sum::<u32>() * mult,
-        };
-        let burned: Vec<String> = burned.into_iter().map(|(id, _)| id).collect();
-        self.take += take;
-        self.heat += heat;
+        self.meter += moved;
+
+        let carrier = crew_champions.first().cloned();
         self.history.push(HistoryEntry {
             hand: self.hand,
-            rule: self.rule,
             outcome,
-            take,
-            heat,
+            moved,
+            ins: n as u32,
             crew_best_name: crew_best.as_ref().map(|v| v.name.clone()),
             house_best_name: house_best.name.clone(),
+            carrier: carrier
+                .as_deref()
+                .and_then(|id| self.seat(id))
+                .map(|s| s.name.clone()),
+            carrier_nods: carrier.as_deref().map_or(0, |id| self.nods_on(id)),
         });
         self.result = Some(HandResult {
             outcome,
-            take,
-            heat,
+            moved,
+            ins,
             crew_best,
             house_best,
             crew_champions,
-            house_champions,
-            burned,
+            could_have,
         });
         self.ready.clear();
 
-        if self.heat >= self.heat_limit && !self.endless {
+        if self.meter >= self.door as i32 {
+            self.finish(Verdict::Clean);
+        } else if self.meter <= -(self.sirens as i32) {
             self.finish(Verdict::Raid);
-        } else if self.hand >= HANDS_PER_NIGHT {
-            self.finish(if self.take >= self.target {
-                Verdict::Clean
-            } else {
-                Verdict::Short
-            });
+        } else if self.hand >= LAST_ORDERS {
+            self.finish(Verdict::Dawn);
         } else {
             self.phase = Phase::Showdown;
             self.deadline = Some(now + SHOWDOWN_SECONDS * 1000);
@@ -773,26 +723,6 @@ impl Game {
         self.verdict = Some(verdict);
         self.phase = Phase::Over;
         self.deadline = None;
-    }
-
-    /// Index of the mask that watches `seat`: masks watch seats in pairs, in
-    /// seat order. An Oni's extra mask watches nobody.
-    pub fn watcher_of(&self, seat: &str) -> Option<usize> {
-        let k = self.seats.iter().position(|s| s.id == seat)?;
-        (!self.house.is_empty()).then(|| (k / 2).min(self.house.len() - 1))
-    }
-
-    pub fn evaluate_seat(&self, s: &Seat) -> HandValue {
-        let mut cards = s.hole.clone();
-        cards.extend_from_slice(&self.board);
-        evaluate(&cards)
-    }
-
-    pub fn house_value(&self, i: usize) -> HandValue {
-        let h = self.house[i];
-        let mut cards = vec![h[0], h[1]];
-        cards.extend_from_slice(&self.board);
-        evaluate(&cards)
     }
 
     /// "Next" pressed during the showdown.
@@ -824,7 +754,8 @@ impl Game {
         }
     }
 
-    /// Timer wake-up. Expired calls count as Stay; an expired showdown deals on.
+    /// Timer wake-up. An expired nod is a pass, an expired call is Out, and
+    /// an expired showdown deals on.
     pub fn tick(&mut self, now: Ms) {
         let Some(deadline) = self.deadline else {
             return;
@@ -833,27 +764,22 @@ impl Game {
             return;
         }
         match self.phase {
-            Phase::Call => self.resolve_street(now),
+            Phase::Nod | Phase::Call => self.resolve(now),
             Phase::Showdown => self.deal(now),
             Phase::Lobby | Phase::Over => self.deadline = None,
         }
     }
 
-    /// The board cards dealt so far (face-up or not), by street.
+    /// Board cards face up so far.
     pub fn dealt_board(&self) -> usize {
         match self.phase {
             Phase::Lobby => 0,
-            Phase::Showdown | Phase::Over => self.board.len(),
-            Phase::Call => match self.street {
-                0 => 0,
-                1 => 3,
-                2 => 4,
-                _ => 5,
-            },
+            Phase::Nod => 3,
+            Phase::Call | Phase::Showdown | Phase::Over => self.board.len(),
         }
     }
 
-    /// Bots that still owe a call this street.
+    /// Bots that still owe a decision in this phase.
     pub fn bots_to_act(&self) -> Vec<String> {
         self.awaiting()
             .into_iter()
@@ -866,6 +792,7 @@ impl Game {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rules::HOUSE_UP;
 
     fn table_of(humans: usize, bots: usize) -> (Game, Vec<String>) {
         let mut g = Game::new("K7QX2", 1);
@@ -882,9 +809,17 @@ mod tests {
         (g, ids)
     }
 
+    fn all_pass(g: &mut Game, ids: &[String], now: Ms) {
+        for id in ids {
+            if g.phase == Phase::Nod {
+                let _ = g.nod(id, None, now);
+            }
+        }
+    }
+
     fn all_call(g: &mut Game, ids: &[String], stance: Stance, now: Ms) {
         for id in ids {
-            if g.seat(id).unwrap().active && g.phase == Phase::Call {
+            if g.phase == Phase::Call {
                 let _ = g.call(id, stance, now);
             }
         }
@@ -935,69 +870,121 @@ mod tests {
     }
 
     #[test]
-    fn deal_gives_every_seat_two_cards_and_no_duplicates() {
+    fn the_track_follows_the_table_and_the_crew() {
+        let (mut g, ids) = table_of(2, 0);
+        assert_eq!(g.door, door_for(Difficulty::Shitamachi, 2));
+        g.add_bot(&ids[0]).unwrap();
+        assert_eq!(g.door, door_for(Difficulty::Shitamachi, 3));
+        g.set_config(&ids[0], Some(Difficulty::Oyabun), None)
+            .unwrap();
+        assert_eq!(g.sirens, sirens_for(Difficulty::Oyabun, 3));
+    }
+
+    #[test]
+    fn deal_gives_two_cards_each_and_the_house_its_table_size() {
         let (mut g, ids) = table_of(2, 4);
+        g.set_config(&ids[0], Some(Difficulty::Oyabun), None)
+            .unwrap();
         g.start(&ids[0], 0).unwrap();
         let mut all: Vec<Card> = g.board.clone();
         for s in &g.seats {
             assert_eq!(s.hole.len(), 2);
             all.extend(&s.hole);
         }
-        for h in &g.house {
-            all.extend(h);
-        }
+        assert_eq!(g.house.len(), 5);
+        assert!(HOUSE_UP < g.house.len());
+        all.extend(&g.house);
         let n = all.len();
         all.sort();
         all.dedup();
         assert_eq!(all.len(), n, "duplicate card dealt");
-        assert_eq!(g.house.len(), house_hands(6, g.rule));
+        assert_eq!(g.phase, Phase::Nod);
+        assert_eq!(g.dealt_board(), 3);
     }
 
     #[test]
-    fn streets_wait_for_every_active_seat_then_advance() {
+    fn nods_wait_for_everyone_then_the_call_opens() {
         let (mut g, ids) = table_of(3, 0);
         g.start(&ids[0], 0).unwrap();
-        g.call(&ids[0], Stance::Raise, 1).unwrap();
-        g.call(&ids[1], Stance::Stay, 1).unwrap();
-        assert_eq!(g.street, 0);
-        assert_eq!(
-            g.call(&ids[0], Stance::Stay, 1),
-            Err(GameError::AlreadyLocked)
-        );
-        g.call(&ids[2], Stance::Fold, 1).unwrap();
-        assert_eq!(g.street, 1);
-        assert_eq!(g.seat("s0").unwrap().stake, 2);
-        assert!(!g.seat("s2").unwrap().active);
-        assert_eq!(g.seat("s0").unwrap().calls[0], Some(Stance::Raise));
-        assert_eq!(g.call(&ids[2], Stance::Stay, 2), Err(GameError::NotActive));
+        assert_eq!(g.nod(&ids[0], Some("s0"), 1), Err(GameError::SelfNod));
+        assert_eq!(g.nod(&ids[0], Some("s9"), 1), Err(GameError::NotSeated));
+        g.nod(&ids[0], Some("s1"), 1).unwrap();
+        assert_eq!(g.nod(&ids[0], None, 1), Err(GameError::AlreadyLocked));
+        g.nod(&ids[1], Some("s0"), 1).unwrap();
+        assert_eq!(g.phase, Phase::Nod);
+        assert_eq!(g.call(&ids[0], Stance::In, 1), Err(GameError::BadPhase));
+        g.nod(&ids[2], Some("s1"), 1).unwrap();
+        assert_eq!(g.phase, Phase::Call);
+        assert_eq!(g.dealt_board(), 5);
+        assert_eq!(g.nods_on("s1"), 2);
+        assert_eq!(g.nods_on("s0"), 1);
+        assert_eq!(g.nods_on("s2"), 0);
     }
 
     #[test]
-    fn stake_caps_at_three() {
+    fn the_marker_moves_one_step_per_player_in() {
+        for seed in 0..300 {
+            let mut g = Game::new("K7QX2", seed);
+            let a = g.join("pid-aaaaaaaa", "A", "koi").unwrap();
+            let b = g.join("pid-bbbbbbbb", "B", "koi").unwrap();
+            let c = g.add_bot(&a).unwrap();
+            g.start(&a, 0).unwrap();
+            let ids = [a.clone(), b.clone(), c.clone()];
+            all_pass(&mut g, &ids, 1);
+            g.call(&a, Stance::In, 2).unwrap();
+            g.call(&b, Stance::In, 2).unwrap();
+            g.call(&c, Stance::Out, 2).unwrap();
+            let r = g.result.clone().unwrap();
+            let house = g.house_value().score;
+            let best = [&a, &b]
+                .iter()
+                .map(|id| g.evaluate_seat(g.seat(id).unwrap()).score)
+                .max()
+                .unwrap();
+            let expect = if best > house {
+                2
+            } else if best == house {
+                0
+            } else {
+                -2
+            };
+            assert_eq!(r.moved, expect, "{r:?}");
+            assert_eq!(g.meter, expect);
+            assert_eq!(r.ins, vec![a.clone(), b.clone()]);
+            assert!(!r.crew_champions.contains(&c), "Out never carries");
+            let c_beats = g.evaluate_seat(g.seat(&c).unwrap()).score > house;
+            assert_eq!(r.could_have.contains(&c), c_beats);
+        }
+    }
+
+    #[test]
+    fn everyone_out_costs_one_step() {
         let (mut g, ids) = table_of(2, 0);
         g.start(&ids[0], 0).unwrap();
-        for _ in 0..2 {
-            all_call(&mut g, &ids, Stance::Raise, 1);
-        }
-        assert_eq!(g.seat("s0").unwrap().stake, 3);
-        assert_eq!(
-            g.call(&ids[0], Stance::Raise, 2),
-            Err(GameError::StakeCapped)
-        );
+        all_pass(&mut g, &ids, 1);
+        all_call(&mut g, &ids, Stance::Out, 2);
+        let r = g.result.clone().unwrap();
+        assert_eq!(r.outcome, Outcome::Walked);
+        assert_eq!(g.meter, -1);
+        assert_eq!(g.phase, Phase::Showdown);
     }
 
     #[test]
-    fn timer_expiry_counts_as_stay() {
+    fn timers_pass_the_nod_and_sit_you_out() {
         let (mut g, ids) = table_of(2, 0);
         g.config.timer = 15;
         g.start(&ids[0], 1_000).unwrap();
         assert_eq!(g.deadline, Some(16_000));
-        g.call(&ids[0], Stance::Raise, 2_000).unwrap();
+        g.nod(&ids[0], Some("s1"), 2_000).unwrap();
         g.tick(15_999);
-        assert_eq!(g.street, 0);
+        assert_eq!(g.phase, Phase::Nod);
         g.tick(16_000);
-        assert_eq!(g.street, 1);
-        assert_eq!(g.seat("s1").unwrap().calls[0], Some(Stance::Stay));
+        assert_eq!(g.phase, Phase::Call);
+        assert_eq!(g.seat("s1").unwrap().nod, None);
+        g.call(&ids[0], Stance::In, 17_000).unwrap();
+        g.tick(16_000 + 15_000);
+        assert_eq!(g.seat("s1").unwrap().stance, Some(Stance::Out));
+        assert_eq!(g.seat("s0").unwrap().stance, Some(Stance::In));
     }
 
     #[test]
@@ -1005,132 +992,90 @@ mod tests {
         let (mut g, ids) = table_of(2, 0);
         g.config.timer = 0;
         g.start(&ids[0], 0).unwrap();
-        g.call(&ids[0], Stance::Stay, 1).unwrap();
+        g.nod(&ids[0], None, 1).unwrap();
         g.set_connected(&ids[1], false, 2);
-        assert_eq!(g.street, 1);
+        assert_eq!(g.phase, Phase::Call);
+        g.call(&ids[0], Stance::Out, 3).unwrap();
+        assert_eq!(g.seat("s1").unwrap().stance, Some(Stance::Out));
     }
 
     #[test]
-    fn everyone_folding_walks_away_with_one_heat() {
-        let (mut g, ids) = table_of(2, 0);
-        g.start(&ids[0], 0).unwrap();
-        all_call(&mut g, &ids, Stance::Fold, 1);
-        let r = g.result.clone().unwrap();
-        assert_eq!(r.outcome, Outcome::Walked);
-        assert_eq!(g.heat, 1);
-        assert_eq!(g.phase, Phase::Showdown);
-    }
-
-    #[test]
-    fn showdown_pays_or_burns_the_sum_of_active_stakes() {
-        // Play many hands; every resolved hand must satisfy the accounting identity.
-        for seed in 0..200 {
+    fn a_full_night_ends_at_the_door_the_sirens_or_last_orders() {
+        for seed in 0..40 {
             let mut g = Game::new("K7QX2", seed);
             let a = g.join("pid-aaaaaaaa", "A", "koi").unwrap();
-            let b = g.join("pid-bbbbbbbb", "B", "koi").unwrap();
-            let c = g.add_bot(&a).unwrap();
-            g.config.difficulty = Difficulty::Shitamachi;
+            let mut ids = vec![a.clone()];
+            ids.push(g.add_bot(&a).unwrap());
+            ids.push(g.add_bot(&a).unwrap());
             g.start(&a, 0).unwrap();
-            let ids = [a.clone(), b.clone(), c.clone()];
-            g.call(&a, Stance::Raise, 1).unwrap();
-            g.call(&b, Stance::Stay, 1).unwrap();
-            g.call(&c, Stance::Fold, 1).unwrap();
-            for _ in 0..3 {
-                all_call(&mut g, &ids, Stance::Stay, 2);
-            }
-            let r = g.result.clone().unwrap();
-            let mult = if g.rule == Some(RuleId::Homura) { 2 } else { 1 };
-            let stake = |id: &str| u32::from(g.seat(id).unwrap().stake);
-            // A at 2, B at 1, C folded.
-            let paid = if r.outcome == Outcome::Crew {
-                3 * mult
-            } else {
-                0
-            };
-            let burned: u32 = r.burned.iter().map(|id| stake(id)).sum::<u32>() * mult;
-            assert_eq!(r.take, paid, "{r:?}");
-            assert_eq!(r.heat, burned, "{r:?}");
-            assert!(!r.burned.contains(&c), "folded seats never draw heat");
-            // Three seats face two masks: s0 and s1 are watched by mask 0.
-            assert_eq!(g.watcher_of(&a), Some(0));
-            assert_eq!(g.watcher_of(&b), Some(0));
-            assert_eq!(g.watcher_of(&c), Some(1));
-            for id in [&a, &b] {
-                let w = g.watcher_of(id).unwrap();
-                let mine = g.evaluate_seat(g.seat(id).unwrap()).score;
-                let watched = g.house_value(w).score;
-                assert_eq!(
-                    r.burned.contains(id),
-                    watched > mine || (g.rule == Some(RuleId::Hebi) && watched == mine),
-                    "{id} burns exactly when its watcher beats it"
-                );
-            }
-            assert!(
-                !r.crew_champions.contains(&c),
-                "folded seats never carry the crew"
-            );
-        }
-    }
-
-    #[test]
-    fn bond_shares_raises_across_the_crew() {
-        let (mut g, ids) = table_of(3, 0);
-        g.start(&ids[0], 0).unwrap();
-        g.rule = Some(RuleId::Kizuna);
-        g.call(&ids[0], Stance::Raise, 1).unwrap();
-        g.call(&ids[1], Stance::Raise, 1).unwrap();
-        g.call(&ids[2], Stance::Stay, 1).unwrap();
-        for s in &g.seats {
-            assert_eq!(s.stake, 3, "two raises lift every stake by two");
-        }
-    }
-
-    #[test]
-    fn a_full_night_ends_with_a_verdict_and_history() {
-        let (mut g, ids) = table_of(2, 2);
-        g.start(&ids[0], 0).unwrap();
-        let mut now = 0;
-        let mut guard = 0;
-        while g.phase != Phase::Over {
-            guard += 1;
-            assert!(guard < 200, "night never ended");
-            now += 1000;
-            match g.phase {
-                Phase::Call => all_call(&mut g, &ids, Stance::Stay, now),
-                Phase::Showdown => {
-                    for id in &ids {
-                        let _ = g.next(id, now);
+            let mut now = 0;
+            let mut guard = 0;
+            while g.phase != Phase::Over {
+                guard += 1;
+                assert!(guard < 100, "night never ended");
+                now += 1000;
+                match g.phase {
+                    Phase::Nod => all_pass(&mut g, &ids, now),
+                    Phase::Call => {
+                        let stance = if seed % 2 == 0 { Stance::In } else { Stance::Out };
+                        all_call(&mut g, &ids, stance, now)
                     }
+                    Phase::Showdown => g.next(&a, now).unwrap(),
+                    _ => unreachable!(),
                 }
-                _ => unreachable!(),
             }
+            assert_eq!(g.history.len(), g.hand as usize);
+            match g.verdict.unwrap() {
+                Verdict::Clean => assert!(g.meter >= g.door as i32),
+                Verdict::Raid => assert!(g.meter <= -(g.sirens as i32)),
+                Verdict::Dawn => assert_eq!(g.hand, LAST_ORDERS),
+            }
+            let sum: i32 = g.history.iter().map(|h| h.moved).sum();
+            assert_eq!(sum, g.meter);
+            g.again(&a).unwrap();
+            assert_eq!(g.phase, Phase::Lobby);
+            assert_eq!(g.meter, 0);
+            g.start(&a, now).unwrap();
+            assert_eq!(g.night, 2, "another night counts");
         }
-        let v = g.verdict.unwrap();
-        assert_eq!(g.history.len(), g.hand as usize);
-        match v {
-            Verdict::Raid => assert!(g.heat >= g.heat_limit),
-            Verdict::Clean => assert!(g.take >= g.target && g.hand == HANDS_PER_NIGHT),
-            Verdict::Short => assert!(g.take < g.target && g.hand == HANDS_PER_NIGHT),
-        }
-        assert_eq!(g.night, 1);
-        g.again(&ids[0]).unwrap();
-        assert_eq!(g.phase, Phase::Lobby);
-        assert_eq!(g.seats.len(), 4);
-        g.start(&ids[0], now).unwrap();
-        assert_eq!(g.night, 2, "another night counts");
     }
 
     #[test]
     fn showdown_waits_for_humans_or_the_clock() {
         let (mut g, ids) = table_of(2, 1);
         g.start(&ids[0], 0).unwrap();
-        all_call(&mut g, &ids, Stance::Fold, 1);
+        all_pass(&mut g, &ids, 1);
+        all_call(&mut g, &ids, Stance::Out, 1);
         assert_eq!(g.phase, Phase::Showdown);
         g.next(&ids[0], 2).unwrap();
         assert_eq!(g.hand, 1);
         g.tick(1 + SHOWDOWN_SECONDS * 1000);
         assert_eq!(g.hand, 2);
-        assert_eq!(g.phase, Phase::Call);
+        assert_eq!(g.phase, Phase::Nod);
+    }
+
+    #[test]
+    fn history_names_the_carrier_and_their_nods() {
+        let (mut g, ids) = table_of(2, 1);
+        g.start(&ids[0], 0).unwrap();
+        // Make s1 a lock: a royal flush on the board for s1 only isn't possible,
+        // so give s1 the nuts by hand.
+        g.board = crate::card::cards("Ah Kh Qh 2c 3d");
+        g.seats[1].hole = crate::card::cards("Jh Th");
+        g.seats[0].hole = crate::card::cards("4s 5s");
+        g.seats[2].hole = crate::card::cards("7c 8d");
+        g.house = crate::card::cards("9s 9c 6d");
+        g.nod(&ids[0], Some("s1"), 1).unwrap();
+        g.nod(&ids[1], None, 1).unwrap();
+        g.nod(&ids[2], Some("s1"), 1).unwrap();
+        g.call(&ids[0], Stance::In, 2).unwrap();
+        g.call(&ids[1], Stance::In, 2).unwrap();
+        g.call(&ids[2], Stance::Out, 2).unwrap();
+        let h = g.history.last().unwrap();
+        assert_eq!(h.outcome, Outcome::Crew);
+        assert_eq!(h.moved, 2);
+        assert_eq!(h.carrier.as_deref(), Some("P1"));
+        assert_eq!(h.carrier_nods, 2);
     }
 
     #[test]
