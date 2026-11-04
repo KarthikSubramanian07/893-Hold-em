@@ -26,7 +26,7 @@ one paper lantern, a neon sign in the window that hums at 100 Hz.
 The crew owes the family. Each of them owes for a different reason: a mortgage
 bought out from under them, a brother's gambling, a debt so old nobody
 remembers it. The family doesn't take payment by bank transfer. It takes it at
-the House's table, across from the masks, one night at a time.
+the House's table, across from the mask, one night at a time.
 
 Nobody at the table may speak about their cards. All they can do is commit,
 and everybody sees what they committed to. That silence is the whole game.
@@ -39,7 +39,7 @@ and everybody sees what they committed to. That silence is the whole game.
 - A record player with the same record on it for eleven years.
 - An umbrella someone left in 1994. He is still holding it for them.
 - A ledger under the counter that the cat sleeps on.
-- The back door, which the Master puts on the latch when the heat gets close.
+- The back door, which the Master puts on the latch when the marker slides toward the sirens.
 
 ## 3. The Master
 
@@ -79,21 +79,23 @@ six on other nights. (A bar night runs to 6 a.m.)
 
 ## 5. The House and its masks
 
-The House plays one hand per mask. Which mask holds which hand is fixed per
-table, so the 3D scene, the narrator, and the players always agree on who
-just took the money. `maskFor(table, index, rule)` in `masks.ts` is the source
-of truth; palettes there are hints for the lacquer.
+The House is one masked figure across the table, and the mask it wears is fixed
+per table: Okame at Shitamachi (3 cards), Kitsune at Kabukichō (4), the Okina at
+Oyabun (5). The other faces at each table are the family behind the House: they
+turn up in the story and the lab, not in the chair. `maskFor(table)` and
+`houseMaskFor(table)` in `masks.ts` are the source of truth; palettes there are
+hints for the lacquer.
 
 The House speaking as an institution (rarely) is set in mono capitals, a
 printed notice, sealed 胴元: *dōmoto*, the bank in Japanese gambling.
 
 ### Shitamachi (下町): the collectors
 
-| Seat | Mask | What it is | Who wears it |
+| Role | Mask | What it is | Who wears it |
 | --- | --- | --- | --- |
-| 1 | **Okame** 阿亀 | The round-cheeked festival woman, always smiling | The collector. Brings mikan for the regulars, remembers their children's names. The smile is painted on, and so is everything else. |
-| 2 | **Hyottoko** 火男 | The fire-blower, mouth puckered at the coals | The kid. Three weeks in the family and still sweating through his shirt. Counts cards out loud when he thinks nobody can hear. |
-| 3 | **Ebisu** 恵比寿 | The laughing god of fishermen and luck | The bookkeeper. Writes every debt in a ledger older than the bar. The laugh never reaches the ledger. |
+| The House | **Okame** 阿亀 | The round-cheeked festival woman, always smiling | The collector. Brings mikan for the regulars, remembers their children's names. The smile is painted on, and so is everything else. |
+| Family | **Hyottoko** 火男 | The fire-blower, mouth puckered at the coals | The kid. Three weeks in the family and still sweating through his shirt. Counts cards out loud when he thinks nobody can hear. |
+| Family | **Ebisu** 恵比寿 | The laughing god of fishermen and luck | The bookkeeper. Writes every debt in a ledger older than the bar. The laugh never reaches the ledger. |
 
 > Okame: "Oh, don't look like that. It's only money."
 > Hyottoko: "That's mine? That's mine."
@@ -101,11 +103,11 @@ printed notice, sealed 胴元: *dōmoto*, the bank in Japanese gambling.
 
 ### Kabukichō (歌舞伎町): the lieutenants
 
-| Seat | Mask | What it is | Who wears it |
+| Role | Mask | What it is | Who wears it |
 | --- | --- | --- | --- |
-| 1 | **Kitsune** 狐 | The white fox, red at the eyes | The dealer. Runs three card rooms and has never been caught. Very polite, very fond of you. Means neither. |
-| 2 | **Tengu** 天狗 | The long-nosed, red-faced mountain goblin | The purist. Thinks he's the best player in Kabukichō and may be right. Contempt for luck. |
-| 3 | **Hannya** 般若 | The horned demoness of noh, gold eyes | The enforcer. Rarely speaks. Arrives when something has to be broken, and is always on time. |
+| The House | **Kitsune** 狐 | The white fox, red at the eyes | The dealer. Runs three card rooms and has never been caught. Very polite, very fond of you. Means neither. |
+| Family | **Tengu** 天狗 | The long-nosed, red-faced mountain goblin | The purist. Thinks he's the best player in Kabukichō and may be right. Contempt for luck. |
+| Family | **Hannya** 般若 | The horned demoness of noh, gold eyes | The enforcer. Rarely speaks. Arrives when something has to be broken, and is always on time. |
 
 > Kitsune: "You looked so sure."
 > Tengu, winning: "Skill." Losing: "Luck."
@@ -113,11 +115,11 @@ printed notice, sealed 胴元: *dōmoto*, the bank in Japanese gambling.
 
 ### Oyabun (親分): the old man upstairs
 
-| Seat | Mask | Who wears it |
+| Role | Mask | Who wears it |
 | --- | --- | --- |
-| 1 | **Okina** 翁, the sacred old man of noh | **The Oyabun himself.** Soft-spoken, grandfatherly, and the reason the whole street is quiet after midnight. He plays the first hand of the night himself. He always has. |
-| 2 | **Hannya** 般若 | At his left. |
-| 3 | **Kitsune** 狐 | At his right. |
+| The House | **Okina** 翁, the sacred old man of noh | **The Oyabun himself.** Soft-spoken, grandfatherly, and the reason the whole street is quiet after midnight. He holds five cards and plays the best of them. He always has. |
+| Family | **Hannya** 般若 | At his left. |
+| Family | **Kitsune** 狐 | At his right. |
 
 > "Sit, children. Sit. The rain will keep."
 > "Don't be sad. Debts are only promises."
@@ -125,9 +127,8 @@ printed notice, sealed 胴元: *dōmoto*, the bank in Japanese gambling.
 
 ### The Oni (鬼), at any table
 
-When the Oni card turns, the House sits one extra hand, and the extra stool
-goes to the **Oni**: a friend of the family. Nobody invited him. Nobody ever
-asks him to leave. He laughs like a truck in the alley.
+The **Oni** is a friend of the family who turns up in the stories. Nobody
+invited him. Nobody ever asks him to leave. He laughs like a truck in the alley.
 
 > "Room for one more?" … "Ha." … "Next time I bring friends."
 
@@ -143,7 +144,7 @@ have a word at exactly one kind of moment.
 | **Tetsu** | 鉄 | Ironworker. Built half the overpasses in Shinjuku. Lost two fingers and none of his patience. | "Tetsu. I'll sit." | |
 | **Okami** | 女将 | Ran an inn at Atami until the family bought the mortgage. Still bows to everyone, including the masks. | "Okami. Please, take the good stool. I insist." | |
 | **Hana** | 花 | Florist by the east exit. Always smells of chrysanthemums, which are for funerals. | "Hana. I brought flowers. Not for anyone. Yet." | |
-| **Gin** | 銀 | Pachinko professional for forty years. Counts everything twice. | "Gin. I counted the exits on the way up. Two." | The take reaches the target: "Counted. That's enough." |
+| **Gin** | 銀 | Pachinko professional for forty years. Counts everything twice. | "Gin. I counted the exits on the way up. Two." | The marker one step from the door: "Counted. One step. Walk, don't run." |
 | **Kuro** | 黒 | Session drummer at a jazz kissa. Sunglasses indoors. | "Kuro. Don't mind the tapping." | |
 | **Sumi** | 墨 | Calligrapher. Carves hanko, some for people who don't exist. | "Sumi. If anyone needs a seal, I didn't make it." | 8-9-3: "I carved that seal once. For a man who isn't alive." |
 | **Rin** | 鈴 | Night nurse in Ōkubo. Has seen everything twice and been surprised once. | "Rin. I'm on at six. Let's be done by six." | |
@@ -158,8 +159,10 @@ one." "Encore."). Otherwise they keep quiet.
 
 ## 7. The chapters
 
-The three tables are three chapters of one debt, with stakes rising. Each
-opens with the Master and the lead mask, and ends with one of three epilogues.
+The three tables are three chapters of one debt, with the House's hand growing
+(three cards, then four, then five). Each opens with the Master and ends with one
+of three epilogues: clean getaway, raid, or last orders at dawn. The lines
+below are the voice to write toward; `lines.ts` holds the banks in play.
 Clearing a chapter (any clean getaway at that table) unlocks its first clean
 epilogue in the matchbook. It never gates play: any table is open from the
 first night.
@@ -177,7 +180,7 @@ masks for it."
 | --- | --- |
 | **Clean getaway** | "That's the corner debt paid. Okame will tell them you were polite." "Kabukichō will want to meet you now. That isn't a compliment." *or* "Ebisu crossed you out. In ink." "Go home. Next time the masks are taller." |
 | **Raid** | "Sirens on the stairs. Out the back, past the bins. You know the way now." "The corner table will still be here. So will the debt." *or* "Hyottoko ran first. I'll give him that." "Tomorrow, then. Quieter." |
-| **Came up short** | "Close isn't money. Okame smiled the whole way down the stairs." "Come back tomorrow. It'll be raining." *or* "Ebisu wrote it in pencil. That's mercy, for him." "The debt keeps. Debts always keep." |
+| **Last orders** | "Close isn't the door. Okame smiled the whole way down the stairs." "Come back tomorrow. It'll be raining." *or* "Ebisu wrote it in pencil. That's mercy, for him." "The debt keeps. Debts always keep." |
 
 ### 第二章 · 歌舞伎町 · Every Sign Is Lying
 
@@ -192,26 +195,26 @@ again."
 | --- | --- |
 | **Clean getaway** | "You walked out of Kabukichō with money. People don't, usually." "There's a car downstairs. The boss wants a word. Not tonight." *or* "The Tengu said 'luck' all the way to the door." "Upstairs has heard your names now. Sleep with the light on." |
 | **Raid** | "Blue light through the rain. The Tengu was out the window before the first knock." "Nobody's surprised. That's the worst part." *or* "Hannya didn't run. She just left. There's a difference." "Lie low. The neon stays on without you." |
-| **Came up short** | "The fox counted twice and smiled once. You owe what you owed." "The neon doesn't care. It stays on." *or* "Kitsune bowed, briefly. That means you'll be back." "Rest. Kabukichō never does." |
+| **Last orders** | "The fox counted twice and smiled once. You owe what you owed." "The neon doesn't care. It stays on." *or* "Kitsune bowed, briefly. That means you'll be back." "Rest. Kabukichō never does." |
 
 ### 第三章 · 親分 · The Old Man Upstairs
 
-The room at the top of the stairs, with tatami and the one good chair. Every
-hand in this room has a catch.
+The room at the top of the stairs, with tatami and the one good chair. The
+House holds five cards here.
 
 **Intro** (one of): "Top of the stairs. The room with the tatami and the one
-good chair. He's already sitting." / "The Oyabun plays the first hand himself.
-He always has." / "Shoes off. Voices down. Every hand in this room has a catch."
+good chair. He's already sitting." / "The Oyabun plays his own hand. Five
+cards. He always has." / "Shoes off. Voices down. He notices."
 
 | Ending | The Master |
 | --- | --- |
 | **Clean getaway** | "He bowed. I've poured for him for thirty years. He has never bowed." "The debt is paid. Go home. Come back only if you want to." *or* "He laughed. Once, softly, like a door closing." "You're free. That has never meant what people think." |
 | **Raid** | "Even the boss's room gets raided. He finished his tea first." "He'll forgive the police. He won't forget you." *or* "Hannya held the door for him. Nobody held it for you." "Rest. He doesn't hurry. Neither should you." |
-| **Came up short** | "He said nothing. He poured you a drink himself. That's worse." "Same time tomorrow. The rain will keep." *or* "'Patience,' he said. He has more of it than you have nights." "Come back when you're ready. He'll be sitting." |
+| **Last orders** | "He said nothing. He poured you a drink himself. That's worse." "Same time tomorrow. The rain will keep." *or* "'Patience,' he said. He has more of it than you have nights." "Come back when you're ready. He'll be sitting." |
 
-A clean night can earn one more line: a **clean sweep** (six for six: "I've
-seen it once before. He doesn't drink here anymore.") or a **close call**
-(heat one from the limit: "That close. I had the back door open.").
+A clean night can earn one more line: a **clean sweep** (not one step toward
+the sirens all night: "I'm checking the deck.") or a **close shave** (the marker
+came within one step of the sirens: "I'm going to need a minute.").
 
 ## 8. What the narrator listens for
 
@@ -222,28 +225,27 @@ lines, and usually none. Silence is the default; a line has to earn its place.
 | --- | --- | --- |
 | Welcome | First view of a room | The Master: first visit, returning, rejoining mid-night, or spectating. Special greetings win: a name like "Oyabun", a room code with 893 in it, real 3 a.m. |
 | Someone sits down | A new seat in the lobby | A regular introduces themselves; a human is named by the Master. One line, however many sit. |
-| The night starts | Lobby to hand 1 | The Master's chapter intro, then the lead mask (Okame, Kitsune, or the Okina). |
-| A new hand | Hand 2 onward | The House Rule speaks for the hand. The **last hand** always gets its own line: what you still need, or that the debt's covered, or that the street is listening. |
-| The House Rule | A rule card turns | A line beyond the card's own flavour. Under **Fox** the Master names whose cards are face up. Under **Oni** the Oni introduces himself. |
-| The showdown | A hand resolves | One reading, most special first (below). Ordinary results go to the Master, the mask across the table, or a regular who carried it. |
-| The take | It reaches the target | "That's the debt. Everything after this is yours." (or Gin) |
-| The heat | Crossing ½, ¾, one from the limit | The Master noticing the street (or Taka, from ¾). Never on top of a raid. |
-| The verdict | The night ends | The chapter epilogue, plus a coda for a sweep or a close call. |
-| Idle | A slow timer in the lobby | `idleLine(view, tick)`: about two ticks in three say something small. |
+| The night starts | Lobby to hand 1 | The Master's chapter intro, naming how many cards the House holds. |
+| A new hand | Hand 2 onward | Silence, except **last orders** (hand 10): how far the door is, or that the sirens are close (or Nao). |
+| The nods turn over | `nod` to `call` | Only the telling patterns: everyone nodded at one teammate, two nodded at each other, or (now and then) nobody nodded at all. |
+| The showdown | A hand resolves | One reading, most special first (below), then a word on a big swing (four steps or more). Ordinary results go to a regular who carried it, or nobody. |
+| Your reveal | A hand resolves | **Personal**: when your own cards turn over and they were a straight or better you never saw. Only you hear it. |
+| The marker | One step from the door or the sirens | The Master (or Gin at the door, Taka at the sirens). Never on top of a verdict. |
+| The verdict | The night ends | The chapter epilogue, plus a coda for a sweep or a close shave. |
+| Idle | A slow timer in the lobby | `idleLine(view, tick)`: about two ticks in three say something small, often a rule in plain words. |
 
 **Showdown readings, most special first:** a royal flush (either side), 8-9-3
-in the champion's cards and the board, a bad beat (full house or better and
-still lost), the Serpent's tie, a Reversal win, the quiet champion (never
-raised, no pair, nothing above a jack, and carried it anyway), a rider with
-nothing but a high card who got paid, players who were **seen** (lost to the
-House on a hand the crew won, and drew heat for it), then plain crew, House,
-tie, or walked.
+in the carrier's cards and the board, a teammate who **sat out holding the
+winner** (named, when the crew didn't win), everyone Out, a bad beat (full house
+or better and still lost), everyone In and winning, a carrier **nobody nodded
+at**, a carrier who was nodded at (a regular may speak), a big swing, then plain
+crew, House, or tie.
 
 **Sameness at the table.** Every line is chosen by `pick(bank, code, hand,
 event)`: an FNV-1a hash of the room code and the event, walking a fixed shuffle
 of the bank by hand number. Every seat sees the same words at the same moment,
 and a bank doesn't repeat within a night until it runs out. Only the welcome
-is personal.
+and your own reveal are personal.
 
 ## 9. Voice rules
 
@@ -292,22 +294,24 @@ played, and eggs found.
 | | Stamp | Verse | How |
 | --- | --- | --- | --- |
 | 初 | First Night | Everyone has a first stool. | Play a night to its verdict. |
+| 逃 | Clean Getaway | Out the door before the sirens. Any table counts. | Reach the door at any table. |
 | 下町 | Small Debts | The corner table, paid in full. | Clean getaway at Shitamachi. |
-| 歌舞伎 | Every Sign Is Lying | Out of Kabukichō with money. People don't. | Clean getaway at Kabukichō. |
-| 親分 | Oyabun's Favor | He bowed. He has never bowed. | Clean getaway at Oyabun. |
-| 八九三 | Ya-ku-za | Eight, nine, three. The worst hand, and it paid. | The crew wins while your hole cards and the board hold an 8, a 9 and a 3, with at least one in your hand. |
-| 道連 | Ride or Die | Paid, holding the worst hand at the table. | The crew wins and your hand was the weakest of all. |
-| 一騎 | Lone Rider | Everyone else folded. You went anyway, and won. | The only one in, and the crew wins. |
-| 総取 | Clean Sweep | Six hands. Six wins. Tell no one. | The crew wins all six. |
-| 幽霊 | Ghosts | Every hand on the felt. The street noticed anyway. | Everyone folds. |
-| 王 | Royal | Ten to the ace, one suit, our side. | The crew's best is a royal flush. |
-| 紙一重 | Close Call | Clean, by the width of a sheet of paper. | Clean getaway with heat one from the limit. |
-| 滑込 | Under the Wire | Short until the sixth hand. Then not. | The last hand covers the debt. |
+| 歌舞伎 | Every Sign Is Lying | Out of Kabukichō clean. People don't. | Clean getaway at Kabukichō. |
+| 親分 | Oyabun's Favor | Five cards in his hand, and he still bowed. | Clean getaway at Oyabun. |
+| 頷 | The Nod | They nodded at you. You carried it. | Carry a hand you were nodded on. |
+| 盲信 | Blind Faith | No nods. In anyway. Carried the crew. | Carry a hand with no nods (crew of three or more). |
+| 目利 | Good Eye | Your nod went to the hand that carried. | Nod at the teammate who carries. |
+| 総入 | Full House In | Every stool In, and the House folded. | Everyone In, and the crew wins. |
+| 紙一重 | Close Shave | One step from the sirens, then out the door. | Clean getaway after the marker came within one step of the sirens. |
+| 総取 | Clean Sweep | Not one step toward the sirens all night. | Clean getaway where every hand moved toward the door. |
+| 終 | Last Orders | Ten hands, and the shutters came down. | The night ends at dawn. |
+| 化物 | Never Knew | A straight or better in your hands, unseen until the end. | Your own hand turns over as a straight or better. |
+| 惜 | So Close | Out, holding the winner. Your crew saw it coming. | Go Out with a hand that beat the House, when the crew didn't win. |
+| 幽霊 | Ghosts | Everyone Out. The street noticed anyway. | Everyone sits a hand out. |
+| 八九三 | Ya-ku-za | Eight, nine, three. The worst hand, and it carried. | Carry a hand while your hole cards and the board hold an 8, a 9 and a 3, with at least one in your hand. |
+| 王 | Royal | Ten to the ace, one suit, our side. | Carry with a royal flush. |
 | 梟 | Night Owl | Played at three in the morning. The real one. | Play between 3:00 and 3:59, local time. |
-| 満席 | Full House | Six stools, six people, no regulars. | Start a night with six humans. |
-| 蛇 | Snakebit | A tie, under the Serpent. A loss with manners. | Lose a tie to the Serpent. |
-| 逆 | Upside Down | The worst hand won. The boss smiled. | Win under Reversal. |
-| 見 | You Were Seen | They got paid. You got remembered. | Draw heat on a hand the crew won. |
+| 満席 | Full Bar | Six stools, six people, no regulars. | Start a night with six humans. |
 | 踏込 | The Knock | Everyone hears it once. Out the back. | Get raided. |
 | 常連 | Regular | Five nights. The stool knows your shape. | Play five nights. |
 | 九 | Kyū *(secret)* | The cat let you pet her. She is the nine. | Pet the cat. |
@@ -357,8 +361,7 @@ useEffect(() => installEggs(), []);
   every line array; ids already shown are ignored.
 - `<StampToast />` reads the matchbook's queue. Position it with a class.
 - `<ColdOpen onDone />` when `shouldPlayColdOpen()`.
-- `maskFor(table, houseIndex, rule, houseCount)` picks the mask and palette for
-  each House hand in the scene.
+- `houseMaskFor(table)` picks the House's mask and palette for the scene.
 - Call `checkName(name)` on rename, `checkCode(code)` on join, and
   `lanternClick()` from the lantern. Render `<BarCat />` when
   `catVisits(code)`.

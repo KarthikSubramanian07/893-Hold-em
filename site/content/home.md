@@ -1,28 +1,28 @@
 ---
 title: "893 Hold'em: a free co-op poker game for 2 to 6 players"
-description: "A free cooperative poker game in your browser. Two to six players team up against a masked House, and can only talk through their calls. One link, no accounts."
+description: "A free cooperative poker game in your browser. Two to six players team up against a masked House. You see every hand but your own, and the only signal is a nod. One link, no accounts."
 ---
 
 # 893 Hold'em: co-op poker for 2 to 6
 
-A free cooperative poker game you play in the browser. Your crew sits on one side of a lacquer table in a back-alley bar in Shinjuku's Golden Gai; the House sits across in masks. You win or lose together, and you can't talk about your cards. All you can do is commit to a call, and everyone sees what you committed to.
+A free cooperative poker game you play in the browser. Your crew sits on one side of a lacquer table in a back-alley bar in Shinjuku's Golden Gai; the House sits across in masks. You win or lose together. You can see every teammate's cards but never your own, and nobody may talk. All you can do is nod at the teammate whose hand looks strong.
 
 One link, no accounts, no downloads. Open a table, send the link to your friends, and play a night in about fifteen minutes. Empty chairs fill with bot regulars, and you can practice alone first.
 
 ## How a hand plays
 
-1. **The deal.** Everyone gets two private cards, Texas Hold'em style. Five shared cards turn over street by street.
-2. **The House Rule.** From the second hand, a card flips and bends that hand: Fog hides the river, Bond shares every raise, Reversal makes the weakest hand win.
-3. **Four quiet calls.** Pre-flop, flop, turn, river. Everyone still in secretly picks Fold, Stay, or Raise, then all calls flip at once.
-4. **The showdown.** If the crew's best hand beats the House's best, every stake still in is paid as take, even trash riding along. But each mask watches two seats: lose to the mask watching you and you draw heat anyway.
+1. **The deal.** Two cards each, facing out: you see your crew's cards, never your own. The House shows one of its cards.
+2. **The nod.** After the flop, each player may nod at one teammate: "you're good". Or pass. The nods turn over together.
+3. **In or Out.** After the river, everyone picks In or Out at the same moment.
+4. **The showdown.** Every card flips, yours too. The best hand that's In faces the House. Win and the marker moves toward the door, one step per player In. Lose and it slides toward the sirens.
 
-Six hands make a night. Reach the take target and you get away clean. Hit the heat limit and the bar gets raided.
+Reach the door for a clean getaway. Reach the sirens and the bar gets raided. After ten hands it's last orders.
 
 ## Three tables
 
-- **Shitamachi**, the corner bar: forgiving, about seven nights in ten end clean for a crew that plays well.
-- **Kabukichō**: neon, noise, and a House that pays attention. About one in two.
-- **Oyabun**, the boss's room: every hand has a catch. About three in ten.
+- **Shitamachi**, the corner bar: the House holds three cards. About seven nights in ten end clean for a crew that plays well.
+- **Kabukichō**: neon, noise, and a House holding four. About one in two.
+- **Oyabun**, the boss's room: the House holds five. About three in ten.
 
 ## Play
 

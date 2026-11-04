@@ -13,13 +13,13 @@ Read 8-9-3 as *ya-ku-za*: the worst hand in oicho-kabu, an old Japanese card gam
 
 ## Why it exists
 
-Most poker pits friends against each other. This one puts them on the same side. The crew can't talk about their cards, so the game is about reading each other's calls: a raise that says "I've got this", a teammate quietly folding a hand they can't carry. It is meant for game nights, remote friends, and anyone who likes poker but would rather win with people than against them.
+Most poker pits friends against each other. This one puts them on the same side. You can see everyone's cards except your own, and nobody can talk, so the game is about one gesture: the nod that says "you're good", and trusting the nods that come back to you. It is meant for game nights, remote friends, and anyone who likes poker but would rather win with people than against them.
 
 ## How it is made
 
 - The rules engine, the hand evaluator, and the bots are written in Rust and compiled to WebAssembly, so the same code runs on the server and in the browser.
 - Each table runs in its own Cloudflare Durable Object. A table is just a link; there are no accounts.
 - The bar is drawn with three.js, and every sound is synthesized in the browser, with no recordings.
-- The balance between take and heat was tuned by simulating thousands of nights.
+- The length of the track to the door and the sirens was tuned by simulating thousands of nights.
 
 There are no ads, no purchases, no analytics, and no tracking. If you enjoy it, you can [buy the maker a coffee](https://buymeacoffee.com/winnerkarthik); that is the only way it earns anything. See the [privacy page](https://holdem893.pages.dev/privacy) for exactly what the game stores, and the [contact page](https://holdem893.pages.dev/contact) to reach the maker.

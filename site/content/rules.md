@@ -1,60 +1,50 @@
 ---
 title: "Rules of 893 Hold'em, the co-op poker game"
-description: "The complete rules of 893 Hold'em: seats, the four simultaneous calls, take and heat, the watching masks, the nine House Rules, and the three tables."
+description: "The complete rules of 893 Hold'em: you see every hand but your own, one nod each after the flop, In or Out after the river, and one marker between the door and the sirens."
 ---
 
 # The rules of 893 Hold'em
 
-893 Hold'em is a cooperative poker game for 2 to 6 players. The crew plays together against the House over a night of six hands. Nobody may talk about their cards: the only conversation is the calls everyone makes at the same moment.
+893 Hold'em is a cooperative poker game for 2 to 6 players. The crew plays together against one masked House. You can see every teammate's cards but never your own, and nobody may talk about cards: the only signal is a nod.
 
-## Seats
+## The rules in four lines
 
-- **The crew** is 2 to 6 seats: friends at the link, or bot regulars who fill empty chairs.
-- **The House** sits one masked hand for every two crew seats, rounded up. Two players face one mask; five face three.
-- **Each mask watches two seats**, in seat order. Your own heat check is against the mask watching you.
+1. **Everyone sees every hand but their own.** The House shows one card. It holds 3 cards at Shitamachi, 4 at Kabukichō, 5 at Oyabun, and plays its best five with the board.
+2. **After the flop, each player may nod at one teammate**: "you're good". One nod each per hand, or pass.
+3. **After the river, everyone picks In or Out at once.**
+4. **The best hand that's In faces the House.** Win: the marker moves one step toward the door for every player In. Lose: one step toward the sirens for every player In. Tie: no move. Everyone Out: one step toward the sirens.
 
-## A night
-
-A night is six hands, and the crew shares two counters:
-
-- **Take (円)** is money won. Reach the night's target by the end to get away clean.
-- **Heat (熱)** is police attention. Reach the limit at any point and the bar is raided; the night ends at once.
-
-The target and the limit depend on the table and on how many are in the crew. The lobby shows both before you start.
+Reach the door and you get away clean. Reach the sirens and the bar is raided. After ten hands it is last orders, and the night ends at dawn.
 
 ## A hand
 
-1. **The deal.** Each crew member gets two private hole cards. Each mask gets two face-down cards. Five board cards are dealt face down.
-2. **The House Rule.** From the second hand (from the first at the Oyabun table), one House Rule card flips and changes this hand only.
-3. **Four calls**: pre-flop, then the flop (three board cards), the turn (one), and the river (one). At each call, everyone still in secretly picks:
-   - **Fold (降)**: step out of this hand. Your cards no longer count.
-   - **Stay (待)**: keep your stake. Every stake starts at 1.
-   - **Raise (攻)**: your stake goes up by one, to at most 3.
+1. **The deal.** Each player gets two hole cards, facing out: you see your teammates' cards, not yours. The House gets its cards; the first is face up.
+2. **The nod (頷).** The flop turns: three board cards. Each player may nod at one teammate, or pass. Nods stay secret until everyone has nodded, then they all turn over together.
+3. **The call.** The turn and the river come out together, so all five board cards are showing. Everyone picks at once:
+   - **In (入)**: your hand counts. You add one step to the result, win or lose.
+   - **Out (出)**: you sit this one out. Your hand stays off the table.
+4. **The showdown.** Every card flips, including your own, for the first time. The best hand among the players who are In faces the House's best five.
 
-   When everyone has locked in, or the call timer runs out (undecided counts as Stay), all calls flip at once.
-4. **The showdown.** Two counts are settled together:
-   - **Take**: the crew's best active hand faces the House's best. If the crew wins, take rises by every active stake. Everyone still in is paid, even with weak cards.
-   - **Heat**: anyone still in whose own hand loses to the mask watching them draws heat equal to their stake, even when the crew wins.
-   - Ties pay nothing and burn nothing. If everyone folded, heat rises by one.
+If the timer runs out, you pass on the nod and sit out the call.
 
-A raise says "I'm carrying this one." Riding a teammate's raise turns your heat into the crew's take. Whether that's a good trade depends on how close the crew is to the target and to a raid.
+## The track
 
-## House Rules
+One marker sits between the sirens and the door. It starts at zero; how far each end is depends on the table and on how many are in the crew:
 
-| Kanji | Name | Effect |
-| --- | --- | --- |
-| 霧 | Fog | The river is dealt face down until the showdown. |
-| 鏡 | Mirror | Each mask shows one of its hole cards from the start. |
-| 鬼 | Oni | The House sits one extra hand. |
-| 静 | Hush | Calls are hidden; you only see who is in and who is out. |
-| 炎 | Blaze | Take and heat are doubled. |
-| 絆 | Bond | Every raise raises every active stake. |
-| 蛇 | Serpent | Ties go to the House. |
-| 狐 | Fox | One crew member's hole cards are dealt face up. |
-| 逆 | Reversal | Lowball: the weaker hand wins. Oyabun table only. |
+| Table | House holds | 2 players | 3 | 4 | 5 | 6 |
+| --- | --- | --- | --- | --- | --- | --- |
+| Shitamachi (下町) | 3 cards | 5 / 5 | 7 / 6 | 9 / 7 | 11 / 8 | 12 / 9 |
+| Kabukichō (歌舞伎町) | 4 cards | 5 / 4 | 7 / 5 | 9 / 6 | 11 / 7 | 12 / 8 |
+| Oyabun (親分) | 5 cards | 5 / 4 | 7 / 5 | 9 / 6 | 11 / 7 | 12 / 8 |
+
+Steps to the door / steps to the sirens. The lobby shows the numbers for your table before you start.
+
+## Reading the table
+
+A nod says "I can see your hand, and it looks strong." Three nods on you is a good reason to go In. No nods is a reason to think twice, though the nodders can't see the board you'll end with, and they can't see their own hands either. Going In with a weak hand costs the crew a step if the House wins; sitting out a winner costs the crew the steps it would have gained.
 
 ## Tables
 
-- **Shitamachi (下町)**, the corner bar. Four House Rules in the deck. Built so a crew that plays well gets away clean about 70% of the time.
-- **Kabukichō (歌舞伎町)**. Eight House Rules. About 50%.
-- **Oyabun (親分)**, the boss's room. All nine, from the first hand. About 30%.
+- **Shitamachi (下町)**, the corner bar. The House holds three cards. Built so a crew that plays well gets away clean about 70% of the time.
+- **Kabukichō (歌舞伎町)**. The House holds four. About 50%.
+- **Oyabun (親分)**, the boss's room. The House holds five. About 30%.
