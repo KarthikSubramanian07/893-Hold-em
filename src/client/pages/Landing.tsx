@@ -13,6 +13,7 @@ import { Seal } from '../ui/Seal';
 import './landing.css';
 
 const REPO = 'https://github.com/KarthikSubramanian07/893-Hold-em';
+const TIP_JAR = 'https://buymeacoffee.com/winnerkarthik';
 const DECK: RuleId[] = ['kiri', 'kagami', 'oni', 'shizuka', 'homura', 'kizuna', 'hebi', 'kitsune', 'gyaku'];
 const TABLE_ORDER: Difficulty[] = ['shitamachi', 'kabukicho', 'oyabun'];
 const KIND_LABEL = { boon: 'In your favour', bane: 'Against you', wild: 'Either way' } as const;
@@ -439,6 +440,11 @@ function MatchbookFooter({ onRules }: { onRules: () => void }) {
                   Your matchbook
                 </Link>
               </li>
+              <li>
+                <a href={TIP_JAR} target="_blank" rel="noreferrer" className="foot__btn">
+                  Tip the bar
+                </a>
+              </li>
             </ul>
           </div>
           <div>
@@ -469,7 +475,7 @@ function MatchbookFooter({ onRules }: { onRules: () => void }) {
         <Seal className="foot__seal" chars="閉" shape="square" size={54} tilt={8} seed={23} paper="var(--sumi)" />
       </div>
       <p className="foot__base label">
-        <span>No accounts. No ads. No cards were harmed.</span>
+        <span>No accounts. No ads. The bots don&rsquo;t tip.</span>
         <span>Close cover before striking · 八九三</span>
       </p>
     </footer>

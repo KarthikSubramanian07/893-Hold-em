@@ -118,7 +118,7 @@ ${canonical ? `    <meta property="og:url" content="${canonical}" />\n` : ''}   
     <main class="site-page">
 ${localLinks(toHtml(page.body))}    </main>
     <footer class="site-foot">
-      <p>A free co-op poker game. No accounts, no ads, no tracking. MIT licensed, <a href="https://github.com/KarthikSubramanian07/893-Hold-em">source on GitHub</a>.</p>
+      <p>A free co-op poker game. No accounts, no ads, no tracking. MIT licensed, <a href="https://github.com/KarthikSubramanian07/893-Hold-em">source on GitHub</a>. The bots don&rsquo;t tip; <a href="https://buymeacoffee.com/winnerkarthik">you can</a>.</p>
     </footer>
   </body>
 </html>
@@ -169,6 +169,7 @@ ${link(by('about'), 'who makes it, the name, and how it is built')}
 ${link(by('privacy'), 'exactly what the game stores, where, and for how long')}
 ${link(by('contact'), 'how to report bugs, suggest changes, or raise a security issue')}
 - [Source code](https://github.com/KarthikSubramanian07/893-Hold-em): the MIT-licensed repository
+- [Tip jar](https://buymeacoffee.com/winnerkarthik): support the maker on Buy Me a Coffee
 `;
 }
 
