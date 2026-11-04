@@ -192,6 +192,21 @@ export function Dock({ view }: { view: GameView }) {
         {clock ? <Ring clock={clock} /> : null}
       </header>
       {coach && <p className="dock__coach">{coach}</p>}
+      <ul className="dock__read" aria-label="Your teammates' hands and nods">
+        {mates.map((s) => {
+          const n = nodsOn(view, s.id);
+          return (
+            <li key={s.id} className={`read${n ? ' is-nodded' : ''}`}>
+              <AvatarSeal avatar={s.avatar} size={20} />
+              <span className="read__name">{s.name}</span>
+              <CardPair cards={s.cards} size="xs" />
+              <span className="read__nods" aria-label={n === 1 ? '1 nod' : `${n} nods`}>
+                {n ? '●'.repeat(n) : '·'}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
       <div className="dock__picks" role="group" aria-label="Choose In or Out">
         {PICKS.map((p) => {
           const isChosen = chosen === p.stance;

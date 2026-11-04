@@ -411,6 +411,40 @@
 }
 
 /* Teammates to nod at: a row of chips, each showing the cards you can see. */
+/* The call: who you're betting on, at a glance. */
+.dock__read {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.read {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font: 13.5px/1.2 var(--serif);
+  color: var(--night-ink-soft);
+}
+
+.read__name {
+  font-weight: 700;
+  color: var(--night-ink);
+}
+
+.read__nods {
+  min-width: 1.2em;
+  color: var(--night-ink-faint);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.read.is-nodded .read__nods {
+  color: var(--kin);
+}
+
 .dock__mates {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

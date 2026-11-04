@@ -19,7 +19,8 @@ export function HeroCards({ cards, glow, folded = false }: { cards: Slot[]; glow
   const halfH = DIST * Math.tan((fov * Math.PI) / 360);
   const perPx = (2 * halfH) / size.height;
   const calm = useHudBottom(size.height);
-  const px = heroCardPixels(size.width, size.height, calm);
+  const hidden = cards.every((c) => c === 'back');
+  const px = heroCardPixels(size.width, size.height, calm, hidden);
   const scale = (px.cardHeight * perPx) / CARD.h;
   const baseY = (px.centreY - size.height / 2) * perPx;
   const dropY = folded ? -px.cardHeight * 0.35 * perPx : 0;

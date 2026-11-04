@@ -145,9 +145,8 @@ pub fn parse(raw: &str) -> Option<ClientMessage> {
             Value::Null => ClientMessage::Nod(None),
             v => {
                 let at = v.as_str()?;
-                let ok = at.len() == 2
-                    && at.starts_with('s')
-                    && matches!(at.as_bytes()[1], b'0'..=b'5');
+                let ok =
+                    at.len() == 2 && at.starts_with('s') && matches!(at.as_bytes()[1], b'0'..=b'5');
                 if !ok {
                     return None;
                 }

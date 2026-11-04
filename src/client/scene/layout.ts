@@ -266,10 +266,14 @@ export function bottomCalm(hudTop: number | null, height: number): number {
 
 /**
  * Where your own two cards hang in front of the camera, in pixels. They sit
- * above the bottom HUD band and scale with the shorter screen side.
+ * above the bottom HUD band and scale with the shorter screen side. While they
+ * are face down they tell you nothing, so they stay small and leave the table
+ * (your teammates' cards) in view; they grow for the reveal.
  */
-export function heroCardPixels(width: number, height: number, bottomCalm = 150) {
-  const h = clamp(Math.min(height * 0.22, width * 0.4), 110, 230);
+export function heroCardPixels(width: number, height: number, bottomCalm = 150, hidden = false) {
+  const h = hidden
+    ? clamp(Math.min(height * 0.12, width * 0.2), 64, 120)
+    : clamp(Math.min(height * 0.22, width * 0.4), 110, 230);
   const centreY = bottomCalm + h * 0.5 + 10;
   return { cardHeight: h, centreY, gap: h * 0.42 };
 }

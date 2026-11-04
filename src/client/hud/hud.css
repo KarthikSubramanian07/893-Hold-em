@@ -922,6 +922,17 @@
   padding: 0.6rem 0;
   list-style: none;
   border-bottom: 1px dashed var(--hair-strong);
+  /* A long night scrolls inside the receipt, so the verdict stays on screen. */
+  max-height: min(38vh, 24rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 760px) {
+  .receipt__lines {
+    max-height: 24vh;
+  }
 }
 
 .rl {

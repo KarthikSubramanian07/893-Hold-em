@@ -7,8 +7,8 @@
 //! node crates/engine/examples/wasm_bench.mjs target/wasm32-unknown-unknown/wasm/examples/wasm_bench.wasm
 //! ```
 
-use hachi_engine::card::{Card, Rng, full_deck};
 use hachi_engine::bot::{Temperament, call, nod};
+use hachi_engine::card::{Card, Rng, full_deck};
 use hachi_engine::eval::score_best;
 use hachi_engine::game::Game;
 use hachi_engine::rules::Difficulty;
@@ -48,14 +48,17 @@ pub extern "C" fn bench_decide(reps: u32) -> f64 {
     g.start(&a, 0).unwrap();
     let flop = view_for(&g, Some("s1"), 0);
     for s in ["s0", "s1", "s2", "s3", "s4", "s5"] {
-        g.nod(s, Some(if s == "s0" { "s1" } else { "s0" }), 0).unwrap();
+        g.nod(s, Some(if s == "s0" { "s1" } else { "s0" }), 0)
+            .unwrap();
     }
     let river = view_for(&g, Some("s1"), 0);
     let t = Temperament::for_seat("bot:1");
     let mut rng = hachi_engine::card::Rng::seeded(7);
     let mut total = 0.0;
     for _ in 0..reps {
-        total += f64::from(u8::from(nod(std::hint::black_box(&flop), "s1", t, &mut rng).is_some()));
+        total += f64::from(u8::from(
+            nod(std::hint::black_box(&flop), "s1", t, &mut rng).is_some(),
+        ));
         total += f64::from(u8::from(
             call(std::hint::black_box(&river), "s1", t, &mut rng) == hachi_engine::game::Stance::In,
         ));

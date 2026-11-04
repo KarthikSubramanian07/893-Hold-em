@@ -103,8 +103,16 @@ describe('cameraFrame', () => {
 describe('heroCardPixels', () => {
   it('sits above the bottom HUD band', () => {
     for (const [w, h] of [[390, 844], [1440, 900], [800, 500]] as const) {
-      const p = heroCardPixels(w, h);
-      expect(p.centreY - p.cardHeight / 2).toBeGreaterThan(150);
+      for (const hidden of [false, true]) {
+        const p = heroCardPixels(w, h, 150, hidden);
+        expect(p.centreY - p.cardHeight / 2).toBeGreaterThan(150);
+      }
+    }
+  });
+
+  it('keeps your face-down cards small so the table stays in view', () => {
+    for (const [w, h] of [[390, 844], [1440, 900]] as const) {
+      expect(heroCardPixels(w, h, 150, true).cardHeight).toBeLessThan(heroCardPixels(w, h).cardHeight * 0.65);
     }
   });
 });

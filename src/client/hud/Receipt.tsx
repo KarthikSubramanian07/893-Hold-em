@@ -98,8 +98,10 @@ export function Receipt({ view, aside }: { view: GameView; aside?: ReactNode }) 
 const TAG = { crew: 'Won', house: 'Lost', tie: 'Even', walked: 'All out' } as const;
 
 function Line({ h }: { h: HistoryEntry }) {
+  const nods = h.carrierNods ? `${h.carrierNods} ${h.carrierNods === 1 ? 'nod' : 'nods'}` : 'no nods';
+  // Only a won hand was carried; on a loss or a tie, name the hand that led.
   const who = h.carrier
-    ? `${h.carrier} carried${h.carrierNods ? ` · ${h.carrierNods} ${h.carrierNods === 1 ? 'nod' : 'nods'}` : ' · no nods'}`
+    ? `${h.carrier} ${h.outcome === 'crew' ? 'carried' : 'led'} · ${nods}`
     : h.ins === 0
       ? 'Nobody went In'
       : null;

@@ -121,7 +121,11 @@ pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
                 connected: s.connected,
                 cards,
                 locked,
-                nod: if nods_public || mine { s.nod.clone() } else { None },
+                nod: if nods_public || mine {
+                    s.nod.clone()
+                } else {
+                    None
+                },
                 stance: if open {
                     s.stance
                 } else if mine {
@@ -214,7 +218,10 @@ mod tests {
             assert!(!text.contains(&format!("\"{c}\"")), "leaked House card {c}");
         }
         for c in &g.board[3..] {
-            assert!(!text.contains(&format!("\"{c}\"")), "leaked the turn or river {c}");
+            assert!(
+                !text.contains(&format!("\"{c}\"")),
+                "leaked the turn or river {c}"
+            );
         }
         assert!(matches!(v.house.cards[0], Slot::Card(_)));
         assert!(v.house.cards[HOUSE_UP..].iter().all(|c| *c == Slot::Back));
@@ -274,7 +281,10 @@ mod tests {
         let v = view_for(&g, Some("s1"), 3);
         assert!(v.seats[0].locked);
         assert_eq!(v.seats[0].stance, None);
-        assert_eq!(view_for(&g, Some("s0"), 3).seats[0].stance, Some(Stance::In));
+        assert_eq!(
+            view_for(&g, Some("s0"), 3).seats[0].stance,
+            Some(Stance::In)
+        );
         assert!(!json(&v).contains("\"in\""));
     }
 

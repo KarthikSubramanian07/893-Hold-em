@@ -143,10 +143,19 @@ impl Table {
         let house_up: Vec<Card> = view.house.cards.iter().filter_map(card).collect();
         let house_hidden = view.house.cards.len() - house_up.len();
         let mut seen = CardSet::default();
-        for c in holes.iter().flatten().flatten().chain(&board).chain(&house_up) {
+        for c in holes
+            .iter()
+            .flatten()
+            .flatten()
+            .chain(&board)
+            .chain(&house_up)
+        {
             seen.insert(*c);
         }
-        let unseen = full_deck().into_iter().filter(|c| !seen.contains(*c)).collect();
+        let unseen = full_deck()
+            .into_iter()
+            .filter(|c| !seen.contains(*c))
+            .collect();
         Some(Table {
             me,
             holes,
@@ -221,7 +230,10 @@ impl Strength {
         for c in t.holes.iter().flatten().flatten() {
             known.insert(*c);
         }
-        let pool: Vec<Card> = full_deck().into_iter().filter(|c| !known.contains(*c)).collect();
+        let pool: Vec<Card> = full_deck()
+            .into_iter()
+            .filter(|c| !known.contains(*c))
+            .collect();
         let mut wins = vec![0u16; 52 * 52];
         let mut seen = vec![0u16; 52 * 52];
         let mut deck: Vec<Card> = full_deck()
@@ -258,7 +270,13 @@ impl Strength {
         let mut odds: Vec<f32> = wins
             .iter()
             .zip(&seen)
-            .map(|(w, n)| if *n == 0 { 0.0 } else { f32::from(*w) / f32::from(*n) })
+            .map(|(w, n)| {
+                if *n == 0 {
+                    0.0
+                } else {
+                    f32::from(*w) / f32::from(*n)
+                }
+            })
             .collect();
         for h in t.holes.iter().flatten() {
             let (mut w, mut n) = (0u32, 0u32);
@@ -344,7 +362,11 @@ pub fn call(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Stance 
         let at = view.seats[i].nod.as_deref()?;
         view.seats.iter().position(|s| s.id == at)
     };
-    let nods_on = |i: usize| (0..view.seats.len()).filter(|&j| nod_of(j) == Some(i)).count();
+    let nods_on = |i: usize| {
+        (0..view.seats.len())
+            .filter(|&j| nod_of(j) == Some(i))
+            .count()
+    };
 
     // Teammates' showdown scores are fixed once the river is out; the House's
     // hidden cards are not, so who beats it is still a sample.
@@ -374,14 +396,16 @@ pub fn call(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Stance 
             for (j, _) in &mates {
                 // What teammate j saw on the flop: everyone but themselves.
                 let strength_of = |i: usize| {
-                    if i == table.me { mine_strength } else { seen_strength[i] }
+                    if i == table.me {
+                        mine_strength
+                    } else {
+                        seen_strength[i]
+                    }
                 };
                 let others = (0..table.holes.len()).filter(|&i| i != *j);
                 let best_seen = others.clone().map(strength_of).fold(0.0, f64::max);
                 let fits = match nod_of(*j) {
-                    Some(at) => {
-                        strength_of(at) >= best_seen - 1e-9 && strength_of(at) >= k.nod_min
-                    }
+                    Some(at) => strength_of(at) >= best_seen - 1e-9 && strength_of(at) >= k.nod_min,
                     None => best_seen < k.nod_min,
                 };
                 weight *= if fits { trust } else { 1.0 - trust };
@@ -406,9 +430,7 @@ pub fn call(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Stance 
         .enumerate()
         .map(|(m, (i, _))| {
             let visible = mate_wins[m] / f64::from(n);
-            let q = if nods_on(*i) > 0 {
-                k.nodded_in
-            } else if visible >= k.visible_in {
+            let q = if nods_on(*i) > 0 || visible >= k.visible_in {
                 k.nodded_in
             } else {
                 0.0
@@ -542,7 +564,8 @@ mod tests {
         g.seats[2].hole = cards("7c 8d");
         g.house = cards("9s 9c 6d");
         for id in ["s0", "s1", "s2"] {
-            g.nod(id, if id == "s0" { None } else { Some("s0") }, 1).unwrap();
+            g.nod(id, if id == "s0" { None } else { Some("s0") }, 1)
+                .unwrap();
         }
         let v = view_for(&g, Some("s1"), 2);
         let mut rng = Rng::seeded(3);

@@ -268,7 +268,9 @@ fn knobs_from_env() -> Knobs {
     let mut k = KNOBS;
     if let Ok(spec) = std::env::var("KNOBS") {
         for kv in spec.split(',').filter(|s| !s.is_empty()) {
-            let (key, val) = kv.split_once('=').expect("KNOBS entries look like key=value");
+            let (key, val) = kv
+                .split_once('=')
+                .expect("KNOBS entries look like key=value");
             let v: f64 = val.parse().expect("KNOBS values are numbers");
             match key {
                 "nod_min" => k.nod_min = v,
@@ -322,7 +324,11 @@ fn probe(nights: u64, samples: u32, knobs: &Knobs) {
         ("always in", Policy::AlwaysIn),
     ];
     for (ti, d) in TABLES.iter().enumerate() {
-        println!("\n== {} (goal {:.0}% clean)", table_name(*d), GOALS[ti] * 100.0);
+        println!(
+            "\n== {} (goal {:.0}% clean)",
+            table_name(*d),
+            GOALS[ti] * 100.0
+        );
         header();
         for crew in MIN_CREW..=MAX_CREW {
             let numbers = BALANCE[ti][crew - MIN_CREW];
@@ -338,7 +344,11 @@ fn probe(nights: u64, samples: u32, knobs: &Knobs) {
 fn tune(nights: u64, samples: u32, knobs: &Knobs) {
     let mut table = [[(0u32, 0u32); 5]; 3];
     for (ti, d) in TABLES.iter().enumerate() {
-        println!("\n== {} (goal {:.0}% clean)", table_name(*d), GOALS[ti] * 100.0);
+        println!(
+            "\n== {} (goal {:.0}% clean)",
+            table_name(*d),
+            GOALS[ti] * 100.0
+        );
         header();
         for crew in MIN_CREW..=MAX_CREW {
             let sirens = sirens_for(*d, crew);
@@ -349,7 +359,16 @@ fn tune(nights: u64, samples: u32, knobs: &Knobs) {
             let mut best: Option<(u32, f64)> = None;
             while lo <= hi {
                 let mid = (lo + hi) / 2;
-                let s = batch(*d, crew, nights, 1, samples, knobs, (mid, sirens), Policy::Regular);
+                let s = batch(
+                    *d,
+                    crew,
+                    nights,
+                    1,
+                    samples,
+                    knobs,
+                    (mid, sirens),
+                    Policy::Regular,
+                );
                 let c = s.clean_rate();
                 if best.is_none_or(|(_, b)| (c - GOALS[ti]).abs() < (b - GOALS[ti]).abs()) {
                     best = Some((mid, c));
@@ -374,7 +393,16 @@ fn tune(nights: u64, samples: u32, knobs: &Knobs) {
             let mut pick = (coarse, sirens, f64::MAX);
             for door in coarse.saturating_sub(1).max(floor)..=coarse + 1 {
                 for sir in sirens.saturating_sub(1).max(crew as u32)..=sirens + 1 {
-                    let s = batch(*d, crew, nights, 1, samples, knobs, (door, sir), Policy::Regular);
+                    let s = batch(
+                        *d,
+                        crew,
+                        nights,
+                        1,
+                        samples,
+                        knobs,
+                        (door, sir),
+                        Policy::Regular,
+                    );
                     let v = score(&s);
                     if v < pick.2 {
                         pick = (door, sir, v);
@@ -384,13 +412,25 @@ fn tune(nights: u64, samples: u32, knobs: &Knobs) {
             let (door, sirens) = (pick.0, pick.1);
             table[ti][crew - MIN_CREW] = (door, sirens);
             // Confirm on fresh deals.
-            let s = batch(*d, crew, nights, 1_000_003, samples, knobs, (door, sirens), Policy::Regular);
+            let s = batch(
+                *d,
+                crew,
+                nights,
+                1_000_003,
+                samples,
+                knobs,
+                (door, sirens),
+                Policy::Regular,
+            );
             row("regulars", crew, (door, sirens), &s);
         }
     }
     println!("\npub const BALANCE: [[(u32, u32); 5]; 3] = [");
     for (ti, d) in TABLES.iter().enumerate() {
-        let cells: Vec<String> = table[ti].iter().map(|(a, b)| format!("({a}, {b})")).collect();
+        let cells: Vec<String> = table[ti]
+            .iter()
+            .map(|(a, b)| format!("({a}, {b})"))
+            .collect();
         let name = table_name(*d);
         let title = name[..1].to_uppercase() + &name[1..];
         println!("    // {title}\n    [{}],", cells.join(", "));

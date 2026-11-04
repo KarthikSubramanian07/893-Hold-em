@@ -316,8 +316,13 @@ impl Game {
             return None;
         }
         let id = self.free_seat_id()?;
-        self.seats
-            .push(Seat::fresh(id.clone(), pid.to_string(), name, avatar, false));
+        self.seats.push(Seat::fresh(
+            id.clone(),
+            pid.to_string(),
+            name,
+            avatar,
+            false,
+        ));
         self.sort_seats();
         if self.host.is_none() {
             self.host = Some(id.clone());
@@ -1019,7 +1024,11 @@ mod tests {
                 match g.phase {
                     Phase::Nod => all_pass(&mut g, &ids, now),
                     Phase::Call => {
-                        let stance = if seed % 2 == 0 { Stance::In } else { Stance::Out };
+                        let stance = if seed % 2 == 0 {
+                            Stance::In
+                        } else {
+                            Stance::Out
+                        };
                         all_call(&mut g, &ids, stance, now)
                     }
                     Phase::Showdown => g.next(&a, now).unwrap(),

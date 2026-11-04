@@ -160,7 +160,7 @@ export const FIXTURES: Record<string, GameView> = {
     ...base,
     phase: 'over',
     hand: 7,
-    meter: 11,
+    meter: 12,
     verdict: 'clean',
     seats: [seat(0, { cards: [] }), seat(1, { cards: [] }), seat(2, { cards: [] }), seat(3, { cards: [] })],
     history: [
@@ -168,7 +168,7 @@ export const FIXTURES: Record<string, GameView> = {
       { hand: 2, outcome: 'house', moved: -2, ins: 2, crewBestName: 'Pair of nines', houseBestName: 'Trip queens', carrier: null, carrierNods: 0 },
       { hand: 3, outcome: 'crew', moved: 3, ins: 3, crewBestName: 'Full house, sevens full of queens', houseBestName: 'Two pair, kings and sevens', carrier: 'Mio', carrierNods: 2 },
       { hand: 4, outcome: 'tie', moved: 0, ins: 2, crewBestName: 'Straight, ten high', houseBestName: 'Straight, ten high', carrier: 'Ren', carrierNods: 1 },
-      { hand: 5, outcome: 'walked', moved: -1, ins: 0, crewBestName: null, houseBestName: 'Pair of jacks', carrier: null, carrierNods: 0 },
+      { hand: 5, outcome: 'walked', moved: 0, ins: 0, crewBestName: null, houseBestName: 'Pair of jacks', carrier: null, carrierNods: 0 },
       { hand: 6, outcome: 'crew', moved: 4, ins: 4, crewBestName: 'Trip aces', houseBestName: 'Pair of fours', carrier: 'Karthik', carrierNods: 3 },
       { hand: 7, outcome: 'crew', moved: 4, ins: 4, crewBestName: 'Straight, queen high', houseBestName: 'Two pair, aces and nines', carrier: 'Daichi', carrierNods: 0 },
     ],
