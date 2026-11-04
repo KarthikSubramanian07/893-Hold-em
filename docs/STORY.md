@@ -28,8 +28,9 @@ bought out from under them, a brother's gambling, a debt so old nobody
 remembers it. The family doesn't take payment by bank transfer. It takes it at
 the House's table, across from the mask, one night at a time.
 
-Nobody at the table may speak about their cards. All they can do is commit,
-and everybody sees what they committed to. That silence is the whole game.
+Nobody at the table may speak about their cards, and nobody can see their own.
+Everyone else can. All you get is one nod a hand, and the nods that come back to
+you. That silence is the whole game.
 
 ## 2. The bar
 
