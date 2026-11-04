@@ -2,7 +2,7 @@
 // scripted night the lab steps through. Tests build their own edge cases from
 // the same pieces.
 
-import type { Card, GameView, HandResult, HandValue, HistoryEntry, SeatView, Slot } from '../../engine/types';
+import type { Card, GameView, HandResult, HandValue, HistoryEntry, SeatView, Slot, Stance } from '../../engine/types';
 import { FIXTURES } from '../dev/fixtures';
 
 export const hv = (score: number, category: HandValue['category'], name: string, best: Card[]): HandValue => ({
@@ -14,30 +14,29 @@ export const hv = (score: number, category: HandValue['category'], name: string,
 
 /** A copy of a dev fixture with overrides; seats and house are deep enough copies to mutate. */
 export function fixture(name: keyof typeof FIXTURES, over: Partial<GameView> = {}): GameView {
-  const copy = structuredClone(FIXTURES[name]!);
-  // Story tests start from "nobody was seen" and add `burned` where they mean it;
-  // the field is treated as optional, as it was before the engine sent it.
-  if (copy.result) delete (copy.result as Partial<HandResult>).burned;
-  return { ...copy, ...over };
+  return { ...structuredClone(FIXTURES[name]!), ...over };
 }
 
 export function seatOver(view: GameView, id: string, over: Partial<SeatView>): GameView {
   return { ...view, seats: view.seats.map((s) => (s.id === id ? { ...s, ...over } : s)) };
 }
 
-export function withResult(view: GameView, result: Partial<HandResult> & { burned?: string[] }): GameView {
-  const base = view.result ?? { outcome: 'crew', take: 0, heat: 0, crewBest: null, houseBest: hv(1, 'high', 'King high', ['Kh', '9c', '7d', '5s', '2c']) };
-  return { ...view, phase: 'showdown', result: { ...base, ...result } as HandResult };
+const KING_HIGH = hv(1, 'high', 'King high', ['Kh', '9c', '7d', '5s', '2c']);
+
+export function withResult(view: GameView, result: Partial<HandResult>): GameView {
+  const base: HandResult = view.result ?? { outcome: 'crew', moved: 0, ins: [], crewBest: null, houseBest: KING_HIGH, crewChampions: [], couldHave: [] };
+  return { ...view, phase: 'showdown', result: { ...base, ...result } };
 }
 
-const H = (hand: number, outcome: HistoryEntry['outcome'], take: number, heat: number): HistoryEntry => ({
+export const entry = (hand: number, outcome: HistoryEntry['outcome'], moved: number, ins: number, carrier: string | null = null, carrierNods = 0): HistoryEntry => ({
   hand,
-  rule: null,
   outcome,
-  take,
-  heat,
-  crewBestName: 'Pair of nines',
+  moved,
+  ins,
+  crewBestName: outcome === 'walked' ? null : 'Pair of nines',
   houseBestName: 'King high',
+  carrier,
+  carrierNods,
 });
 
 export interface Step {
@@ -47,176 +46,168 @@ export interface Step {
 
 /**
  * One night at Kabukichō, from an empty lobby to a narrow clean getaway: two
- * regulars sit down, an 8-9-3 showdown, the Fox, players seen on a winning
- * hand, the heat climbing to one from the raid, and a quiet champion.
+ * regulars sit down, the whole crew nods at one seat and it carries an 8-9-3,
+ * a teammate sits out holding the winner, the marker slides to one step from
+ * the sirens while your own flush turns over unseen, then everyone goes In
+ * and the crew climbs back out the door.
  */
 export function scriptedNight(): Step[] {
-  const lobby0 = fixture('lobby', { code: 'R8N4Q', seats: fixture('lobby').seats.slice(0, 2) });
-  const lobby1 = fixture('lobby', {
-    code: 'R8N4Q',
-    seats: [...lobby0.seats, { ...fixture('lobby').seats[2]!, id: 's3', name: 'Sumi', bot: true }],
-  });
-  const lobby2 = { ...lobby1, seats: [...lobby1.seats, { ...lobby1.seats[2]!, id: 's4', name: 'Taka', avatar: 'karasu' as const }] };
+  const base = fixture('lobby');
+  const lobby0 = fixture('lobby', { code: 'R8N4Q', config: { difficulty: 'kabukicho', timer: 30 }, seats: base.seats.slice(0, 2), door: 7, sirens: 5 });
+  const lobby1 = { ...lobby0, seats: [...lobby0.seats, { ...base.seats[2]!, id: 's2', name: 'Sumi', avatar: 'tora' as const, bot: true }], door: 9, sirens: 6 };
+  const lobby2 = { ...lobby1, seats: [...lobby1.seats, { ...lobby1.seats[2]!, id: 's3', name: 'Taka', avatar: 'karasu' as const }], door: 9, sirens: 6 };
 
-  const seats = (cards: Slot[][], over: Partial<SeatView>[] = []): SeatView[] =>
-    lobby2.seats.map((s, i) => ({
-      ...s,
-      cards: cards[i] ?? ['back', 'back'],
-      active: true,
-      stake: 1,
-      locked: false,
-      calls: [null, null, null, null],
-      hand: null,
-      champion: false,
-      ...over[i],
-    }));
-
-  const house2 = [
-    { cards: ['back', 'back'] as GameView['house'][number]['cards'], hand: null, champion: false },
-    { cards: ['back', 'back'] as GameView['house'][number]['cards'], hand: null, champion: false },
-  ];
+  type Seat = { cards?: Slot[]; nod?: string | null; stance?: Stance | null; hand?: HandValue; champion?: boolean; locked?: boolean };
+  const seats = (spec: Seat[] = [], open = false): SeatView[] =>
+    lobby2.seats.map((s, i) => {
+      const o = spec[i] ?? {};
+      const cards = o.cards ?? ['back', 'back'];
+      return {
+        ...s,
+        // During a hand you see teammates' cards, never your own.
+        cards: !open && i === 0 ? ['back', 'back'] : cards,
+        locked: o.locked ?? false,
+        nod: o.nod ?? null,
+        stance: o.stance ?? null,
+        hand: open ? (o.hand ?? KING_HIGH) : null,
+        champion: o.champion ?? false,
+      };
+    });
 
   const night = (over: Partial<GameView>): GameView => ({
     ...lobby2,
-    phase: 'call',
-    target: 20,
-    heatLimit: 8,
-    house: house2,
+    phase: 'nod',
+    house: { cards: ['Kc', 'back', 'back', 'back'], hand: null },
+    board: ['9h', '3s', 'Td', null, null],
     deadline: null,
     ...over,
   });
 
-  const h1 = night({ hand: 1, seats: seats([['Ah', 'Kd']]) });
-  const h1sd = night({
-    phase: 'showdown',
-    hand: 1,
-    take: 4,
-    board: ['9h', '3s', 'Td', 'Jc', '2h'],
-    seats: seats(
-      [['Ah', 'Kd'], ['7h', '5s'], ['8c', '8d'], ['Qs', '4c']],
-      [
-        { hand: hv(1_100_000, 'high', 'Ace high', ['Ah', 'Kd', 'Jc', 'Td', '9h']) },
-        { hand: hv(1_000_000, 'high', 'Jack high', ['Jc', 'Td', '9h', '7h', '5s']) },
-        { hand: hv(2_800_000, 'pair', 'Pair of eights', ['8c', '8d', 'Jc', 'Td', '9h']), champion: true, calls: ['raise', 'stay', 'stay', 'stay'], stake: 2 },
-        { hand: hv(1_050_000, 'high', 'Queen high', ['Qs', 'Jc', 'Td', '9h', '4c']) },
-      ],
-    ),
-    house: [
-      { cards: ['Kc', '6d'], hand: hv(1_090_000, 'high', 'King high', ['Kc', 'Jc', 'Td', '9h', '6d']), champion: true },
-      { cards: ['5d', '4h'], hand: hv(1_010_000, 'high', 'Jack high', ['Jc', 'Td', '9h', '5d', '4h']), champion: false },
-    ],
-    result: {
-      outcome: 'crew',
-      take: 5,
-      heat: 0,
-      crewBest: hv(2_800_000, 'pair', 'Pair of eights', ['8c', '8d', 'Jc', 'Td', '9h']),
-      houseBest: hv(1_090_000, 'high', 'King high', ['Kc', 'Jc', 'Td', '9h', '6d']),
-      crewChampions: ['s2'],
-      houseChampions: [0],
-      burned: [],
-    },
-    history: [H(1, 'crew', 5, 0)],
-  });
+  const show = (hand: number, meter: number, history: HistoryEntry[], spec: Seat[], result: Partial<HandResult>, board: Slot[], house: Slot[]): GameView =>
+    withResult(night({ hand, meter, history, board, phase: 'showdown', house: { cards: house, hand: result.houseBest ?? KING_HIGH }, seats: seats(spec, true) }), result);
 
-  const h2 = night({ hand: 2, take: 5, rule: 'kitsune', seats: seats([['Qd', 'Qc'], ['back', 'back'], ['back', 'back'], ['Js', 'Jh']]), history: h1sd.history });
-  const h2sd = withResult(
-    night({
-      hand: 2,
-      take: 5,
-      heat: 4,
-      rule: 'kitsune',
-      board: ['Ks', 'Kh', '6c', '2d', 'As'],
-      seats: seats([['Qd', 'Qc'], ['7d', '2s'], ['Td', '9s'], ['Js', 'Jh']], [{ champion: true, hand: hv(3_500_000, 'two-pair', 'Two pair, kings and queens', ['Ks', 'Kh', 'Qd', 'Qc', 'As']) }]),
-      history: [...h1sd.history, H(2, 'house', 0, 4)],
-    }),
-    { outcome: 'house', take: 0, heat: 4, crewBest: hv(3_500_000, 'two-pair', 'Two pair, kings and queens', ['Ks', 'Kh', 'Qd', 'Qc', 'As']), houseBest: hv(4_000_000, 'trips', 'Trip kings', ['Ks', 'Kh', 'Kd', 'As', '6c']) },
+  // Hand 1: everyone nods at Sumi; Sumi carries an eight-nine-three.
+  const holes1: Slot[][] = [['Ah', 'Kd'], ['7h', '5s'], ['8c', '9d'], ['Qs', '4c']];
+  const h1 = night({ hand: 1, seats: seats(holes1.map((cards) => ({ cards }))) });
+  const h1call = night({
+    hand: 1,
+    phase: 'call',
+    board: ['9h', '3s', 'Td', 'Jc', '2h'],
+    seats: seats(holes1.map((cards, i) => ({ cards, nod: i === 2 ? null : 's2' }))),
+  });
+  const sumiPair = hv(2_900_000, 'pair', 'Pair of nines', ['9d', '9h', 'Jc', 'Td', '8c']);
+  const hist1 = [entry(1, 'crew', 3, 3, 'Sumi', 3)];
+  const h1sd = show(
+    1,
+    3,
+    hist1,
+    holes1.map((cards, i) => ({ cards, nod: i === 2 ? null : 's2', stance: i === 1 ? 'out' : 'in', champion: i === 2, hand: i === 2 ? sumiPair : undefined })),
+    { outcome: 'crew', moved: 3, ins: ['s0', 's2', 's3'], crewBest: sumiPair, crewChampions: ['s2'], couldHave: ['s2'] },
+    ['9h', '3s', 'Td', 'Jc', '2h'],
+    ['Kc', '6d', '5d', '4h'],
   );
-  const h3 = night({ hand: 3, take: 5, heat: 4, rule: 'hebi', seats: seats([['6h', '4c']]), history: h2sd.history });
-  const h3sd = withResult(
-    night({
-      hand: 3,
-      take: 17,
-      heat: 4,
-      rule: 'hebi',
-      board: ['3h', '7c', 'Kd', '2s', '5h'],
-      seats: seats(
-        [['6h', '4c'], ['Ad', '4s'], ['Tc', 'Th'], ['6s', '6d']],
-        [
-          { champion: true, stake: 3, calls: ['raise', 'raise', 'stay', 'stay'], hand: hv(5_000_300, 'straight', 'Straight, seven high', ['7c', '6h', '5h', '4c', '3h']) },
-          { stake: 3, hand: hv(5_000_100, 'straight', 'Straight, five high', ['5h', '4s', '3h', '2s', 'Ad']) },
-          { stake: 3, hand: hv(2_000_000, 'pair', 'Pair of tens', ['Tc', 'Th', 'Kd', '7c', '5h']) },
-          { stake: 3, hand: hv(2_000_000, 'pair', 'Pair of sixes', ['6s', '6d', 'Kd', '7c', '5h']) },
-        ],
-      ),
-      history: [...h2sd.history, H(3, 'crew', 12, 0)],
-    }),
-    { outcome: 'crew', take: 12, heat: 0, crewBest: hv(5_000_300, 'straight', 'Straight, seven high', ['7c', '6h', '5h', '4c', '3h']), houseBest: hv(3_000_000, 'two-pair', 'Two pair, kings and sevens', ['Kd', 'Ks', '7c', '7h', '5h']) },
+
+  // Hand 2: nobody nods; Mio sits out holding the winner; the House takes four steps.
+  const holes2: Slot[][] = [['Qd', 'Qc'], ['Ks', 'Kd'], ['Td', '9s'], ['Js', 'Jh']];
+  const h2 = night({ hand: 2, meter: 3, history: hist1, seats: seats(holes2.map((cards) => ({ cards }))) });
+  const h2call = night({ hand: 2, meter: 3, history: hist1, phase: 'call', board: ['Kh', '6c', '2d', 'As', '8s'], seats: seats(holes2.map((cards) => ({ cards }))) });
+  const mioTrips = hv(4_200_000, 'trips', 'Trip kings', ['Ks', 'Kd', 'Kh', 'As', '8s']);
+  const houseTwoPair = hv(3_600_000, 'two-pair', 'Two pair, aces and sixes', ['Ac', 'As', '6h', '6c', 'Kh']);
+  const hist2 = [...hist1, entry(2, 'house', -3, 3)];
+  const h2sd = show(
+    2,
+    0,
+    hist2,
+    holes2.map((cards, i) => ({ cards, stance: i === 1 ? 'out' : 'in', hand: i === 1 ? mioTrips : undefined })),
+    { outcome: 'house', moved: -3, ins: ['s0', 's2', 's3'], crewBest: hv(2_500_000, 'pair', 'Pair of queens', ['Qd', 'Qc', 'As', 'Kh', '8s']), houseBest: houseTwoPair, couldHave: ['s1'] },
+    ['Kh', '6c', '2d', 'As', '8s'],
+    ['Ac', '6h', '4d', '3c'],
   );
-  const h4 = night({ hand: 4, take: 17, heat: 4, rule: 'homura', seats: seats([['Ts', '9d']]), history: h3sd.history });
-  const h4sd = withResult(
-    night({
-      hand: 4,
-      take: 19,
-      heat: 6,
-      rule: 'homura',
-      board: ['Ac', 'Kc', '4d', '4s', 'Jh'],
-      seats: seats(
-        [['Ts', '9d'], ['Ah', '7s'], ['Qd', 'Jd'], ['2h', '2d']],
-        [
-          { hand: hv(2_000_000, 'pair', 'Pair of fours', ['4d', '4s', 'Ac', 'Kc', 'Jh']) },
-          { champion: true, hand: hv(3_400_000, 'two-pair', 'Two pair, aces and fours', ['Ah', 'Ac', '4d', '4s', 'Kc']) },
-          { hand: hv(3_100_000, 'two-pair', 'Two pair, jacks and fours', ['Jd', 'Jh', '4d', '4s', 'Ac']) },
-          { hand: hv(3_000_000, 'two-pair', 'Two pair, fours and twos', ['4d', '4s', '2h', '2d', 'Ac']) },
-        ],
-      ),
-      history: [...h3sd.history, H(4, 'crew', 2, 2)],
-    }),
-    { outcome: 'crew', take: 2, heat: 2, burned: ['s0'], crewBest: hv(3_400_000, 'two-pair', 'Two pair, aces and fours', ['Ah', 'Ac', '4d', '4s', 'Kc']), houseBest: hv(2_500_000, 'pair', 'Pair of fours', ['4d', '4s', 'Ac', 'Kc', 'Jh']) },
+
+  // Hand 3: the House again, four In, and the marker one step from the sirens. You held a flush.
+  const myFlush = hv(6_100_000, 'flush', 'Flush, ace high', ['Ah', 'Qh', '9h', '6h', '2h']);
+  const hist3 = [...hist2, entry(3, 'house', -4, 4)];
+  const h3 = night({ hand: 3, meter: 0, history: hist2, seats: seats([{}, { cards: ['7d', '7s'] }, { cards: ['5c', '5d'] }, { cards: ['Tc', '9c'] }]) });
+  const h3sd = show(
+    3,
+    -4,
+    hist3,
+    [{ cards: ['Ah', 'Qh'], stance: 'in', hand: myFlush }, { cards: ['7d', '7s'], stance: 'in' }, { cards: ['5c', '5d'], stance: 'in' }, { cards: ['Tc', '9c'], stance: 'in' }],
+    { outcome: 'house', moved: -4, ins: ['s0', 's1', 's2', 's3'], crewBest: myFlush, houseBest: hv(7_200_000, 'full-house', 'Full house, nines full of sixes', ['9h', '9s', '9d', '6h', '6s']), couldHave: [] },
+    ['9h', '6h', '2h', '9s', '6s'],
+    ['9d', 'Kc', '4s', '3d'],
   );
-  const h5 = night({ hand: 5, take: 19, heat: 6, rule: 'shizuka', seats: seats([['5c', '5d']]), history: h4sd.history });
-  const h5sd = withResult(
-    night({ hand: 5, take: 23, heat: 7, rule: 'shizuka', board: ['5h', 'Kd', '9s', '7c', '2d'], seats: seats([['5c', '5d']]), history: [...h4sd.history, H(5, 'crew', 4, 1)] }),
-    { outcome: 'crew', take: 4, heat: 1, burned: ['s3'], crewBest: hv(4_000_000, 'trips', 'Trip fives', ['5c', '5d', '5h', 'Kd', '9s']), houseBest: hv(2_000_000, 'pair', 'Pair of kings', ['Kd', 'Kh', '9s', '7c', '2d']) },
+
+  // Hand 4: one more loss puts the marker a step from the sirens.
+  const hist4 = [...hist3, entry(4, 'house', -1, 1)];
+  const h4sd = show(
+    4,
+    -5,
+    hist4,
+    [{ stance: 'out' }, { stance: 'in', cards: ['4c', '2s'] }, { stance: 'out' }, { stance: 'out' }],
+    { outcome: 'house', moved: -1, ins: ['s1'], crewBest: hv(2_000_000, 'pair', 'Pair of fours', ['4c', '4d', 'Kh', 'Jd', '9s']), couldHave: [] },
+    ['4d', 'Kh', 'Jd', '9s', '7c'],
+    ['Ks', 'Qd', '8h', '3h'],
   );
-  const h6 = night({ hand: 6, take: 23, heat: 7, rule: 'kiri', seats: seats([['Kh', '2c']]), history: h5sd.history });
-  const h6sd = withResult(
-    night({
-      hand: 6,
-      take: 26,
-      heat: 7,
-      rule: 'kiri',
-      board: ['8d', '9h', 'Tc', '3d', 'Qs'],
-      seats: seats(
-        [['Kh', '2c'], ['7d', '6s'], ['Ac', 'Qd'], ['4s', '4h']],
-        [
-          { calls: ['raise', 'stay', 'stay', 'stay'], stake: 2, hand: hv(2_100_000, 'pair', 'Pair of queens', ['Qs', 'Qd', 'Ac', 'Td', '9h']) },
-          { champion: true, calls: ['stay', 'stay', 'stay', 'stay'], hand: hv(5_000_200, 'straight', 'Straight, ten high', ['Tc', '9h', '8d', '7d', '6s']) },
-          { hand: hv(2_100_000, 'pair', 'Pair of queens', ['Qs', 'Qd', 'Ac', 'Tc', '9h']) },
-          { hand: hv(2_050_000, 'pair', 'Pair of fours', ['4s', '4h', 'Qs', 'Tc', '9h']) },
-        ],
-      ),
-      history: [...h5sd.history, H(6, 'crew', 3, 0)],
-    }),
-    { outcome: 'crew', take: 3, heat: 0, crewBest: hv(5_000_200, 'straight', 'Straight, ten high', ['Tc', '9h', '8d', '7d', '6s']), houseBest: hv(2_000_000, 'pair', 'Pair of queens', ['Qs', 'Qh', 'Kd', 'Tc', '9h']) },
+
+  // Hand 5: everyone In, and it holds.
+  const hist5 = [...hist4, entry(5, 'crew', 4, 4, 'Mio', 2)];
+  const mioStraight = hv(5_000_900, 'straight', 'Straight, nine high', ['9c', '8d', '7h', '6s', '5c']);
+  const h5sd = show(
+    5,
+    -1,
+    hist5,
+    [{ stance: 'in', nod: 's1' }, { stance: 'in', champion: true, hand: mioStraight, cards: ['9c', '8d'] }, { stance: 'in', nod: 's1' }, { stance: 'in', nod: 's0' }],
+    { outcome: 'crew', moved: 4, ins: ['s0', 's1', 's2', 's3'], crewBest: mioStraight, crewChampions: ['s1'], couldHave: ['s1'] },
+    ['7h', '6s', '5c', 'Kd', '2c'],
+    ['Kc', '7d', '4h', '2s'],
   );
-  const over = { ...h6sd, phase: 'over' as const, verdict: 'clean' as const };
+
+  // Hand 6: Taka goes In with no nods and carries it.
+  const hist6 = [...hist5, entry(6, 'crew', 4, 4, 'Taka', 0)];
+  const takaTrips = hv(4_100_000, 'trips', 'Trip jacks', ['Jh', 'Js', 'Jd', 'Ad', '9c']);
+  const h6sd = show(
+    6,
+    3,
+    hist6,
+    [{ stance: 'in', nod: 's2' }, { stance: 'in', nod: 's2' }, { stance: 'in', nod: 's1' }, { stance: 'in', champion: true, hand: takaTrips, cards: ['Jh', 'Js'] }],
+    { outcome: 'crew', moved: 4, ins: ['s0', 's1', 's2', 's3'], crewBest: takaTrips, crewChampions: ['s3'], couldHave: ['s3'] },
+    ['Jd', 'Ad', '9c', '5s', '3h'],
+    ['Ac', 'Tc', '6d', '2h'],
+  );
+
+  // Hand 7: four steps more, and out the door.
+  const hist7 = [...hist6, entry(7, 'crew', 4, 4, 'Karthik', 1)];
+  const h7 = night({ hand: 7, meter: 3, history: hist6, seats: seats([{}, { cards: ['3c', '3d'] }, { cards: ['Ah', '2d'] }, { cards: ['Kd', 'Qd'] }]) });
+  const h7sd = show(
+    7,
+    7,
+    hist7,
+    [{ stance: 'in', champion: true, cards: ['Td', 'Tc'], hand: hv(4_000_000, 'trips', 'Trip tens', ['Td', 'Tc', 'Th', 'Ks', '8s']) }, { stance: 'in', nod: 's0' }, { stance: 'in' }, { stance: 'in' }],
+    { outcome: 'crew', moved: 4, ins: ['s0', 's1', 's2', 's3'], crewBest: hv(4_000_000, 'trips', 'Trip tens', ['Td', 'Tc', 'Th', 'Ks', '8s']), crewChampions: ['s0'], couldHave: ['s0'] },
+    ['Th', 'Ks', '8s', '4c', '2d'],
+    ['Kc', '9d', '5h', '3s'],
+  );
+  // Hand 8 (off screen): two more steps, and the marker reaches the door at 9.
+  const over: GameView = { ...h7sd, phase: 'over', hand: 8, meter: 9, verdict: 'clean', history: [...hist7, entry(8, 'crew', 2, 2, 'Mio', 1)] };
 
   return [
     { label: 'Lobby: you arrive', view: lobby0 },
     { label: 'Lobby: Sumi sits down', view: lobby1 },
     { label: 'Lobby: Taka takes the stool by the door', view: lobby2 },
-    { label: 'Hand 1: the night starts', view: h1 },
-    { label: 'Hand 1: showdown, eight-nine-three', view: h1sd },
-    { label: 'Hand 2: the Fox', view: h2 },
-    { label: 'Hand 2: the House takes it, heat to half', view: h2sd },
-    { label: 'Hand 3: the Serpent', view: h3 },
-    { label: 'Hand 3: a straight under the snake', view: h3sd },
-    { label: 'Hand 4: Blaze', view: h4 },
-    { label: 'Hand 4: paid, but seen; Taka hears an engine', view: h4sd },
-    { label: 'Hand 5: Hush', view: h5 },
-    { label: 'Hand 5: the debt covered, one from the raid', view: h5sd },
-    { label: 'Hand 6: the last hand, in fog', view: h6 },
-    { label: 'Hand 6: the quiet one carries it', view: h6sd },
-    { label: 'Over: a clean getaway, barely', view: over },
+    { label: 'Hand 1: the flop, nod at a teammate', view: h1 },
+    { label: 'Hand 1: everyone nodded at Sumi', view: h1call },
+    { label: 'Hand 1: Sumi carries an eight-nine-three', view: h1sd },
+    { label: 'Hand 2: the flop', view: h2 },
+    { label: 'Hand 2: not one nod', view: h2call },
+    { label: 'Hand 2: Mio sat out with trip kings', view: h2sd },
+    { label: 'Hand 3: the flop', view: h3 },
+    { label: 'Hand 3: your flush, unseen, loses anyway', view: h3sd },
+    { label: 'Hand 4: one step from the sirens', view: h4sd },
+    { label: 'Hand 5: everyone In, and it holds', view: h5sd },
+    { label: 'Hand 6: Taka, no nods, carries it', view: h6sd },
+    { label: 'Hand 7: the flop', view: h7 },
+    { label: 'Hand 7: you carry it', view: h7sd },
+    { label: 'Over: a clean getaway, after a close shave', view: over },
   ];
 }

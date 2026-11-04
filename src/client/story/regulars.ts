@@ -80,7 +80,7 @@ export const REGULARS: Record<RegularName, Regular> = {
     story: 'Second-year at Waseda, paying off his older brother’s debt. Far too young for this room and knows it.',
     intro: ['Jun. I’m older than I look. A little.', 'Jun. My brother says hello. He couldn’t come.'],
     carried: ['Wait. Did I do that.', 'Don’t tell my brother.'],
-    lost: ['Sorry. Sorry.', 'I knew I should have folded.'],
+    lost: ['Sorry. Sorry.', 'I knew I should have gone Out.'],
   },
   Mame: {
     name: 'Mame',

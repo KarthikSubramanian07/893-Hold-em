@@ -4,42 +4,36 @@
 //
 // Every line is chosen with `pick(bank, code, hand, event)`, so two clients
 // that see the same pair of views read the same words. The only personal
-// lines are the welcome (first visit or not, your own name) and they're marked
-// in the event key so they never collide with shared ones.
+// lines are the welcome (first visit or not, your own name) and the reveal of
+// your own monster hand; both are marked in the event key so they never
+// collide with shared ones.
 //
 // Restraint is the design. Silence is the default; a line has to earn its place.
 
 import type { GameView, SeatView } from '../../engine/types';
-import { RULES, TABLES } from '../../engine/rules';
-import {
-  burned,
-  classifyShowdown,
-  foxSeat,
-  heatCrossed,
-  is893Code,
-  nameEgg,
-} from './analysis';
+import { TABLES } from '../../engine/rules';
+import { classifyShowdown, is893Code, isMonster, lowestMeter, markerCrossed, nameEgg, nodKind } from './analysis';
 import { chance, fill, listNames, pick } from './hash';
 import {
   CHAPTERS,
   CLEAN_SWEEP,
   CLOSE_CALL,
-  HEAT,
   IDLE,
   IDLE_CAT,
   JOIN,
   JOIN_OYABUN,
-  KITSUNE_ANON,
-  LAST_HAND,
+  LAST_ORDERS,
+  MARKER,
+  NODS,
   REGULAR_MOMENTS,
-  RULE_LINES,
+  REVEAL,
   SHOWDOWN,
-  TAKE,
+  SWING,
   WELCOME,
   type Bank,
+  type RegularMoment,
 } from './lines';
 import { isPracticeCode } from '../net/practice';
-import { maskFor } from './masks';
 import { regularFor } from './regulars';
 import type { Line, Mood, RegularName, ShowdownKind, Speaker } from './types';
 
@@ -90,7 +84,7 @@ const choose = (view: GameView, bank: Bank, event: string, vars?: Record<string,
   fill(pick(bank, seedOf(view), view.hand, event), vars);
 
 /** A seated bot regular with something to say about this moment, if any. */
-function regularMoment(view: GameView, moment: 'heat' | 'last' | 'take' | 'walked' | 'yakuza'): { who: RegularName; bank: Bank } | null {
+function regularMoment(view: GameView, moment: RegularMoment): { who: RegularName; bank: Bank } | null {
   for (const s of view.seats) {
     if (!s.bot) continue;
     const r = regularFor(s.name);
@@ -114,53 +108,51 @@ export function narrate(prev: GameView | null, next: GameView, you: string | nul
     if (joined) out.push(joinLine(next, joined));
   }
 
-  // The night starts: the chapter, then the first mask sits down.
-  const nightStart = next.phase === 'call' && next.hand === 1 && (prev.phase === 'lobby' || prev.phase === 'over' || prev.hand !== 1);
+  // The night starts: the chapter, then the House sits down.
+  const nightStart = next.phase === 'nod' && next.hand === 1 && (prev.phase === 'lobby' || prev.phase === 'over' || prev.hand !== 1);
   if (nightStart) {
     const ch = CHAPTERS[table];
     out.push(line(next, `night:${table}`, { speaker: 'master', text: choose(next, ch.intro, `night:${table}`), kanji: ch.kanji, mood: 'calm', hold: 5200 }));
   }
 
   // A new hand after the first.
-  const newHand = next.phase === 'call' && next.hand > 1 && next.hand !== prev.hand;
+  const newHand = next.phase === 'nod' && next.hand > 1 && next.hand !== prev.hand;
   if (newHand) {
     const h = handLine(next);
     if (h) out.push(h);
   }
 
-  // The House Rule turns over.
-  const ruleTurned = next.phase === 'call' && next.rule !== null && (nightStart || newHand || prev.rule !== next.rule);
-  if (ruleTurned) out.push(ruleLine(next));
+  // The nods turn over.
+  if (prev.phase === 'nod' && next.phase === 'call' && prev.hand === next.hand) {
+    const n = nodsLine(next);
+    if (n) out.push(n);
+  }
 
   // The showdown.
   const resolved = next.result !== null && (prev.result === null || prev.hand !== next.hand);
   if (resolved) {
     const said = showdownLine(next);
     if (said) out.push(said);
+    const swing = swingLine(next);
+    if (swing && out.length < MAX_LINES - 1) out.push(swing);
+    const mine = revealLine(next, you);
+    if (mine) out.push(mine);
   }
 
   // The verdict ends the night; it speaks for the counters too.
   const verdict = next.verdict !== null && (prev.verdict === null || prev.phase !== 'over');
   if (verdict) return [...out.slice(0, 1), ...verdictLines(next)];
 
-  // The debt is covered.
-  if (prev.take < next.target && next.take >= next.target) {
-    const gin = regularMoment(next, 'take');
-    out.push(
-      gin && chance(0.5, seedOf(next), next.hand, 'take:who')
-        ? line(next, 'take', { speaker: gin.who, text: choose(next, gin.bank, 'take:regular'), mood: 'gold' })
-        : line(next, 'take', { speaker: 'master', text: choose(next, TAKE, 'take'), kanji: '円', mood: 'gold' }),
-    );
-  }
-
-  // The street is getting warm.
-  const mark = heatCrossed(prev.heat, next.heat, next.heatLimit);
+  // The marker one step from either end.
+  const mark = markerCrossed(prev, next);
   if (mark) {
-    const taka = mark !== 'half' ? regularMoment(next, 'heat') : null;
+    const who = regularMoment(next, mark === 'door-near' ? 'door' : 'sirens');
+    const mood: Mood = mark === 'door-near' ? 'gold' : 'danger';
+    const kanji = mark === 'door-near' ? '門' : '警';
     out.push(
-      taka
-        ? line(next, `heat:${mark}`, { speaker: taka.who, text: choose(next, taka.bank, `heat:regular`), kanji: '熱', mood: 'danger' })
-        : line(next, `heat:${mark}`, { speaker: 'master', text: choose(next, HEAT[mark], `heat:${mark}`), kanji: '熱', mood: 'danger' }),
+      who && chance(0.5, seedOf(next), next.hand, `${mark}:who`)
+        ? line(next, `marker:${mark}`, { speaker: who.who, text: choose(next, who.bank, `${mark}:regular`), kanji, mood })
+        : line(next, `marker:${mark}`, { speaker: 'master', text: choose(next, MARKER[mark], `marker:${mark}`), kanji, mood }),
     );
   }
 
@@ -203,44 +195,31 @@ function joinLine(view: GameView, seat: SeatView): Line {
 }
 
 function handLine(view: GameView): Line | null {
-  if (view.hand === view.hands) {
-    const nao = regularMoment(view, 'last');
-    if (nao && chance(0.4, seedOf(view), view.hand, 'last:who')) {
-      return line(view, 'hand:last', { speaker: nao.who, text: choose(view, nao.bank, 'last:regular'), mood: 'wry' });
-    }
-    const need = view.target - view.take;
-    const hot = view.heat >= view.heatLimit - 1;
-    const kind = hot ? 'hot' : need > 0 ? 'short' : 'made';
-    return line(view, 'hand:last', {
-      speaker: 'master',
-      text: choose(view, LAST_HAND[kind], `last:${kind}`, { need }),
-      kanji: '六',
-      mood: hot ? 'danger' : 'calm',
-    });
+  if (view.hand !== view.lastOrders) return null;
+  const nao = regularMoment(view, 'last');
+  if (nao && chance(0.4, seedOf(view), view.hand, 'last:who')) {
+    return line(view, 'hand:last', { speaker: nao.who, text: choose(view, nao.bank, 'last:regular'), mood: 'wry' });
   }
-  // Any other hand speaks only through its House Rule, if it has one.
-  return null;
+  const need = view.door - view.meter;
+  const hot = view.meter <= -(view.sirens - 2);
+  const kind = hot ? 'hot' : need <= 2 ? 'near' : 'far';
+  return line(view, 'hand:last', {
+    speaker: 'master',
+    text: choose(view, LAST_ORDERS[kind], `last:${kind}`, { need }),
+    kanji: '終',
+    mood: hot ? 'danger' : 'calm',
+  });
 }
 
-function ruleLine(view: GameView): Line {
-  const rule = view.rule!;
-  const info = RULES[rule];
-  const event = `rule:${rule}`;
-  if (rule === 'oni') {
-    const oni = maskFor(view.config.difficulty, view.house.length - 1, 'oni', view.house.length);
-    return line(view, event, { speaker: oni.id, text: choose(view, oni.lines.intro, 'mask:oni'), kanji: info.kanji, mood: 'danger' });
-  }
-  if (rule === 'kitsune') {
-    const fox = foxSeat(view);
-    return line(view, event, {
-      speaker: 'master',
-      text: fox ? choose(view, RULE_LINES.kitsune, event, { name: fox.name }) : choose(view, KITSUNE_ANON, event),
-      kanji: info.kanji,
-      mood: 'wry',
-    });
-  }
-  const mood: Mood = info.kind === 'boon' ? 'warm' : info.kind === 'bane' ? 'cold' : 'wry';
-  return line(view, event, { speaker: 'master', text: choose(view, RULE_LINES[rule], event), kanji: info.kanji, mood });
+/** The nods turning over. Only the telling patterns get a word. */
+function nodsLine(view: GameView): Line | null {
+  const n = nodKind(view);
+  if (!n) return null;
+  const event = `nods:${n.kind}`;
+  // Everyone passing is common early on; say it now and then, not every time.
+  if (n.kind === 'all-pass' && !chance(0.5, seedOf(view), view.hand, event)) return null;
+  const vars = { name: n.seats[0]?.name ?? '', names: listNames(n.seats.map((s) => s.name)) };
+  return line(view, event, { speaker: 'master', text: choose(view, NODS[n.kind], event, vars), kanji: '頷', mood: n.kind === 'all-pass' ? 'wry' : 'warm' });
 }
 
 const SHOWDOWN_STYLE: Record<ShowdownKind, { mood: Mood; kanji?: string }> = {
@@ -251,11 +230,11 @@ const SHOWDOWN_STYLE: Record<ShowdownKind, { mood: Mood; kanji?: string }> = {
   royal: { mood: 'gold', kanji: '王' },
   yakuza: { mood: 'gold', kanji: '八九三' },
   'bad-beat': { mood: 'cold' },
-  serpent: { mood: 'cold', kanji: '蛇' },
-  reversal: { mood: 'gold', kanji: '逆' },
-  'quiet-champion': { mood: 'warm' },
-  'trash-rider': { mood: 'warm' },
-  seen: { mood: 'wry', kanji: '見' },
+  'sat-out': { mood: 'wry', kanji: '出' },
+  'blind-carry': { mood: 'warm', kanji: '入' },
+  'nodded-carry': { mood: 'warm', kanji: '頷' },
+  'all-in': { mood: 'gold', kanji: '総' },
+  'big-swing': { mood: 'gold' },
 };
 
 /** A line for the rare showdowns only; the panel already covers the ordinary ones. */
@@ -264,14 +243,8 @@ function showdownLine(view: GameView): Line | null {
   const r = view.result!;
   const event = `showdown:${kind}`;
   const style = SHOWDOWN_STYLE[kind];
-  const names = listNames(burned(view).map((id) => view.seats.find((s) => s.id === id)?.name ?? '').filter(Boolean));
   const handName = seat?.hand?.name ?? r.crewBest?.name ?? 'nothing';
-  const vars = {
-    name: seat?.name ?? '',
-    hand: kind === 'trash-rider' ? handName.toLowerCase() : lowerFirst(handName),
-    Hand: handName,
-    names,
-  };
+  const vars = { name: seat?.name ?? '', hand: lowerFirst(handName), Hand: handName };
   const master = (bank: Bank = SHOWDOWN[kind]) =>
     line(view, event, { speaker: 'master', text: choose(view, bank, event, vars), mood: style.mood, ...(style.kanji ? { kanji: style.kanji } : {}) });
 
@@ -282,29 +255,55 @@ function showdownLine(view: GameView): Line | null {
     }
     return master();
   }
-  if (kind === 'walked' && SHOWDOWN.walked.length) {
+  if (kind === 'walked') {
     const mame = regularMoment(view, 'walked');
     if (mame && chance(0.5, seedOf(view), view.hand, 'walked:who')) {
       return line(view, event, { speaker: mame.who, text: choose(view, mame.bank, 'walked:regular'), mood: 'hush' });
     }
     return master();
   }
-  if (kind === 'crew' || kind === 'house') {
-    const said = regularAfterHand(view, kind);
+  if (kind === 'crew' || kind === 'house' || kind === 'nodded-carry' || kind === 'big-swing') {
+    const said = regularAfterHand(view, r.outcome === 'crew' ? 'crew' : 'house');
     if (said) return said;
   }
   if (SHOWDOWN[kind].length === 0) return null;
   return master();
 }
 
+/** A big step one way or the other gets a short word of its own. */
+function swingLine(view: GameView): Line | null {
+  const r = view.result!;
+  if (Math.abs(r.moved) < 4 || view.verdict) return null;
+  const dir = r.moved > 0 ? 'up' : 'down';
+  return line(view, `swing:${dir}`, { speaker: 'master', text: choose(view, SWING[dir], `swing:${dir}`), mood: dir === 'up' ? 'gold' : 'danger' });
+}
+
+/** Personal: your own cards turned over, and they were a monster. Only you hear this one. */
+function revealLine(view: GameView, you: string | null): Line | null {
+  const me = view.seats.find((s) => s.id === you);
+  if (!me?.hand || !isMonster(me.hand) || me.champion) return null;
+  const event = `reveal:${me.id}`;
+  return line(view, event, {
+    speaker: 'master',
+    text: choose(view, REVEAL, event, { hand: phrase(me.hand.name, me.hand.category), Hand: me.hand.name.split(',')[0]! }),
+    kanji: '見',
+    mood: 'gold',
+  });
+}
+
+function phrase(name: string, category: string): string {
+  const short = name.split(',')[0]!.toLowerCase();
+  return category === 'quads' || category === 'two-pair' || category === 'trips' ? short : `a ${short}`;
+}
+
 /**
  * Now and then, a bot regular has a word about an ordinary hand: the one whose
- * cards carried the crew, or one the House just burned. About one hand in three,
+ * cards carried the crew, or one who went In and lost. About one hand in three,
  * so the table has voices without turning into chatter.
  */
 function regularAfterHand(view: GameView, kind: 'crew' | 'house'): Line | null {
   const r = view.result!;
-  const ids = (kind === 'crew' ? r.crewChampions : burned(view)) ?? [];
+  const ids = kind === 'crew' ? r.crewChampions : r.ins;
   const event = `regular:${kind}`;
   if (!chance(0.35, seedOf(view), view.hand, event)) return null;
   for (const id of ids) {
@@ -333,9 +332,9 @@ function verdictLines(view: GameView): Line[] {
     line(view, `${event}:${i}`, { speaker: 'master', text, mood, kanji: i === 0 ? ch.kanji : undefined, hold: Math.max(5200, holdFor(text) + 1200) }),
   );
   if (verdict === 'clean') {
-    const sweep = view.history.length >= view.hands && view.history.every((h) => h.outcome === 'crew');
+    const sweep = view.history.length >= 2 && view.history.every((h) => h.moved > 0);
     if (sweep) out.push(line(view, 'coda:sweep', { speaker: 'master', text: choose(view, CLEAN_SWEEP, 'coda:sweep'), kanji: '総', mood: 'gold' }));
-    else if (view.heat === view.heatLimit - 1) {
+    else if (lowestMeter(view.history) <= -(view.sirens - 1)) {
       out.push(line(view, 'coda:close', { speaker: 'master', text: choose(view, CLOSE_CALL, 'coda:close'), kanji: '紙一重', mood: 'wry' }));
     }
   }

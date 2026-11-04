@@ -48,7 +48,7 @@ export const BALANCE: Record<Difficulty, readonly (readonly [number, number])[]>
 
 function balance(d: Difficulty, crew: number): readonly [number, number] {
   const i = Math.min(MAX_CREW, Math.max(MIN_CREW, Math.round(crew))) - MIN_CREW;
-  return BALANCE[d][i];
+  return BALANCE[d][i]!;
 }
 
 /** Steps from the start to the door (a clean getaway) for this table and crew. */

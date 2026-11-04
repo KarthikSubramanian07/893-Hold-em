@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { RULES } from '../../engine/rules';
 import type { GameView } from '../../engine/types';
-import { classifyShowdown, heatCrossed, playedYakuza } from './analysis';
-import { fixture, hv, scriptedNight, seatOver, withResult } from './fixtures';
-import { CHAPTERS } from './lines';
+import { classifyShowdown, lowestMeter, markerCrossed, nodKind, playedYakuza } from './analysis';
+import { entry, fixture, hv, scriptedNight, seatOver, withResult } from './fixtures';
+import { CHAPTERS, REVEAL } from './lines';
 import { idleLine, narrate } from './narrator';
 import { REGULARS } from './regulars';
 
@@ -12,10 +11,13 @@ const ctx = { now: EVENING };
 
 const ids = (lines: { id: string }[]) => lines.map((l) => l.id.split(':').slice(2).join(':'));
 
-/** A showdown pair: the river call, then the resolved hand. */
+/** A showdown pair: the call, then the resolved hand. */
 function showdown(edit: (v: GameView) => GameView = (v) => v): [GameView, GameView] {
-  return [fixture('river'), edit(fixture('showdown'))];
+  return [fixture('call'), edit(fixture('showdown'))];
 }
+
+/** Lines everyone at the table hears (not the welcome or your own reveal). */
+const shared = (lines: { id: string }[]) => lines.filter((l) => !l.id.includes(':reveal:'));
 
 describe('determinism', () => {
   it('gives the same lines for the same views, every time', () => {
@@ -36,7 +38,7 @@ describe('determinism', () => {
       const a = narrate(steps[i - 1]!.view, steps[i]!.view, 's0', ctx);
       const b = narrate(steps[i - 1]!.view, steps[i]!.view, 's1', { ...ctx, returning: true });
       // Joins skip the viewer's own seat, so compare from the first hand on.
-      if (steps[i]!.view.phase !== 'lobby') expect(b).toEqual(a);
+      if (steps[i]!.view.phase !== 'lobby') expect(shared(b)).toEqual(shared(a));
     }
   });
 
@@ -48,16 +50,8 @@ describe('determinism', () => {
     expect(texts.size).toBeGreaterThan(1);
   });
 
-  it('says what each House Rule does, in plain words, when it turns over', () => {
-    for (const rule of ['kiri', 'kagami', 'shizuka', 'homura', 'kizuna', 'hebi', 'gyaku'] as const) {
-      const out = narrate(fixture('river', { hand: 1 }), fixture('preflop', { hand: 2, rule }), 's0', ctx);
-      const l = out.find((x) => x.id.endsWith(`rule:${rule}`))!;
-      expect(l.text.startsWith(`${RULES[rule].name}:`), rule).toBe(true);
-    }
-  });
-
   it('says nothing when nothing changed', () => {
-    const v = fixture('river');
+    const v = fixture('call');
     expect(narrate(v, v, 's0', ctx)).toEqual([]);
   });
 
@@ -111,11 +105,11 @@ describe('welcome', () => {
 
   it('seats spectators and rejoining players without the full welcome', () => {
     expect(ids(narrate(null, lobby, null, ctx))).toEqual(['welcome:spectator']);
-    expect(ids(narrate(null, fixture('river'), 's0', ctx))).toEqual(['welcome:rejoin']);
+    expect(ids(narrate(null, fixture('call'), 's0', ctx))).toEqual(['welcome:rejoin']);
   });
 
   it('treats a new room code as a fresh arrival', () => {
-    expect(ids(narrate(fixture('river'), { ...lobby, code: 'ZZZZZ' }, 's0', ctx))).toEqual(['welcome:first']);
+    expect(ids(narrate(fixture('call'), { ...lobby, code: 'ZZZZZ' }, 's0', ctx))).toEqual(['welcome:first']);
   });
 });
 
@@ -150,152 +144,149 @@ describe('joins', () => {
 
 describe('the night and its hands', () => {
   it('opens the night with one line about the table', () => {
-    for (const table of ['shitamachi', 'kabukicho'] as const) {
+    for (const table of ['shitamachi', 'kabukicho', 'oyabun'] as const) {
       const config = { difficulty: table, timer: 30 as const };
-      const out = narrate(fixture('lobby', { config }), fixture('preflop', { config }), 's0', ctx);
+      const out = narrate(fixture('lobby', { config }), fixture('nod', { config }), 's0', ctx);
       expect(ids(out)).toEqual([`night:${table}`]);
       expect(out[0]!.kanji).toBe(CHAPTERS[table].kanji);
       expect(CHAPTERS[table].intro).toContain(out[0]!.text);
     }
   });
 
-  it('turns the first House Rule at the boss’s table', () => {
-    const config = { difficulty: 'oyabun' as const, timer: 30 as const };
-    const out = narrate(fixture('lobby', { config }), fixture('preflop', { config, rule: 'hebi' }), 's0', ctx);
-    expect(ids(out)).toEqual(['night:oyabun', 'rule:hebi']);
-  });
-
-  it('lets the Oni introduce himself under his own rule', () => {
-    const config = { difficulty: 'oyabun' as const, timer: 30 as const };
-    const out = narrate(fixture('lobby', { config }), fixture('preflop', { config, rule: 'oni' }), 's0', ctx);
-    expect(out.map((l) => l.speaker)).toEqual(['master', 'oni']);
-  });
-
   it('starts a second night in the same room', () => {
-    expect(ids(narrate(fixture('over'), fixture('preflop'), 's0', ctx))).toEqual(['night:kabukicho']);
+    expect(ids(narrate(fixture('over'), fixture('nod', { night: 2 }), 's0', ctx))).toEqual(['night:shitamachi']);
   });
 
-  it('lets the House Rule speak for an ordinary hand', () => {
-    const out = narrate(fixture('showdown', { hand: 2 }), fixture('preflop', { hand: 3, rule: 'homura' }), 's0', ctx);
-    expect(ids(out)).toEqual(['rule:homura']);
-    expect(out[0]!.kanji).toBe('炎');
+  it('lets an ordinary hand go by without a word', () => {
+    expect(narrate(fixture('showdown'), fixture('nod', { hand: 4 }), 's0', ctx)).toEqual([]);
   });
 
-  it('marks the last hand, and knows what the crew still needs', () => {
-    const out = narrate(fixture('showdown', { hand: 5 }), fixture('preflop', { hand: 6, rule: 'kiri', take: 14, target: 20, heat: 2 }), 's0', ctx);
-    expect(ids(out)).toEqual(['hand:last', 'rule:kiri']);
-    expect(out[0]!.text).toMatch(/6/);
-  });
-
-  it('names the player the Fox exposed', () => {
-    const next = seatOver(fixture('preflop', { hand: 2, rule: 'kitsune' }), 's2', { cards: ['9s', '9h'] });
-    const [l] = narrate(fixture('showdown', { hand: 1 }), next, 's0', ctx);
-    expect(l!.text).toContain('Ren');
+  it('calls last orders, and knows how far the door is', () => {
+    const out = narrate(fixture('showdown', { hand: 9 }), fixture('nod', { hand: 10, meter: 2 }), 's0', ctx);
+    expect(ids(out)).toEqual(['hand:last']);
+    expect(out[0]!.text).toContain('9 steps');
+    const near = narrate(fixture('showdown', { hand: 9 }), fixture('nod', { hand: 10, meter: 9 }), 's0', ctx);
+    expect(near[0]!.text).toMatch(/door is right there/);
+    const hot = narrate(fixture('showdown', { hand: 9 }), fixture('nod', { hand: 10, meter: -7 }), 's0', ctx);
+    expect(hot[0]!.mood).toBe('danger');
   });
 });
 
-describe('heat and take', () => {
-  it('finds the highest mark crossed, and none at the raid', () => {
-    expect(heatCrossed(3, 4, 8)).toBe('half');
-    expect(heatCrossed(4, 5, 8)).toBeNull();
-    expect(heatCrossed(5, 6, 8)).toBe('three-quarters');
-    expect(heatCrossed(6, 7, 8)).toBe('one-away');
-    expect(heatCrossed(2, 7, 8)).toBe('one-away');
-    expect(heatCrossed(6, 8, 8)).toBeNull();
-    expect(heatCrossed(5, 6, 7)).toBe('one-away');
+describe('the nods', () => {
+  const toCall = (edit: (v: GameView) => GameView) => narrate(fixture('nod', { hand: 3 }), edit(fixture('call')), 's0', ctx);
+
+  it('reads the patterns worth a word', () => {
+    expect(nodKind(fixture('call'))).toBeNull();
+    const pile = seatOver(seatOver(fixture('call'), 's0', { nod: 's2' }), 's1', { nod: 's2' });
+    expect(nodKind(seatOver(pile, 's3', { nod: 's2' }))?.kind).toBe('pile-on');
+    const none = { ...fixture('call'), seats: fixture('call').seats.map((s) => ({ ...s, nod: null })) };
+    expect(nodKind(none)?.kind).toBe('all-pass');
+    const mutual = seatOver(fixture('call'), 's1', { nod: 's0' });
+    expect(nodKind(seatOver(mutual, 's0', { nod: 's1' }))?.kind).toBe('mutual');
   });
 
-  it('speaks when the heat crosses half, three quarters, and one away', () => {
-    const [prev, next] = showdown((v) => withResult({ ...v, heat: 4 }, { outcome: 'house', take: 0, heat: 1 }));
-    expect(ids(narrate({ ...prev, heat: 3 }, next, 's0', ctx))).toContain('heat:half');
-    expect(ids(narrate({ ...prev, heat: 6 }, { ...next, heat: 7 }, 's0', ctx))).toContain('heat:one-away');
-    expect(ids(narrate({ ...prev, heat: 4 }, { ...next, heat: 4 }, 's0', ctx)).some((i) => i.startsWith('heat'))).toBe(false);
+  it('names the teammate everyone nodded at', () => {
+    const out = toCall((v) => ({ ...v, seats: v.seats.map((s) => ({ ...s, nod: s.id === 's2' ? null : 's2' })) }));
+    expect(ids(out)).toEqual(['nods:pile-on']);
+    expect(out[0]!.text).toContain('Ren');
+    expect(out[0]!.kanji).toBe('頷');
   });
 
-  it('speaks once when the take reaches the target', () => {
-    const [prev, next] = showdown();
-    expect(ids(narrate({ ...prev, take: 18 }, { ...next, take: 24 }, 's0', ctx))).toContain('take');
-    expect(ids(narrate({ ...prev, take: 21 }, { ...next, take: 27 }, 's0', ctx))).not.toContain('take');
+  it('sometimes remarks on a table where nobody nodded', () => {
+    let spoke = 0;
+    for (let i = 0; i < 30; i++) {
+      const code = `N${String(i).padStart(4, '0')}`;
+      const out = narrate({ ...fixture('nod'), hand: 3, code }, { ...fixture('call'), code, seats: fixture('call').seats.map((s) => ({ ...s, nod: null })) }, 's0', ctx);
+      if (out.length) {
+        spoke++;
+        expect(ids(out)).toEqual(['nods:all-pass']);
+      }
+    }
+    expect(spoke).toBeGreaterThan(3);
+    expect(spoke).toBeLessThan(27);
+  });
+});
+
+describe('the marker', () => {
+  it('finds the step before either end', () => {
+    expect(markerCrossed({ meter: 7, door: 9, sirens: 6 }, { meter: 8, door: 9, sirens: 6 })).toBe('door-near');
+    expect(markerCrossed({ meter: -3, door: 9, sirens: 6 }, { meter: -5, door: 9, sirens: 6 })).toBe('sirens-near');
+    expect(markerCrossed({ meter: 8, door: 9, sirens: 6 }, { meter: 8, door: 9, sirens: 6 })).toBeNull();
+    expect(markerCrossed({ meter: -5, door: 9, sirens: 6 }, { meter: -4, door: 9, sirens: 6 })).toBeNull();
+    expect(lowestMeter([entry(1, 'crew', 2, 2), entry(2, 'house', -4, 4), entry(3, 'crew', 3, 3)])).toBe(-2);
+  });
+
+  it('speaks when the marker lands a step from the sirens or the door', () => {
+    const [prev, next] = showdown((v) => ({ ...v, meter: -7 }));
+    const out = narrate({ ...prev, meter: -4 }, withResult(next, { outcome: 'house', moved: -3 }), 's0', ctx);
+    expect(ids(out)).toContain('marker:sirens-near');
+    const up = narrate({ ...prev, meter: 7 }, { ...next, meter: 10 }, 's0', ctx);
+    expect(ids(up)).toContain('marker:door-near');
   });
 });
 
 describe('the showdown', () => {
-  const kind = (edit: (v: GameView) => GameView) => classifyShowdown(showdown(edit)[1]).kind;
-  const twoPair = hv(3_000_000, 'two-pair', 'Two pair, kings and sevens', ['Kh', 'Kd', '7s', '7d', 'Ah']);
+  const classify = (edit: (v: GameView) => GameView) => classifyShowdown(edit(fixture('showdown'))).kind;
 
   it('reads ordinary outcomes', () => {
-    expect(kind((v) => v)).toBe('crew');
-    expect(kind((v) => withResult(v, { outcome: 'house', crewBest: twoPair }))).toBe('house');
-    expect(kind((v) => withResult(v, { outcome: 'tie' }))).toBe('tie');
-    expect(kind((v) => withResult(v, { outcome: 'walked', crewBest: null }))).toBe('walked');
+    expect(classify((v) => withResult(v, { outcome: 'house', crewBest: hv(2, 'pair', 'Pair of twos', ['2c', '2d', 'Kh', '9s', '4h']) }))).toBe('house');
+    expect(classify((v) => withResult(v, { outcome: 'tie' }))).toBe('tie');
+    expect(classify((v) => withResult(v, { outcome: 'walked', crewBest: null, ins: [] }))).toBe('walked');
   });
 
   it('calls a bad beat when a full house or better loses', () => {
-    const big = (v: GameView) =>
-      withResult(v, { outcome: 'house', crewBest: hv(7_000_000, 'full-house', 'Full house, sevens full of queens', ['7h', '7s', '7d', 'Qs', 'Qh']) });
-    const sd = showdown((v) => seatOver(big(v), 's1', { champion: false }))[1];
-    expect(classifyShowdown(sd).kind).toBe('bad-beat');
-    expect(narrate(fixture('river'), sd, 's0', ctx)[0]!.text).toMatch(/full house/i);
+    expect(classify((v) => withResult(v, { outcome: 'house' }))).toBe('bad-beat');
   });
 
   it('crowns a royal flush on either side', () => {
     const royal = hv(9_000_000, 'straight-flush', 'Royal flush', ['Ah', 'Kh', 'Qh', 'Jh', 'Th']);
-    expect(kind((v) => withResult(v, { crewBest: royal }))).toBe('royal');
-    expect(kind((v) => withResult(v, { outcome: 'house', houseBest: royal }))).toBe('royal');
-    const steel = hv(8_900_000, 'straight-flush', 'Straight flush, nine high', ['9h', '8h', '7h', '6h', '5h']);
-    expect(kind((v) => withResult(v, { crewBest: steel }))).toBe('crew');
+    expect(classify((v) => withResult(v, { crewBest: royal }))).toBe('royal');
+    expect(classify((v) => withResult(v, { outcome: 'house', houseBest: royal }))).toBe('royal');
   });
 
   it('hears 8-9-3 in the champion’s cards and the board', () => {
-    const champ = (cards: GameView['seats'][number]['cards'], board: GameView['board']) => (v: GameView) => seatOver({ ...v, board }, 's1', { cards });
-    expect(kind(champ(['8h', '9s'], ['3c', 'Kd', '7s', '2c', 'Qh']))).toBe('yakuza');
-    expect(kind(champ(['3h', 'Qs'], ['8c', '9d', '7s', '2c', 'Qh']))).toBe('yakuza');
-    // The board alone holding 8, 9, 3 is not the champion's doing.
-    expect(kind(champ(['7h', 'Qs'], ['8c', '9d', '3s', '2c', 'Qh']))).toBe('crew');
-    const [, sd] = showdown(champ(['8h', '9s'], ['3c', 'Kd', '7s', '2c', 'Qh']));
-    const [l] = narrate(fixture('river'), sd, 's0', ctx);
-    expect(l!.kanji).toBe('八九三');
+    const v = seatOver({ ...fixture('showdown'), board: ['3c', 'Kh', '7s', '2c', 'Qh'] }, 's1', { cards: ['8h', '9d'] });
+    expect(playedYakuza(v.seats[1]!, v.board)).toBe(true);
+    expect(classifyShowdown(v).kind).toBe('yakuza');
+    expect(playedYakuza({ ...v.seats[1]!, hand: null, cards: ['Kd', 'Qs'] }, ['8c', '9c', '3c', '2d', '4d'])).toBe(false);
   });
 
-  it('counts a best five holding 8, 9 and 3 whatever the hole cards', () => {
-    const seat = { ...fixture('showdown').seats[0]!, cards: ['Ah', 'Kh'] as GameView['seats'][number]['cards'], hand: hv(6_000_000, 'flush', 'Flush, ace high', ['Ah', 'Kh', '9h', '8h', '3h']) };
-    expect(playedYakuza(seat, ['9h', '8h', '3h', '2c', 'Qd'])).toBe(true);
+  it('notices a teammate who sat out holding the winner', () => {
+    const v = withResult(fixture('showdown'), { outcome: 'house', crewBest: hv(2, 'pair', 'Pair of twos', ['2c', '2d', 'Kh', '9s', '4h']), couldHave: ['s2'] });
+    const said = classifyShowdown(v);
+    expect(said.kind).toBe('sat-out');
+    expect(said.seat?.id).toBe('s2');
+    const out = narrate(fixture('call'), v, 's1', ctx);
+    expect(ids(out)).toContain('showdown:sat-out');
+    expect(out[0]!.text).toContain('Ren');
   });
 
-  it('bites under the Serpent when a tie goes to the House', () => {
-    const same = hv(3_200_000, 'two-pair', 'Two pair, kings and sevens', ['Kh', 'Kc', '7s', '7d', 'Qh']);
-    expect(kind((v) => withResult({ ...v, rule: 'hebi' }, { outcome: 'house', crewBest: same, houseBest: same }))).toBe('serpent');
+  it('celebrates a carrier nobody nodded at', () => {
+    const v = { ...fixture('showdown'), seats: fixture('showdown').seats.map((s) => ({ ...s, nod: null })) };
+    expect(classifyShowdown(v).kind).toBe('blind-carry');
+    expect(ids(narrate(fixture('call'), v, 's0', ctx))).toEqual(['showdown:blind-carry']);
   });
 
-  it('celebrates a Reversal win', () => {
-    expect(kind((v) => ({ ...v, rule: 'gyaku' }))).toBe('reversal');
+  it('cheers the whole crew In and winning', () => {
+    const v = withResult(fixture('showdown'), { ins: ['s0', 's1', 's2', 's3'], moved: 4 });
+    expect(classifyShowdown(v).kind).toBe('all-in');
+    expect(ids(narrate(fixture('call'), v, 's0', ctx))).toEqual(['showdown:all-in', 'swing:up']);
   });
 
-  it('notices a champion who never raised with a hand worth folding', () => {
-    const quiet = (v: GameView) => seatOver(v, 's1', { cards: ['7h', '5s'], calls: ['stay', 'stay', 'stay', 'stay'], stake: 1 });
-    expect(kind(quiet)).toBe('quiet-champion');
-    expect(kind((v) => seatOver(quiet(v), 's1', { cards: ['7h', '7c'] }))).toBe('crew');
-    const [, sd] = showdown(quiet);
-    expect(narrate(fixture('river'), sd, 's0', ctx)[0]!.text).toContain('Mio');
+  it('marks a big swing toward the sirens', () => {
+    const v = withResult(fixture('showdown'), { outcome: 'house', moved: -4, ins: ['s0', 's1', 's2', 's3'], crewBest: hv(2, 'pair', 'Pair of twos', ['2c', '2d', 'Kh', '9s', '4h']) });
+    expect(ids(narrate(fixture('call'), v, 's0', ctx))).toContain('swing:down');
   });
 
-  it('pays a rider who had nothing', () => {
-    const trash = (v: GameView) => seatOver(v, 's3', { hand: hv(1_000_000, 'high', 'Queen high', ['Qh', 'Kh', 'Jc', 'Ts', '7s']) });
-    expect(kind(trash)).toBe('trash-rider');
-    const [, sd] = showdown(trash);
-    expect(narrate(fixture('river'), sd, 's0', ctx)[0]!.text).toContain('Daichi');
-  });
-
-  it('leaves a seen-but-paid hand to the showdown panel', () => {
-    const [, sd] = showdown((v) => withResult(v, { burned: ['s0', 's3'] }));
-    expect(classifyShowdown(sd).kind).toBe('seen');
-    expect(narrate(fixture('river'), sd, 's0', ctx)).toEqual([]);
-  });
-
-  it('treats a missing burned list as nobody seen', () => {
-    const [, sd] = showdown();
-    expect((sd.result as { burned?: string[] }).burned).toBeUndefined();
-    expect(classifyShowdown(sd).kind).toBe('crew');
+  it('tells only you about the monster you never saw', () => {
+    const flush = hv(6_000_000, 'flush', 'Flush, ace high', ['Ah', 'Qh', '9h', '6h', '2h']);
+    const v = seatOver(fixture('showdown'), 's0', { hand: flush });
+    const mine = narrate(fixture('call'), v, 's0', ctx);
+    const theirs = narrate(fixture('call'), v, 's1', ctx);
+    expect(ids(mine)).toEqual(['reveal:s0']);
+    expect(mine[0]!.text).toMatch(/flush/i);
+    expect(REVEAL.length).toBeGreaterThan(0);
+    expect(theirs).toEqual([]);
   });
 
   it('stays quiet on an ordinary showdown, and never repeats itself', () => {
@@ -332,10 +323,10 @@ describe('the regulars', () => {
 describe('the verdict', () => {
   it('reads a chapter epilogue for each ending', () => {
     for (const table of ['shitamachi', 'kabukicho', 'oyabun'] as const) {
-      for (const verdict of ['clean', 'raid', 'short'] as const) {
+      for (const verdict of ['clean', 'raid', 'dawn'] as const) {
         const config = { difficulty: table, timer: 30 as const };
         const prev = fixture('showdown', { config, hand: 6 });
-        const next = fixture('over', { config, verdict, heat: 2, history: fixture('over').history });
+        const next = fixture('over', { config, verdict });
         const out = narrate(prev, next, 's0', ctx);
         const epilogue = out.filter((l) => l.id.includes(`verdict:${table}:${verdict}`));
         expect(epilogue.length).toBeGreaterThanOrEqual(1);
@@ -345,21 +336,21 @@ describe('the verdict', () => {
     }
   });
 
-  it('adds a word about a close call', () => {
-    const over = fixture('over', { heat: 7, heatLimit: 8 });
-    expect(ids(narrate(fixture('showdown', { hand: 6, heat: 7 }), over, 's0', ctx))).toContain('coda:close');
-  });
-
-  it('adds a word about a clean sweep', () => {
-    const history = Array.from({ length: 6 }, (_, i) => ({ ...fixture('over').history[0]!, hand: i + 1, outcome: 'crew' as const }));
+  it('adds a word about a close shave', () => {
+    const history = [entry(1, 'house', -7, 4), entry(2, 'crew', 4, 4), entry(3, 'crew', 4, 4), entry(4, 'crew', 4, 4), entry(5, 'crew', 4, 4), entry(6, 'crew', 2, 2)];
     const over = fixture('over', { history });
-    expect(ids(narrate(fixture('showdown', { hand: 6 }), over, 's0', ctx))).toContain('coda:sweep');
+    expect(ids(narrate(fixture('showdown', { hand: 6 }), over, 's0', ctx))).toContain('coda:close');
   });
 
-  it('does not tell the heat story on top of a raid', () => {
-    const over = fixture('over', { verdict: 'raid', heat: 8, heatLimit: 8 });
-    const out = narrate(fixture('showdown', { hand: 6, heat: 6 }), over, 's0', ctx);
-    expect(out.every((l) => !l.id.includes('heat'))).toBe(true);
+  it('adds a word about a night with no step toward the sirens', () => {
+    const history = [entry(1, 'crew', 4, 4), entry(2, 'crew', 4, 4), entry(3, 'crew', 3, 3)];
+    expect(ids(narrate(fixture('showdown', { hand: 3 }), fixture('over', { history }), 's0', ctx))).toContain('coda:sweep');
+  });
+
+  it('does not talk about the marker on top of a raid', () => {
+    const over = fixture('over', { verdict: 'raid', meter: -8 });
+    const out = narrate(fixture('showdown', { hand: 6, meter: -6 }), over, 's0', ctx);
+    expect(out.every((l) => !l.id.includes('marker'))).toBe(true);
   });
 });
 
@@ -370,7 +361,7 @@ describe('idle', () => {
     expect(lines.filter(Boolean).length).toBeGreaterThan(10);
     expect(lines.filter((l) => l === null).length).toBeGreaterThan(2);
     expect(Array.from({ length: 30 }, (_, t) => idleLine(lobby, t))).toEqual(lines);
-    expect(idleLine(fixture('river'), 1)).toBeNull();
+    expect(idleLine(fixture('call'), 1)).toBeNull();
   });
 });
 

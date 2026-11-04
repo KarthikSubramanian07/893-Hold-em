@@ -33,7 +33,7 @@ export interface Line {
   id: string;
   speaker: Speaker;
   text: string;
-  /** An accent kanji for the moment (a rule, a table, 八九三), shown faintly behind the line. */
+  /** An accent kanji for the moment (a table, a nod, 八九三), shown faintly behind the line. */
   kanji?: string;
   mood?: Mood;
   /** How long the line should stay up once it has typed on, in ms. */
@@ -46,10 +46,10 @@ export type StoryEvent =
   | 'join'
   | 'night'
   | 'hand'
-  | 'rule'
+  | 'nods'
   | 'showdown'
-  | 'take'
-  | 'heat'
+  | 'reveal'
+  | 'marker'
   | 'verdict'
   | 'idle'
   | 'egg';
@@ -59,11 +59,20 @@ export type ShowdownKind =
   | 'royal'
   | 'yakuza'
   | 'bad-beat'
-  | 'serpent'
-  | 'reversal'
-  | 'quiet-champion'
-  | 'trash-rider'
-  | 'seen'
+  /** Someone who went Out could have beaten the House, and the crew didn't win. */
+  | 'sat-out'
+  /** The carrier had no nods and went In anyway. */
+  | 'blind-carry'
+  /** The carrier was nodded at, and it held. */
+  | 'nodded-carry'
+  /** Everyone was In, and the crew won. */
+  | 'all-in'
+  /** The marker moved four steps or more. */
+  | 'big-swing'
   | HandOutcome;
 
-export type HeatMark = 'half' | 'three-quarters' | 'one-away';
+/** What the nods said when they turned over. */
+export type NodKind = 'all-pass' | 'pile-on' | 'mutual';
+
+/** The marker one step from either end. */
+export type MarkerMark = 'door-near' | 'sirens-near';

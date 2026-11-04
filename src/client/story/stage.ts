@@ -46,7 +46,7 @@ export type SubtitleSlot = 'float' | 'strip' | 'aside';
  *    word sits in the column beside the receipt, over the buttons.
  */
 export function subtitleSlot(phase: Phase | null | undefined, wide = true): SubtitleSlot {
-  if (phase === 'call' || phase === 'showdown') return 'float';
+  if (phase === 'nod' || phase === 'call' || phase === 'showdown') return 'float';
   if (phase === 'over' && wide) return 'aside';
   return 'strip';
 }
