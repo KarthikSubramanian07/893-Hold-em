@@ -110,7 +110,7 @@ ${canonical ? `    <meta property="og:url" content="${canonical}" />\n` : ''}   
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/site.css" />
   </head>
-  <body>
+  <body class="paper-page">
     <header class="site-head">
       <a class="site-mark" href="/"><span class="site-seal" aria-hidden="true">八九三</span>893 Hold'em</a>
       <nav aria-label="Site">${nav}</nav>
@@ -192,7 +192,8 @@ export function sitemap(pages: Page[]): string {
 /** Every file the build adds to dist/, by path. */
 export function siteFiles(pages: Page[]): Record<string, string> {
   const files: Record<string, string> = {
-    'site.css': readFileSync(fileURLToPath(new URL('./site.css', import.meta.url)), 'utf8'),
+    'site.css': readFileSync(fileURLToPath(new URL('./site.css', import.meta.url)), 'utf8')
+      + '\n' + readFileSync(fileURLToPath(new URL('../src/client/styles/paper-motion.css', import.meta.url)), 'utf8'),
     'llms.txt': llmsTxt(pages),
     'llms-full.txt': llmsFull(pages),
     'sitemap.xml': sitemap(pages),

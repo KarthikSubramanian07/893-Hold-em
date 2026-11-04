@@ -1,0 +1,38 @@
+/* Warm light moving across the existing paper. Shared with static pages. */
+.paper-page {
+  isolation: isolate;
+}
+
+.paper-page::after {
+  content: '';
+  position: fixed;
+  inset: -8%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 18% 24%, rgb(201 164 92 / 0.16), transparent 55%),
+    radial-gradient(ellipse at 82% 70%, rgb(74 70 62 / 0.09), transparent 52%),
+    repeating-linear-gradient(112deg, transparent 0 130px, rgb(74 70 62 / 0.025) 180px 210px, transparent 260px 390px);
+  transform: translate3d(-2%, -1%, 0) rotate(-1deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .paper-page::after {
+    animation: paper-light-drift 22s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes paper-light-drift {
+  from {
+    transform: translate3d(-2%, -1%, 0) rotate(-1deg);
+    opacity: 0.65;
+  }
+  to {
+    transform: translate3d(2%, 1%, 0) rotate(1deg);
+    opacity: 1;
+  }
+}
+
+@media print {
+  .paper-page::after { display: none; }
+}
