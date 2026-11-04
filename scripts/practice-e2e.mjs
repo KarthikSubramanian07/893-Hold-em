@@ -72,8 +72,11 @@ await page.waitForTimeout(400);
 await page.getByRole('button', { name: /start the night/i }).click();
 step('night started');
 
-// Play by keyboard: mostly Stay, a Raise now and then, one Fold.
-const keys = ['s', 'r', 's', 's', 's', 's', 'r', 's', 'f'];
+// Play by keyboard: nod at a teammate (1, 2, 3 in turn) or pass (P) on the
+// flop; mostly In, sometimes Out, on the river.
+const nodKeys = ['1', 'p', '2', '3', 'p'];
+const callKeys = ['i', 'i', 'o', 'i'];
+let nods = 0;
 let calls = 0;
 let showdowns = 0;
 let lastShowdown = '';
@@ -81,14 +84,25 @@ const started = Date.now();
 while (Date.now() - started < 300_000) {
   const phase = await phaseOf();
   if (phase === 'over') break;
-  if (phase === 'call') {
-    const stay = page.getByRole('button', { name: /^stay/i });
-    if (await stay.isEnabled().catch(() => false)) {
-      if (calls === 0) {
+  if (phase === 'nod') {
+    const pass = page.getByRole('button', { name: /^pass/i });
+    if (await pass.isEnabled().catch(() => false)) {
+      if (nods === 0) {
         await page.waitForTimeout(2500);
+        await shot('03-nod');
+      }
+      await page.keyboard.press(nodKeys[nods % nodKeys.length]);
+      nods++;
+    }
+  }
+  if (phase === 'call') {
+    const inBtn = page.getByRole('button', { name: /^in\b/i });
+    if (await inBtn.isEnabled().catch(() => false)) {
+      if (calls === 0) {
+        await page.waitForTimeout(2000);
         await shot('03-call');
       }
-      await page.keyboard.press(keys[calls % keys.length]);
+      await page.keyboard.press(callKeys[calls % callKeys.length]);
       calls++;
     }
   }
@@ -113,7 +127,7 @@ const verdict = await page
   .getAttribute('class')
   .then((c) => c?.match(/receipt--(\w+)/)?.[1] ?? null)
   .catch(() => null);
-step(`${calls} calls by keyboard, ${showdowns} showdowns, verdict: ${verdict}`);
+step(`${nods} nods and ${calls} calls by keyboard, ${showdowns} showdowns, verdict: ${verdict}`);
 
 await browser.close();
 if (sockets.length) errors.push(`opened room sockets: ${sockets.join(', ')}`);
