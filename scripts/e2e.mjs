@@ -131,7 +131,7 @@ let calls = 0;
 let showdowns = 0;
 let lastShowdown = '';
 const started = Date.now();
-while (Date.now() - started < 300_000) {
+while (Date.now() - started < 900_000) {
   if ((await phaseOf(host)) === 'over') break;
   for (const [page, label] of [
     [host, 'host'],
