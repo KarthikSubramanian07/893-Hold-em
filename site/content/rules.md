@@ -9,7 +9,7 @@ description: "The complete rules of 893 Hold'em: you see every hand but your own
 
 ## The rules in four lines
 
-1. **Everyone sees every hand but their own.** The House shows one card. It holds 3 cards at Shitamachi, 4 at Kabukichō, 5 at Oyabun, and plays its best five with the board.
+1. **Everyone sees every hand but their own.** The House shows one card. It holds 3 to 5 cards depending on the table and crew size, and plays its best five with the board.
 2. **After the flop, each player may nod at one teammate**: "you're good". One nod each per hand, or pass.
 3. **After the river, everyone picks In or Out at once.**
 4. **The best hand that's In faces the House.** Win: the marker moves one step toward the door for every player In. Lose: one step toward the sirens for every player In. Tie: no move. Everyone Out: no move, but the clock runs.
@@ -31,11 +31,11 @@ If the timer runs out, you pass on the nod and sit out the call.
 
 One marker sits between the sirens and the door. It starts at zero; how far each end is depends on the table and on how many are in the crew:
 
-| Table | House holds | 2 players | 3 | 4 | 5 | 6 |
-| --- | --- | --- | --- | --- | --- | --- |
-| Shitamachi (下町) | 3 cards | 5 / 5 | 7 / 6 | 9 / 7 | 11 / 8 | 12 / 9 |
-| Kabukichō (歌舞伎町) | 4 cards | 5 / 4 | 7 / 5 | 9 / 6 | 11 / 7 | 12 / 8 |
-| Oyabun (親分) | 5 cards | 5 / 4 | 7 / 5 | 9 / 6 | 11 / 7 | 12 / 8 |
+| Table | 2 players | 3 | 4 | 5 | 6 |
+| --- | --- | --- | --- | --- | --- |
+| Shitamachi (下町) | 3 / 5 | 5 / 7 | 5 / 9 | 6 / 12 | 7 / 14 |
+| Kabukichō (歌舞伎町) | 4 / 3 | 4 / 6 | 8 / 7 | 6 / 10 | 7 / 12 |
+| Oyabun (親分) | 3 / 3 | 5 / 4 | 5 / 6 | 8 / 8 | 10 / 10 |
 
 Steps to the door / steps to the sirens. The lobby shows the numbers for your table before you start.
 
