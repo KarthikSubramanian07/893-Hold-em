@@ -130,7 +130,7 @@ export const flip: Voice = (ctx, out, t, rng) => {
   return 0.11;
 };
 
-/** Lacquered tokens clacking together as a stake goes up. */
+/** Lacquered tokens clacking together: the sake cups at kanpai. */
 export const chip: Voice = (ctx, out, t, rng) => {
   // Modal synthesis: a small lacquered disc rings at a few inharmonic modes
   // for a few dozen milliseconds, struck by a tiny click.
