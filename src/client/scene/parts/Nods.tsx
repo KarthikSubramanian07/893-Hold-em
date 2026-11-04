@@ -2,34 +2,64 @@
 // from each nodder's seat and settles on the teammate they nodded at. It
 // glows bright as the nods turn over, then rests as a faint line through the
 // call and the showdown, so you can always read who vouched for whom.
+//
+// Each thread's geometry is built once, when it appears: a thin tube along
+// the bow. Growing it is a draw range and glowing it is a material colour, so
+// no frame allocates anything or re-uploads a buffer to the GPU.
 
-import { Line } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { NodThread } from '../derive';
 import type { Vec3 } from '../layout';
 import { damp, useLive } from '../live';
 import { PALETTE } from '../palette';
 
-const SEGMENTS = 24;
+const TUBULAR = 40;
+const RADIAL = 5;
+const RADIUS = 0.0055;
 const GOLD = new THREE.Color(PALETTE.kin);
-
-type Line2Like = THREE.Mesh & {
-  geometry: { setPositions: (a: ArrayLike<number>) => void };
-  material: THREE.Material & { opacity: number; color: THREE.Color; linewidth: number };
-};
 
 function Thread({ from, to, order }: { from: Vec3; to: Vec3; order: number }) {
   const live = useLive();
-  const ref = useRef<Line2Like>(null);
+  const mesh = useRef<THREE.Mesh>(null);
   const st = useRef({ born: -1, o: 0, grow: 0 });
-  const pts = useMemo(() => new Float32Array((SEGMENTS + 1) * 3), []);
-  const initial = useMemo(() => Array.from({ length: SEGMENTS + 1 }, () => [0, 0, 0] as [number, number, number]), []);
+
+  const geometry = useMemo(() => {
+    // A bow: up from the nodder, over, and down onto the nodded seat.
+    const dist = Math.hypot(to.x - from.x, to.z - from.z);
+    const rise = 0.18 + dist * 0.16;
+    const a = new THREE.Vector3(from.x, from.y + 0.04, from.z);
+    const b = new THREE.Vector3(to.x, to.y + 0.04, to.z);
+    const mid = a.clone().lerp(b, 0.5);
+    mid.y += rise * 2; // the control point sits twice as high as the curve's peak
+    return new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(a, mid, b), TUBULAR, RADIUS, RADIAL, false);
+  }, [from.x, from.y, from.z, to.x, to.y, to.z]);
+
+  const material = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        color: GOLD.clone(),
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        toneMapped: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    [],
+  );
+
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
 
   useFrame(({ clock }, dt) => {
-    const line = ref.current;
-    if (!line) return;
+    const m = mesh.current;
+    if (!m) return;
     const now = clock.elapsedTime;
     const s = st.current;
     if (s.born < 0) s.born = now + order * 0.18;
@@ -37,28 +67,16 @@ function Thread({ from, to, order }: { from: Vec3; to: Vec3; order: number }) {
     const flash = age > 0 ? Math.max(0, 1 - age / 2.4) : 0;
     s.grow = live.reducedMotion ? 1 : damp(s.grow, age > 0 ? 1 : 0, 3.2, dt);
     s.o = damp(s.o, age > 0 ? 0.28 + 0.6 * flash : 0, 4, dt);
-    line.visible = s.o > 0.004 && s.grow > 0.01;
-    if (!line.visible) return;
-
-    // A bow: up from the nodder, over, and down onto the nodded seat.
-    const dist = Math.hypot(to.x - from.x, to.z - from.z);
-    const rise = 0.18 + dist * 0.16;
-    const sway = live.reducedMotion ? 0 : Math.sin(now * 0.7 + order) * 0.012;
-    for (let i = 0; i <= SEGMENTS; i++) {
-      const t = (i / SEGMENTS) * s.grow;
-      const k = i * 3;
-      pts[k] = from.x + (to.x - from.x) * t;
-      pts[k + 1] = from.y + 0.04 + (to.y - from.y) * t + rise * Math.sin(Math.PI * t) + sway * Math.sin(Math.PI * t);
-      pts[k + 2] = from.z + (to.z - from.z) * t;
-    }
-    line.geometry.setPositions(pts);
-    const m = line.material;
-    m.color.copy(GOLD).multiplyScalar(1 + flash * 1.6);
-    m.opacity = s.o;
-    m.linewidth = 1.2 + flash * 1.4;
+    m.visible = s.o > 0.004 && s.grow > 0.01;
+    if (!m.visible) return;
+    // Grow along the bow: draw only the first part of the tube's segments.
+    const segments = Math.max(1, Math.round(TUBULAR * Math.min(1, s.grow)));
+    geometry.setDrawRange(0, segments * RADIAL * 6);
+    material.color.copy(GOLD).multiplyScalar(1 + flash * 1.6);
+    material.opacity = s.o;
   });
 
-  return <Line ref={ref as never} points={initial} lineWidth={1.2} transparent depthWrite={false} toneMapped={false} blending={THREE.AdditiveBlending} />;
+  return <mesh ref={mesh} geometry={geometry} material={material} renderOrder={2} />;
 }
 
 export function NodThreads({ nods, anchors, hand }: { nods: NodThread[]; anchors: ReadonlyMap<string, Vec3>; hand: number }) {
