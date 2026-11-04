@@ -18,8 +18,9 @@ pub const MIN_CREW: usize = 2;
 pub const MAX_CREW: usize = 6;
 /// Cards the House shows from the start; the rest stay hidden to the showdown.
 pub const HOUSE_UP: usize = 1;
-/// Last orders: the night ends after this many hands even if the marker never
-/// reached the door or the sirens. Balanced so it almost never comes to that.
+/// Last orders: the night ends after this many hands if the marker hasn't
+/// reached the door or the sirens. The clock is what keeps a crew from
+/// sitting Out forever.
 pub const LAST_ORDERS: u8 = 10;
 /// Seconds the showdown waits for "next" before dealing on.
 pub const SHOWDOWN_SECONDS: u64 = 10;

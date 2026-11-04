@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const path = process.argv[2] ?? 'target/wasm32-unknown-unknown/wasm/examples/wasm_bench.wasm';
 const bytes = readFileSync(path);
 const { instance } = await WebAssembly.instantiate(bytes, {});
-const { bench_score, bench_estimate } = instance.exports;
+const { bench_score, bench_decide } = instance.exports;
 
 function best(fn, passes) {
   let ms = Infinity;
@@ -21,6 +21,6 @@ const N = 4_000_000;
 const scoreMs = best(() => bench_score(N), 6);
 console.log(`wasm size:                   ${(bytes.length / 1024).toFixed(1)} KiB`);
 console.log(`score_best (7 cards):        ${((scoreMs * 1e6) / N).toFixed(1)} ns/hand (incl. 1,024-hand setup)`);
-const REPS = 500;
-const estMs = best(() => bench_estimate(REPS), 4);
-console.log(`estimate (2000, 3 House):    ${((estMs * 1e3) / REPS).toFixed(1)} µs`);
+const REPS = 200;
+const decideMs = best(() => bench_decide(REPS), 4);
+console.log(`regular nod + call (6 seats): ${((decideMs * 1e3) / REPS).toFixed(1)} µs`);

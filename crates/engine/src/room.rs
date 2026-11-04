@@ -11,7 +11,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::bot::{Temperament, decide};
+use crate::bot::{Decision, Temperament, decide};
 use crate::card::Rng;
 use crate::game::{Game, GameError, Ms, Phase, Stance};
 use crate::rules::Difficulty;
@@ -46,6 +46,8 @@ pub enum ClientMessage {
         seat: String,
     },
     Start,
+    /// Nod at a teammate's seat, or pass (`None`).
+    Nod(Option<String>),
     Call(Stance),
     Next,
     Again,
@@ -139,10 +141,22 @@ pub fn parse(raw: &str) -> Option<ClientMessage> {
             }
         }
         "start" => ClientMessage::Start,
+        "nod" => match o.get("at")? {
+            Value::Null => ClientMessage::Nod(None),
+            v => {
+                let at = v.as_str()?;
+                let ok = at.len() == 2
+                    && at.starts_with('s')
+                    && matches!(at.as_bytes()[1], b'0'..=b'5');
+                if !ok {
+                    return None;
+                }
+                ClientMessage::Nod(Some(at.to_string()))
+            }
+        },
         "call" => ClientMessage::Call(match field("stance").as_str()? {
-            "fold" => Stance::Fold,
-            "stay" => Stance::Stay,
-            "raise" => Stance::Raise,
+            "in" => Stance::In,
+            "out" => Stance::Out,
             _ => return None,
         }),
         "next" => ClientMessage::Next,
@@ -188,7 +202,7 @@ pub struct Room {
     pub game: Game,
     rng: Rng,
     bots: Vec<BotDue>,
-    /// The street (hand, street) bots were last scheduled for.
+    /// The decision (hand, 0 for the nod or 1 for the call) bots were last scheduled for.
     scheduled_for: Option<(u8, u8)>,
     /// Last reaction time per seat, for rate limiting.
     reacted: Vec<(String, Ms)>,
@@ -210,9 +224,8 @@ fn bartender(e: &GameError) -> &'static str {
         GameError::Full => "Every chair is taken. Pull up a stool and watch.",
         GameError::NotHost => "That's the host's call.",
         GameError::TooFew => "You need at least two at the table.",
-        GameError::StakeCapped => "Three is as high as it goes.",
-        GameError::AlreadyLocked => "You already called this street.",
-        GameError::NotActive => "You're out of this hand.",
+        GameError::AlreadyLocked => "You already decided. It's in.",
+        GameError::SelfNod => "Nodding at yourself. Bold. Not allowed.",
         GameError::NotSeated => "You're not at the table.",
         GameError::BadPhase => "Not now.",
     }
@@ -271,6 +284,7 @@ impl Room {
             ClientMessage::Bot { add: false } => self.game.remove_bot(seat),
             ClientMessage::Kick { seat: target } => self.game.kick(seat, &target),
             ClientMessage::Start => self.game.start(seat, now),
+            ClientMessage::Nod(at) => self.game.nod(seat, at.as_deref(), now),
             ClientMessage::Call(stance) => self.game.call(seat, stance, now),
             ClientMessage::Next => self.game.next(seat, now),
             ClientMessage::Again => self.game.again(seat),
@@ -288,8 +302,8 @@ impl Room {
     }
 
     fn react(&mut self, seat: &str, reaction: &str, now: Ms) -> Vec<Effect> {
-        // Silence is the game: no reactions while calls are open.
-        if self.game.phase == Phase::Call {
+        // Silence is the game: no reactions while anyone is deciding.
+        if matches!(self.game.phase, Phase::Nod | Phase::Call) {
             return Vec::new();
         }
         let last = self
@@ -314,7 +328,7 @@ impl Room {
             let due = self.bots.iter().position(|b| b.at <= now);
             let Some(i) = due else { break };
             let b = self.bots.remove(i);
-            if self.game.phase != Phase::Call {
+            if !matches!(self.game.phase, Phase::Nod | Phase::Call) {
                 continue;
             }
             let still_owes = self.game.awaiting().iter().any(|s| s.id == b.seat);
@@ -325,8 +339,15 @@ impl Room {
                 continue;
             };
             let view = view_for(&self.game, Some(&b.seat), now);
-            let stance = decide(&view, &b.seat, Temperament::for_seat(&pid), &mut self.rng);
-            let _ = self.game.call(&b.seat, stance, now);
+            match decide(&view, &b.seat, Temperament::for_seat(&pid), &mut self.rng) {
+                Some(Decision::Nod(at)) => {
+                    let _ = self.game.nod(&b.seat, at.as_deref(), now);
+                }
+                Some(Decision::Call(stance)) => {
+                    let _ = self.game.call(&b.seat, stance, now);
+                }
+                None => {}
+            }
             self.after_change(now);
         }
         self.game.tick(now);
@@ -338,14 +359,14 @@ impl Room {
         }
     }
 
-    /// After any change: when a new street opens, give each regular a human-ish think time.
+    /// After any change: when a new decision opens, give each regular a human-ish think time.
     fn after_change(&mut self, now: Ms) {
-        if self.game.phase != Phase::Call {
+        if !matches!(self.game.phase, Phase::Nod | Phase::Call) {
             self.bots.clear();
             self.scheduled_for = None;
             return;
         }
-        let key = (self.game.hand, self.game.street);
+        let key = (self.game.hand, u8::from(self.game.phase == Phase::Call));
         if self.scheduled_for == Some(key) {
             return;
         }
@@ -417,9 +438,14 @@ mod tests {
             }
         );
         assert_eq!(
-            msg(r#"{"t":"call","stance":"raise"}"#),
-            ClientMessage::Call(Stance::Raise)
+            msg(r#"{"t":"call","stance":"in"}"#),
+            ClientMessage::Call(Stance::In)
         );
+        assert_eq!(
+            msg(r#"{"t":"nod","at":"s2"}"#),
+            ClientMessage::Nod(Some("s2".into()))
+        );
+        assert_eq!(msg(r#"{"t":"nod","at":null}"#), ClientMessage::Nod(None));
         assert_eq!(
             msg(r#"{"t":"config","config":{"difficulty":"oyabun","timer":15}}"#),
             ClientMessage::Config {
@@ -443,6 +469,10 @@ mod tests {
             "null",
             "[]",
             r#"{"t":"call","stance":"allin"}"#,
+            r#"{"t":"call","stance":"raise"}"#,
+            r#"{"t":"nod","at":"s7"}"#,
+            r#"{"t":"nod","at":3}"#,
+            r#"{"t":"nod"}"#,
             r#"{"t":"hello","pid":"short"}"#,
             r#"{"t":"hello","pid":"has spaces in it"}"#,
             r#"{"t":"kick","seat":"s9"}"#,
@@ -486,10 +516,14 @@ mod tests {
         assert_eq!(r.game.bots_to_act().len(), 2);
         r.wake(8_000);
         assert!(r.game.bots_to_act().is_empty());
-        // The street waits on the human.
-        assert_eq!(r.game.street, 0);
-        r.handle(Some(&me), ClientMessage::Call(Stance::Stay), 8_100);
-        assert!(r.game.street == 1 || r.game.phase != Phase::Call);
+        // The nod waits on the human.
+        assert_eq!(r.game.phase, Phase::Nod);
+        r.handle(Some(&me), ClientMessage::Nod(None), 8_100);
+        assert_eq!(r.game.phase, Phase::Call);
+        // A new decision gets fresh think times.
+        assert_eq!(r.game.bots_to_act().len(), 2);
+        r.wake(20_000);
+        assert!(r.game.bots_to_act().is_empty());
     }
 
     #[test]
@@ -503,17 +537,17 @@ mod tests {
     fn reactions_are_silenced_during_calls_and_rate_limited() {
         let (mut r, me) = room_with_bots();
         assert_eq!(
-            r.handle(Some(&me), ClientMessage::React("nod".into()), 0)
+            r.handle(Some(&me), ClientMessage::React("wink".into()), 0)
                 .len(),
             1
         );
         assert!(
-            r.handle(Some(&me), ClientMessage::React("nod".into()), 100)
+            r.handle(Some(&me), ClientMessage::React("wink".into()), 100)
                 .is_empty()
         );
         r.handle(Some(&me), ClientMessage::Start, 1_000);
         assert!(
-            r.handle(Some(&me), ClientMessage::React("nod".into()), 5_000)
+            r.handle(Some(&me), ClientMessage::React("wink".into()), 5_000)
                 .is_empty()
         );
     }
@@ -538,8 +572,11 @@ mod tests {
             now += 500;
             r.wake(now);
             match r.game.phase {
+                Phase::Nod if r.game.awaiting().iter().any(|s| s.id == me) => {
+                    r.handle(Some(&me), ClientMessage::Nod(None), now);
+                }
                 Phase::Call if r.game.awaiting().iter().any(|s| s.id == me) => {
-                    r.handle(Some(&me), ClientMessage::Call(Stance::Stay), now);
+                    r.handle(Some(&me), ClientMessage::Call(Stance::In), now);
                 }
                 Phase::Showdown => {
                     r.handle(Some(&me), ClientMessage::Next, now);

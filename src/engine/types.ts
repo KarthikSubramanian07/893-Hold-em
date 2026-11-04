@@ -106,7 +106,7 @@ export type HandOutcome = 'crew' | 'house' | 'tie' | 'walked';
 
 export interface HandResult {
   outcome: HandOutcome;
-  /** Steps the marker moved: +1 per player In on a win, -1 per player In on a loss, 0 on a tie, -1 if everyone was Out. */
+  /** Steps the marker moved: +1 per player In on a win, -1 per player In on a loss, 0 on a tie or when everyone was Out. */
   moved: number;
   /** Seat ids that were In. */
   ins: string[];

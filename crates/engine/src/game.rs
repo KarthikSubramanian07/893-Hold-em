@@ -7,6 +7,7 @@
 //! 3. After the river, everyone picks In or Out at once.
 //! 4. The best hand that's In against the House: a win moves the marker one
 //!    step toward the door per player in, a loss one step toward the sirens.
+//!    Everyone Out moves nothing, but the clock runs: ten hands to the door.
 //!
 //! `Game` is the whole truth, including every hidden card. It is pure: time is
 //! passed in as epoch milliseconds, randomness comes from the seeded `Rng` it
@@ -676,8 +677,8 @@ impl Game {
             Outcome::Crew => n,
             Outcome::House => -n,
             Outcome::Tie => 0,
-            // An empty table is a bad look.
-            Outcome::Walked => -1,
+            // Nobody risked anything; the clock still runs.
+            Outcome::Walked => 0,
         };
         self.meter += moved;
 
@@ -958,14 +959,15 @@ mod tests {
     }
 
     #[test]
-    fn everyone_out_costs_one_step() {
+    fn everyone_out_moves_nothing_but_the_clock_runs() {
         let (mut g, ids) = table_of(2, 0);
         g.start(&ids[0], 0).unwrap();
         all_pass(&mut g, &ids, 1);
         all_call(&mut g, &ids, Stance::Out, 2);
         let r = g.result.clone().unwrap();
         assert_eq!(r.outcome, Outcome::Walked);
-        assert_eq!(g.meter, -1);
+        assert_eq!(g.meter, 0);
+        assert_eq!(g.history.len(), 1);
         assert_eq!(g.phase, Phase::Showdown);
     }
 
