@@ -4,7 +4,7 @@ import type { Reaction } from '../../protocol';
 export const REACTION_LABEL: Record<Reaction, string> = {
   clink: 'Kanpai',
   smoke: 'Sigh',
-  nod: 'Nod',
+  wink: 'Wink',
   bow: 'Bow',
   fire: 'Hot hand',
   ghost: 'Spooked',
@@ -25,11 +25,11 @@ const PATHS: Record<Reaction, string[]> = {
     'M14.6 20.4c-1.8-1.3-1.9-2.8-.4-4.2 1.5-1.4 1.3-2.9-.3-4.2',
     'M17.8 8.2c1.2-.4 1.9-1.2 1.6-2.3',
   ],
-  nod: [
-    'M12 12.6a3.9 3.9 0 1 0 0-7.8 3.9 3.9 0 0 0 0 7.8z',
-    'M5.2 19.6c1.5-2.3 4-3.6 6.8-3.6s5.3 1.3 6.8 3.6',
-    'M19.4 6.4c.9 1.2 1.2 2.6.9 4',
-    'M19.2 10.6l1.1-.3.4 1.1',
+  wink: [
+    'M12 20.4a8.4 8.4 0 1 0 0-16.8 8.4 8.4 0 0 0 0 16.8z',
+    'M9.2 9.6v1.6',
+    'M13.4 10.6c.9-.7 2-.7 2.9 0',
+    'M8.6 14.4c1.9 1.8 4.9 1.8 6.8 0',
   ],
   bow: [
     'M7.6 9.8a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8z',
