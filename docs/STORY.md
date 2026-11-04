@@ -118,7 +118,7 @@ printed notice, sealed 胴元: *dōmoto*, the bank in Japanese gambling.
 
 | Role | Mask | Who wears it |
 | --- | --- | --- |
-| The House | **Okina** 翁, the sacred old man of noh | **The Oyabun himself.** Soft-spoken, grandfatherly, and the reason the whole street is quiet after midnight. He holds five cards and plays the best of them. He always has. |
+| The House | **Okina** 翁, the sacred old man of noh | **The Oyabun himself.** Soft-spoken, grandfatherly, and the reason the whole street is quiet after midnight. He holds the most cards and plays the best five of them. He always has. |
 | Family | **Hannya** 般若 | At his left. |
 | Family | **Kitsune** 狐 | At his right. |
 
@@ -161,7 +161,7 @@ one." "Encore."). Otherwise they keep quiet.
 ## 7. The chapters
 
 The three tables are three chapters of one debt, with the House's hand growing
-(three cards, then four, then five). Each opens with the Master and ends with one
+(the House holds more cards at each one). Each opens with the Master and ends with one
 of three epilogues: clean getaway, raid, or last orders at dawn. The lines
 below are the voice to write toward; `lines.ts` holds the banks in play.
 Clearing a chapter (any clean getaway at that table) unlocks its first clean
@@ -201,7 +201,7 @@ again."
 ### 第三章 · 親分 · The Old Man Upstairs
 
 The room at the top of the stairs, with tatami and the one good chair. The
-House holds five cards here.
+House holds four or five cards here.
 
 **Intro** (one of): "Top of the stairs. The room with the tatami and the one
 good chair. He's already sitting." / "The Oyabun plays his own hand. Five
@@ -308,7 +308,7 @@ played, and eggs found.
 | 終 | Last Orders | Ten hands, and the shutters came down. | The night ends at dawn. |
 | 化物 | Never Knew | A straight or better in your hands, unseen until the end. | Your own hand turns over as a straight or better. |
 | 惜 | So Close | Out, holding the winner. Your crew saw it coming. | Go Out with a hand that beat the House, when the crew didn't win. |
-| 幽霊 | Ghosts | Everyone Out. The street noticed anyway. | Everyone sits a hand out. |
+| 幽霊 | Ghosts | Everyone Out. The clock didn’t care. | Everyone sits a hand out. |
 | 八九三 | Ya-ku-za | Eight, nine, three. The worst hand, and it carried. | Carry a hand while your hole cards and the board hold an 8, a 9 and a 3, with at least one in your hand. |
 | 王 | Royal | Ten to the ace, one suit, our side. | Carry with a royal flush. |
 | 梟 | Night Owl | Played at three in the morning. The real one. | Play between 3:00 and 3:59, local time. |

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { BALANCE, HOUSE_CARDS, HOUSE_UP, LAST_ORDERS, MAX_CREW, MIN_CREW, doorFor, sirensFor } from './rules';
+import { BALANCE, HOUSE, HOUSE_UP, LAST_ORDERS, MAX_CREW, MIN_CREW, doorFor, sirensFor } from './rules';
 
 const rust = readFileSync(fileURLToPath(new URL('../../crates/engine/src/rules.rs', import.meta.url)), 'utf8');
 
@@ -20,10 +20,13 @@ describe('rules mirror crates/engine/src/rules.rs', () => {
   });
 
   it('agrees on how many cards the House holds', () => {
-    for (const [d, n] of Object.entries(HOUSE_CARDS)) {
-      const name = d.charAt(0).toUpperCase() + d.slice(1);
-      expect(rust).toMatch(new RegExp(`Difficulty::${name} => ${n},`));
-    }
+    const start = rust.indexOf('= [', rust.indexOf('pub const HOUSE:'));
+    const block = rust.slice(start, rust.indexOf('\n];', start));
+    const rows = block
+      .split('\n')
+      .filter((l) => l.trim().startsWith('['))
+      .map((l) => [...l.matchAll(/\d+/g)].map((m) => Number(m[0])));
+    expect(rows).toEqual([HOUSE.shitamachi, HOUSE.kabukicho, HOUSE.oyabun]);
   });
 
   it('agrees on the door and sirens table', () => {

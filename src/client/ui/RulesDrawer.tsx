@@ -36,7 +36,7 @@ export function RulesContent() {
         <ol className="rules__steps">
           <li>
             <b>The deal.</b> Two cards each, facing out. You see every teammate&rsquo;s cards and never your own. The House
-            holds three, four or five cards by table and shows one of them.
+            holds three to five cards, more at the harder tables and for bigger crews, and shows one of them.
           </li>
           <li>
             <b>The flop and the nod.</b> Three board cards turn. Each player may nod at one teammate, meaning
@@ -62,7 +62,7 @@ export function RulesContent() {
               <span>Win: the marker moves one step toward the door for every player In.</span>
               <span>Lose: one step toward the sirens for every player In.</span>
               <span>Tie: the marker stays put.</span>
-              <span>Everyone Out: one step toward the sirens. Sitting on your hands still gets noticed.</span>
+              <span>Everyone Out: nothing moves, but the clock runs. There are only {LAST_ORDERS} hands.</span>
             </span>
           </li>
         </ol>

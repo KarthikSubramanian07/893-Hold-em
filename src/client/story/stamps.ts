@@ -65,7 +65,7 @@ export const STAMPS: readonly Stamp[] = [
   { id: 'last-orders', kanji: '終', name: 'Last Orders', verse: 'Ten hands, and the shutters came down.', shape: 'round' },
   { id: 'never-knew', kanji: '化物', name: 'Never Knew', verse: 'A straight or better in your hands, unseen until the end.', shape: 'round' },
   { id: 'so-close', kanji: '惜', name: 'So Close', verse: 'Out, holding the winner. Your crew saw it coming.', shape: 'round' },
-  { id: 'ghosts', kanji: '幽霊', name: 'Ghosts', verse: 'Everyone Out. The street noticed anyway.', shape: 'round' },
+  { id: 'ghosts', kanji: '幽霊', name: 'Ghosts', verse: 'Everyone Out. The clock didn’t care.', shape: 'round' },
   { id: 'yakuza', kanji: '八九三', name: 'Ya-ku-za', verse: 'Eight, nine, three. The worst hand, and it carried.', shape: 'square' },
   { id: 'royal', kanji: '王', name: 'Royal', verse: 'Ten to the ace, one suit, our side.', shape: 'round' },
   { id: 'night-owl', kanji: '梟', name: 'Night Owl', verse: 'Played at three in the morning. The real one.', shape: 'round' },

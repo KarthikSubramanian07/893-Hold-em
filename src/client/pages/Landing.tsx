@@ -277,7 +277,7 @@ function Track() {
         </h2>
         <p className="sec-head__sub">
           Win a hand and the marker moves toward the door, one step for every player In. Lose and it slides toward the sirens
-          the same way. Everyone Out costs a step. Reach the door for a clean getaway. Reach the sirens and the bar is raided.
+          the same way. Everyone Out moves nothing, but the clock runs. Reach the door for a clean getaway. Reach the sirens and the bar is raided.
           After {LAST_ORDERS} hands it is last orders.
         </p>
       </header>

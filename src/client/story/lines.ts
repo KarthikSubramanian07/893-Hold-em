@@ -83,10 +83,10 @@ export const CHAPTERS: Record<Difficulty, Chapter> = {
     name: 'Shitamachi',
     title: 'Small Debts',
     synopsis:
-      'The corner table, the low end of the debt. Okame deals for the family here, holding three cards and smiling at everyone.',
+      'The corner table, the low end of the debt. Okame deals for the family here and smiles at everyone.',
     intro: [
-      'Shitamachi, the forgiving table. Okame holds three cards. Mostly bark.',
-      'The corner table. Small debts. The House holds three. Okame smiles at everyone. Don’t take it personally.',
+      'Shitamachi, the forgiving table. Okame holds the fewest cards. Mostly bark.',
+      'The corner table. Small debts. Okame smiles at everyone. Don’t take it personally.',
     ],
     epilogue: {
       clean: [['Clean getaway. The corner debt is paid. Okame is still smiling, which is either good or terrible.']],
@@ -101,10 +101,10 @@ export const CHAPTERS: Record<Difficulty, Chapter> = {
     name: 'Kabukichō',
     title: 'Every Sign Is Lying',
     synopsis:
-      'The lieutenants come down from the fourth floor. Kitsune deals with four cards up her sleeve and one of them on the table.',
+      'The lieutenants come down from the fourth floor. Kitsune deals with cards up her sleeve and one of them on the table.',
     intro: [
-      'Kabukichō. The fox holds four cards. Every sign outside is lying. So is the fox.',
-      'The lieutenants came down for this. The House holds four. They took the stairs. That’s serious.',
+      'Kabukichō. The fox holds more than you’d like. Every sign outside is lying. So is the fox.',
+      'The lieutenants came down for this. The House holds more here. They took the stairs. That’s serious.',
     ],
     epilogue: {
       clean: [['Clean getaway from Kabukichō. Few crews manage it. The boss has heard your names. Congratulations, I think.']],
@@ -119,9 +119,9 @@ export const CHAPTERS: Record<Difficulty, Chapter> = {
     name: 'Oyabun',
     title: 'The Old Man Upstairs',
     synopsis:
-      'The room at the top of the stairs, with tatami and the one good chair. The Oyabun sits behind the Okina mask and holds five cards.',
+      'The room at the top of the stairs, with tatami and the one good chair. The Oyabun sits behind the Okina mask and holds the most cards.',
     intro: [
-      'The boss’s table. He holds five cards and plays the best of them. Shoes off. He notices.',
+      'The boss’s table. He holds the most cards and plays the best of them. Shoes off. He notices.',
       'Top of the stairs. Five cards in his hand. He drinks only water, which is somehow more frightening.',
     ],
     epilogue: {

@@ -6,7 +6,7 @@
 
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HOUSE_CARDS } from '../../engine/rules';
+import { houseCardsFor } from '../../engine/rules';
 import type { GameView, HandOutcome, Slot } from '../../engine/types';
 import { FIXTURES } from '../dev/fixtures';
 import { installEggs } from '../story/eggs';
@@ -72,7 +72,7 @@ function applyParams(view: GameView, params: URLSearchParams): GameView {
   if (table === 'shitamachi' || table === 'kabukicho' || table === 'oyabun') {
     v.config.difficulty = table;
     if (v.phase !== 'lobby') {
-      const n = HOUSE_CARDS[table];
+      const n = houseCardsFor(table, v.seats.length);
       v.house = { ...v.house, cards: Array.from({ length: n }, (_, i) => v.house.cards[i] ?? (v.phase === 'showdown' ? '2c' : 'back')) };
     }
   }

@@ -20,9 +20,9 @@ Reach the door for a clean getaway. Reach the sirens and the bar gets raided. Af
 
 ## Three tables
 
-- **Shitamachi**, the corner bar: the House holds three cards. About seven nights in ten end clean for a crew that plays well.
-- **Kabukichō**: neon, noise, and a House holding four. About one in two.
-- **Oyabun**, the boss's room: the House holds five. About three in ten.
+- **Shitamachi**, the corner bar: the House holds three or four cards. About seven nights in ten end clean for a crew that plays well.
+- **Kabukichō**: neon, noise, and a House holding three to five. About one in two.
+- **Oyabun**, the boss's room: the House holds four or five. About three in ten.
 
 ## Play
 

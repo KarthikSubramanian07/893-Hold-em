@@ -29,7 +29,7 @@ One link, no accounts. Open a table, send the link, play in a minute.
 3. **After the river, everyone picks In or Out at once.**
 4. **The best hand that's In faces the House.** Win: the marker moves one step
    toward the door per player In. Lose: one step toward the sirens per player In.
-   Tie: no move. Everyone Out: one step toward the sirens.
+   Tie: no move. Everyone Out: no move, but the clock runs.
 
 Reach the door = clean getaway. Reach the sirens = raid. After 10 hands
 ("last orders") the night ends as **dawn**.

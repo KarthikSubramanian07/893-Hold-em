@@ -33,7 +33,7 @@ The rules in four lines:
 1. **Everyone sees every hand but their own.** The House shows one card, and plays its best five with the board.
 2. **After the flop, each player may nod at one teammate**: *you're good*. One nod each per hand, or pass.
 3. **After the river, everyone picks In 入 or Out 出 at once.**
-4. **The best hand that's In faces the House.** Win: the marker moves one step toward the door per player In. Lose: one step toward the sirens per player In. Tie: no move. Everyone Out: one step toward the sirens.
+4. **The best hand that's In faces the House.** Win: the marker moves one step toward the door per player In. Lose: one step toward the sirens per player In. Tie: no move. Everyone Out: no move, but the clock runs.
 
 Reach the door for a clean getaway. Reach the sirens and the bar gets raided. After ten
 hands it's last orders, and the night ends at dawn.

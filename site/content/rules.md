@@ -12,7 +12,7 @@ description: "The complete rules of 893 Hold'em: you see every hand but your own
 1. **Everyone sees every hand but their own.** The House shows one card. It holds 3 cards at Shitamachi, 4 at Kabukichō, 5 at Oyabun, and plays its best five with the board.
 2. **After the flop, each player may nod at one teammate**: "you're good". One nod each per hand, or pass.
 3. **After the river, everyone picks In or Out at once.**
-4. **The best hand that's In faces the House.** Win: the marker moves one step toward the door for every player In. Lose: one step toward the sirens for every player In. Tie: no move. Everyone Out: one step toward the sirens.
+4. **The best hand that's In faces the House.** Win: the marker moves one step toward the door for every player In. Lose: one step toward the sirens for every player In. Tie: no move. Everyone Out: no move, but the clock runs.
 
 Reach the door and you get away clean. Reach the sirens and the bar is raided. After ten hands it is last orders, and the night ends at dawn.
 
@@ -45,6 +45,6 @@ A nod says "I can see your hand, and it looks strong." Three nods on you is a go
 
 ## Tables
 
-- **Shitamachi (下町)**, the corner bar. The House holds three cards. Built so a crew that plays well gets away clean about 70% of the time.
-- **Kabukichō (歌舞伎町)**. The House holds four. About 50%.
-- **Oyabun (親分)**, the boss's room. The House holds five. About 30%.
+- **Shitamachi (下町)**, the corner bar. The House holds three or four cards. Built so a crew that plays well gets away clean about 70% of the time.
+- **Kabukichō (歌舞伎町)**. The House holds three to five. About 50%.
+- **Oyabun (親分)**, the boss's room. The House holds four or five. About 30%.
