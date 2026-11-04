@@ -212,8 +212,8 @@
 }
 
 .mc--xs {
-  --w: 20px;
-  --h: 27px;
+  --w: 22px;
+  --h: 30px;
 }
 
 .mc--lg {
@@ -852,6 +852,11 @@
   align-items: center;
 }
 
+.sd__foot .track {
+  flex: 1 1 260px;
+  max-width: 440px;
+}
+
 /* ---- Receipt ----------------------------------------------------------- */
 
 .rl__ins {
@@ -903,6 +908,15 @@
 @media (max-width: 1100px) {
   .ttag > span {
     display: none;
+  }
+
+  .sd {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'reveal head'
+      'hands hands'
+      'seats seats'
+      'foot foot';
   }
 
   .track {
@@ -1023,7 +1037,7 @@
       'hands'
       'seats'
       'foot';
-    max-height: calc(100dvh - 120px);
+    max-height: calc(100dvh - 180px);
     overflow: auto;
   }
 
@@ -1045,5 +1059,22 @@
 
   .sd__foot {
     justify-content: center;
+  }
+
+  .sd__foot .track {
+    flex-basis: 100%;
+    max-width: none;
+  }
+}
+
+/* Tablets: at the showdown the panel spans the screen, so the reactions tray
+   moves up under the top bar, as it does on a phone. */
+@media (min-width: 761px) and (max-width: 1100px) {
+  .table[data-phase='showdown'] .tray {
+    left: 50%;
+    top: 76px;
+    bottom: auto;
+    grid-auto-flow: column;
+    transform: translateX(-50%);
   }
 }

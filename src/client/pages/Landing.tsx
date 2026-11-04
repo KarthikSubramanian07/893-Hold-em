@@ -161,12 +161,12 @@ function Hero() {
           <Link to={PRACTICE_PATH} className="hero__solo-go" onClick={() => (sfx.unlock(), sfx.click())} onMouseEnter={() => sfx.hover()}>
             Sit with the regulars <IconArrow size={14} />
           </Link>
-          <span className="hero__solo-note">No crew tonight? Learn the calls alone. It all runs in your browser.</span>
+          <span className="hero__solo-note">No crew tonight? Learn the nod with the regulars. It all runs in your browser.</span>
         </p>
 
         <ul className="hero__facts label" aria-label="At a glance">
           <li>2 to 6 players</li>
-          <li>6 hands a night</li>
+          <li>One nod a hand</li>
           <li>One link</li>
           <li>No accounts</li>
         </ul>
