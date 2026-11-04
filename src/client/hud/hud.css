@@ -1920,7 +1920,27 @@
   }
 
   .dock__coach {
+    grid-area: coach;
     font-size: 13px;
+  }
+
+  /* The first-night tip gets its own row. Without these, the desktop rule
+     that drops everything to row 2 stacks the bet on the calls and the clock
+     on the tip. */
+  .dock:has(> .dock__coach) {
+    grid-template-areas:
+      'coach coach'
+      'meta side'
+      'stamps stamps'
+      'status status';
+  }
+
+  .dock:has(> .dock__coach) > .dock__meta {
+    grid-area: meta;
+  }
+
+  .dock:has(> .dock__coach) > .dock__stamps {
+    grid-area: stamps;
   }
 
   .stamp__kanji {
