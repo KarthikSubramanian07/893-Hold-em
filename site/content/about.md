@@ -22,4 +22,4 @@ Most poker pits friends against each other. This one puts them on the same side.
 - The bar is drawn with three.js, and every sound is synthesized in the browser, with no recordings.
 - The balance between take and heat was tuned by simulating thousands of nights.
 
-There are no ads, no purchases, no analytics, and no tracking. See the [privacy page](https://holdem893.pages.dev/privacy) for exactly what the game stores, and the [contact page](https://holdem893.pages.dev/contact) to reach the maker.
+There are no ads, no purchases, no analytics, and no tracking. If you enjoy it, you can [buy the maker a coffee](https://buymeacoffee.com/winnerkarthik); that is the only way it earns anything. See the [privacy page](https://holdem893.pages.dev/privacy) for exactly what the game stores, and the [contact page](https://holdem893.pages.dev/contact) to reach the maker.

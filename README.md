@@ -8,6 +8,8 @@
 
 **[Play at holdem893.pages.dev →](https://holdem893.pages.dev)**
 
+[![Buy me a coffee](https://img.shields.io/badge/tip_the_bar-buy_me_a_coffee-c9a45c?style=flat-square&logo=buymeacoffee&logoColor=white&labelColor=1a1410)](https://buymeacoffee.com/winnerkarthik)
+
 One link, no accounts. Open a table, send the link, and sit down at Bar 893, up a
 staircase too narrow for two in Shinjuku's Golden Gai. It's 3 a.m. It's raining.
 
@@ -197,3 +199,6 @@ are in [`docs/DEPLOY.md`](docs/DEPLOY.md).
 ## License
 
 MIT. Matches for the crew. Strike on box.
+
+The game is free, with no ads and no purchases. The bots don't tip, so if you enjoyed a night at the bar,
+you can [buy the maker a coffee](https://buymeacoffee.com/winnerkarthik).
