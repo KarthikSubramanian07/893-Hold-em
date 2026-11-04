@@ -91,7 +91,7 @@ export function Lantern({ shadows, rest }: { shadows: boolean; rest: Vec3 }) {
     // A candle-ish flicker that never quite repeats, harder when the room is hot.
     const flick =
       1 +
-      (live.reducedMotion ? 0 : 0.035 * Math.sin(t * 9.1) * Math.sin(t * 2.3) + 0.02 * Math.sin(t * 23.7) * (0.5 + live.heat));
+      (live.reducedMotion ? 0 : 0.035 * Math.sin(t * 9.1) * Math.sin(t * 2.3) + 0.02 * Math.sin(t * 23.7) * (0.5 + live.danger));
     const lvl = level.current * flick * lanternGutter(since(live, 'lantern', t));
     mats.paper.emissiveIntensity = 2.4 * lvl;
     mats.halo.opacity = 0.9 * lvl;

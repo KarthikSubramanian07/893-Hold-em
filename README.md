@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="docs/media/hero-showdown.jpg" alt="A showdown at Bar 893: the Kitsune and Tengu masks across a black lacquer table, gold leaf over the winning cards, red eye-lines to the two seats the House caught, and the Master saying: Paid. But Karthik and Mio got seen. The street remembers faces." width="100%" />
+<img src="docs/media/hero-showdown.jpg" alt="A showdown at Bar 893: a masked House across a black lacquer table, gold leaf over the winning cards, and the crew's hands turned face up at last." width="100%" />
 
 # 893 Hold'em
 
-**A co-op poker heist for 2 to 6. Beat the House without saying a word.**
+**A co-op poker heist for 2 to 6. You see every hand but your own. Beat the House with a nod.**
 
 **[Play at holdem893.pages.dev →](https://holdem893.pages.dev)**
 
@@ -25,18 +25,21 @@ staircase too narrow for two in Shinjuku's Golden Gai. It's 3 a.m. It's raining.
 
 ## How a night plays
 
-Your crew sits on one side of the table. The House sits across, one mask for every two of you.
+Your crew sits on one side of the table. The House sits across, in one mask, holding
+3 cards at Shitamachi, 4 at Kabukichō, 5 at Oyabun.
 
-1. **The deal.** Two cards each, face down. Five on the board, turned over street by street.
-2. **The House Rule.** From the second hand, one card flips and bends the hand: Fog hides the river, Mirror shows a mask's card, Bond shares every raise, Reversal makes the weakest hand win. Nine in all. Rumour says there's a tenth.
-3. **Four quiet calls.** Pre-flop, flop, turn, river. Everyone still in picks **Fold 降**, **Stay 待**, or **Raise 攻** in secret, and every call flips at once. That flip is the only conversation you get.
-4. **The showdown.** Two counts, settled together:
-   - **Take 円.** The crew's best hand faces the House's best. Win, and *every* stake still in gets paid, even the trash riding along.
-   - **Heat 熱.** Each mask watches two seats. Lose to the mask watching you and you draw heat, even when the crew wins. You were seen.
+The rules in four lines:
 
-Six hands a night. Reach the take target and you get away clean. Hit the heat limit and the bar gets raided.
+1. **Everyone sees every hand but their own.** The House shows one card, and plays its best five with the board.
+2. **After the flop, each player may nod at one teammate**: *you're good*. One nod each per hand, or pass.
+3. **After the river, everyone picks In 入 or Out 出 at once.**
+4. **The best hand that's In faces the House.** Win: the marker moves one step toward the door per player In. Lose: one step toward the sirens per player In. Tie: no move. Everyone Out: one step toward the sirens.
 
-A raise says *I'm carrying this one*. Riding it turns your heat into the crew's take. Whether that's a good trade depends on the night, and you can't talk about it.
+Reach the door for a clean getaway. Reach the sirens and the bar gets raided. After ten
+hands it's last orders, and the night ends at dawn.
+
+The showdown is the moment: every card flips, and you see your own hand for the first
+time. *You had a flush the whole time.* Your crew knew. That's why they nodded.
 
 ## The bar
 
@@ -59,8 +62,8 @@ spoilers live in [`docs/STORY.md`](docs/STORY.md). The rules and the art directi
 ```mermaid
 flowchart LR
   subgraph Browser["Your browser"]
-    HUD["React 19 HUD<br/>washi paper, calls, receipt"]
-    Scene["three.js night scene<br/>lantern, rain, neon, masks"]
+    HUD["React 19 HUD<br/>washi paper, nod and call dock, receipt"]
+    Scene["three.js night scene<br/>lantern, rain, neon, the House"]
     Story["Story layer<br/>the Master, regulars, stamps"]
     Local["Practice table<br/>src/client/net/local.ts"]
     WasmB["Rust engine as wasm"]
@@ -98,19 +101,22 @@ sequenceDiagram
   participant P as Each player
   participant DO as Table (Durable Object)
   participant E as Rust engine
-  DO->>E: deal hole cards, draw a House Rule
+  DO->>E: deal: two hole cards each, the House's 3 to 5, the flop
   E-->>DO: a private view for every seat
-  DO-->>P: your cards only, never anyone else's
-  loop four rounds: preflop, flop, turn, river
-    P->>DO: a secret call: fold, stay, or raise
-    Note over DO: an alarm fires when the timer runs out,<br/>and the regulars think on their own clock
-    DO->>E: all calls are in
-    E-->>DO: calls turn over together, next card
-    DO-->>P: the new board and everyone's calls
-  end
-  DO->>E: showdown
-  E-->>DO: crew best vs House best, take, heat
-  DO-->>P: the result, and what it did to you
+  DO-->>P: everyone's cards but your own, the House's first card
+  Note over P,DO: nod: tap one teammate ("you're good"), or pass
+  P->>DO: nod at a seat, or pass
+  Note over DO: an alarm passes for anyone the clock runs out on,<br/>and the regulars think on their own clock
+  DO->>E: every nod is in
+  E-->>DO: nods turn over together, turn and river dealt
+  DO-->>P: who nodded at whom, all five board cards
+  Note over P,DO: call: In or Out, all at once
+  P->>DO: In or Out
+  DO->>E: every call is in
+  E-->>DO: showdown: best hand In vs the House's best five
+  DO-->>P: every card face up, yours for the first time
+  E-->>DO: marker moves: one step per player In, toward the door or the sirens
+  DO-->>P: the marker, the door, the sirens, or the next hand
 ```
 
 ### Where the code lives
@@ -120,7 +126,7 @@ crates/
   engine/    Rust. Cards, a seeded RNG, a bit-sliced 7-card evaluator, Monte Carlo
              odds, the night state machine, per-seat redaction, and the regulars.
   wasm/      wasm-bindgen bindings: one package for the Worker, the browser, and tests.
-  sim/       Self-play simulator that tunes heat limits and take targets.
+  sim/       Self-play simulator that tunes the track to the door and the sirens.
 worker/      The rooms Durable Object: hibernating sockets, storage, alarms.
 functions/   Pages Functions: the room forwarder and the agent-friendly middleware.
 site/        Markdown pages, built into HTML, .md, llms.txt, and the sitemap.
@@ -136,8 +142,8 @@ src/
 | **Bindings** | `crates/wasm` | `wasm-bindgen` `Table`: JSON strings in, JSON strings out. One package runs in the Worker, the browser, and the tests. |
 | **Rooms** | `worker/index.ts` | A thin Durable Object: hibernating WebSockets, SQLite-backed storage after every change, one alarm for call timers, regulars' think time, and the showdown. |
 | **Edge** | `functions/room/[code].ts` | A Pages Function that forwards `/room/<code>` to the private Worker over a service binding, so players only ever see the Pages URL. |
-| **Client** | `src/client` | React 19 HUD on washi paper, a three.js night scene (lantern, rain, neon, masks), synthesized sound, the story layer, stamps, and easter eggs. |
-| **Simulator** | `crates/sim` | Plays thousands of all-regular nights to tune heat limits and take targets per table and crew size. |
+| **Client** | `src/client` | React 19 HUD on washi paper, a three.js night scene (lantern, rain, neon, the masked House), synthesized sound, the story layer, stamps, and easter eggs. |
+| **Simulator** | `crates/sim` | Plays thousands of all-regular nights to tune the door and sirens distances per table and crew size. |
 
 Why Rust here: the hand evaluator and the regulars' Monte Carlo run inside a Worker with a
 CPU budget per message, the rules have to be identical on the server, in the browser's

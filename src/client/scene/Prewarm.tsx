@@ -3,7 +3,7 @@
 // Masks and card faces are painted on canvases and cached, which is cheap on
 // a desktop but costs a phone several seconds of dropped frames if it all
 // happens at the deal. While the crew sits in the lobby, this paints the
-// table's masks, the card backs, and every card face one at a time in idle
+// table's mask, the card backs, and every card face one at a time in idle
 // moments, and uploads each to the GPU, so the deal itself only has to draw.
 
 import { useThree } from '@react-three/fiber';
@@ -12,20 +12,18 @@ import type * as THREE from 'three';
 import { RANKS, SUITS, type Card, type Difficulty } from '../../engine/types';
 import { maskFor } from '../story/masks';
 import { cardGlowTexture, cardTexture } from './textures/cards';
-import { maskTexture, seenTexture } from './textures/masks';
+import { maskTexture } from './textures/masks';
 
 /** The textures a night at `table` will ask for, most urgent first. */
 export function prewarmTasks(table: Difficulty): (() => THREE.Texture)[] {
-  const masks = new Set<string>();
-  for (let i = 0; i < 4; i++) masks.add(maskFor(table, i, null, 4).id);
-  masks.add(maskFor(table, 3, 'oni', 4).id);
+  const masks = new Set<string>([maskFor(table, 0).id]);
   const cards: Card[] = RANKS.flatMap((r) => SUITS.map((s) => `${r}${s}` as Card));
   return [
     ...[...masks].map((id) => () => maskTexture(id as Parameters<typeof maskTexture>[0])),
     () => cardTexture('back'),
+    () => cardTexture('mystery'),
     () => cardTexture('blank'),
     () => cardGlowTexture(),
-    () => seenTexture(),
     ...cards.map((c) => () => cardTexture(c)),
   ];
 }

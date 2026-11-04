@@ -1,8 +1,8 @@
 // Reading a GameView for story beats. Shared by the narrator (what everyone at
 // the table hears) and the stamps (what you, personally, earned). Pure.
 
-import type { Card, GameView, HandValue, RuleId, SeatView, Slot } from '../../engine/types';
-import type { HeatMark, ShowdownKind } from './types';
+import type { Card, GameView, HandValue, HistoryEntry, SeatView, Slot } from '../../engine/types';
+import type { MarkerMark, NodKind, ShowdownKind } from './types';
 
 export function realCards(slots: readonly Slot[]): Card[] {
   return slots.filter((s): s is Card => s !== null && s !== 'back');
@@ -41,89 +41,81 @@ export function championSeat(view: GameView): SeatView | null {
   return view.seats.find((s) => s.champion) ?? null;
 }
 
-export function houseChampionIndex(view: GameView): number {
-  const i = view.house.findIndex((h) => h.champion);
-  return i < 0 ? 0 : i;
+const MONSTER: ReadonlySet<HandValue['category']> = new Set(['straight', 'flush', 'full-house', 'quads', 'straight-flush']);
+
+/** A hand worth a fuss when it turns over: a straight or better. */
+export function isMonster(hand: HandValue | null | undefined): boolean {
+  return !!hand && MONSTER.has(hand.category);
 }
 
-export function burned(view: GameView): string[] {
-  return (view.result as { burned?: string[] } | null)?.burned ?? [];
+/** How many nods `id` received this hand (once the nods are public). */
+export function nodsOn(view: GameView, id: string): number {
+  return view.seats.filter((s) => s.nod === id && s.id !== id).length;
 }
 
-const HIGH_RANKS = new Set(['Q', 'K', 'A']);
-
-/**
- * The champion "almost folded": never raised, no pocket pair, nothing above a
- * jack in the hole. Somebody else's raise kept them in, and they carried it.
- */
-export function quietChampion(seat: SeatView): boolean {
-  if (seat.calls.some((c) => c === 'raise')) return false;
-  const hole = realCards(seat.cards);
-  if (hole.length < 2) return false;
-  if (rankOf(hole[0]!) === rankOf(hole[1]!)) return false;
-  return !hole.some((c) => HIGH_RANKS.has(rankOf(c)));
+/** Someone who went Out and would have beaten the House. */
+export function satOut(view: GameView): SeatView | null {
+  const r = view.result;
+  if (!r) return null;
+  return view.seats.find((s) => s.stance === 'out' && r.couldHave.includes(s.id)) ?? null;
 }
-
-/** An active rider, not the champion, with nothing but a high card. */
-export function trashRider(view: GameView): SeatView | null {
-  return view.seats.find((s) => s.active && !s.champion && s.hand?.category === 'high') ?? null;
-}
-
-const LOWBALL: ReadonlySet<RuleId> = new Set(['gyaku']);
 
 /** The single most story-worthy reading of a resolved hand. */
 export function classifyShowdown(view: GameView): { kind: ShowdownKind; seat?: SeatView } {
   const r = view.result;
   if (!r) throw new Error('classifyShowdown needs a result');
-  const lowball = view.rule !== null && LOWBALL.has(view.rule);
   const champ = championSeat(view);
 
-  if (r.outcome === 'walked') return { kind: 'walked' };
-  if (!lowball && (isRoyal(r.crewBest) || isRoyal(r.houseBest))) return { kind: 'royal' };
+  if (isRoyal(r.crewBest) || isRoyal(r.houseBest)) return { kind: 'royal' };
   if (champ && playedYakuza(champ, view.board)) return { kind: 'yakuza', seat: champ };
-  if (!lowball && r.outcome === 'house' && r.crewBest && BIG.has(r.crewBest.category)) return { kind: 'bad-beat' };
-  if (view.rule === 'hebi' && r.outcome === 'house' && r.crewBest && r.crewBest.score === r.houseBest.score) {
-    return { kind: 'serpent' };
+  if (r.outcome !== 'crew') {
+    const out = satOut(view);
+    if (out) return { kind: 'sat-out', seat: out };
   }
-  if (lowball && r.outcome === 'crew') return { kind: 'reversal' };
+  if (r.outcome === 'walked') return { kind: 'walked' };
+  if (r.outcome === 'house' && r.crewBest && BIG.has(r.crewBest.category)) return { kind: 'bad-beat' };
   if (r.outcome === 'crew') {
-    const actives = view.seats.filter((s) => s.active);
-    if (champ && actives.length > 1 && quietChampion(champ)) return { kind: 'quiet-champion', seat: champ };
-    const rider = lowball ? null : trashRider(view);
-    if (rider) return { kind: 'trash-rider', seat: rider };
-    if (burned(view).length > 0) return { kind: 'seen' };
+    if (r.ins.length >= 2 && r.ins.length === view.seats.length) return { kind: 'all-in', seat: champ ?? undefined };
+    if (champ && nodsOn(view, champ.id) === 0 && view.seats.length > 2) return { kind: 'blind-carry', seat: champ };
+    if (champ && nodsOn(view, champ.id) > 0) return { kind: 'nodded-carry', seat: champ };
   }
+  if (Math.abs(r.moved) >= 4) return { kind: 'big-swing' };
   return { kind: r.outcome };
 }
 
-/** The heat thresholds for a limit: half, three quarters, and one away. */
-export function heatMarks(limit: number): Record<HeatMark, number> {
-  return {
-    half: Math.ceil(limit / 2),
-    'three-quarters': Math.ceil(limit * 0.75),
-    'one-away': limit - 1,
-  };
-}
-
-/** The highest heat mark crossed going from `from` to `to`, short of the raid itself. */
-export function heatCrossed(from: number, to: number, limit: number): HeatMark | null {
-  if (to <= from || to >= limit) return null;
-  const m = heatMarks(limit);
-  for (const mark of ['one-away', 'three-quarters', 'half'] as const) {
-    if (m[mark] > 0 && from < m[mark] && to >= m[mark]) return mark;
+/** What the nods said, if anything worth a word, once they turn over. */
+export function nodKind(view: GameView): { kind: NodKind; seats: SeatView[] } | null {
+  const nods = view.seats.filter((s) => s.nod && s.nod !== s.id);
+  if (nods.length === 0) return view.seats.length >= 2 ? { kind: 'all-pass', seats: [] } : null;
+  // Everyone but one seat nodded at that seat.
+  for (const who of view.seats) {
+    const at = nods.filter((s) => s.nod === who.id).length;
+    if (at >= 2 && at === view.seats.length - 1) return { kind: 'pile-on', seats: [who] };
+  }
+  for (const a of nods) {
+    const b = view.seats.find((s) => s.id === a.nod);
+    if (b && b.nod === a.id && a.id < b.id) return { kind: 'mutual', seats: [a, b] };
   }
   return null;
 }
 
-/**
- * Whose cards the Fox turned over. Everyone sees the same revealed seat face up;
- * if no other seat shows real cards, the exposed one must be the viewer.
- */
-export function foxSeat(view: GameView): SeatView | null {
-  const shown = view.seats.filter((s) => s.id !== view.you && realCards(s.cards).length > 0);
-  if (shown.length === 1) return shown[0]!;
-  if (shown.length === 0 && view.you) return view.seats.find((s) => s.id === view.you) ?? null;
+/** The marker arriving one step from either end (short of the end itself). */
+export function markerCrossed(prev: Pick<GameView, 'meter' | 'door' | 'sirens'>, next: Pick<GameView, 'meter' | 'door' | 'sirens'>): MarkerMark | null {
+  if (next.meter === prev.meter) return null;
+  if (next.meter === next.door - 1 && prev.meter < next.door - 1) return 'door-near';
+  if (next.meter === -(next.sirens - 1) && prev.meter > -(next.sirens - 1)) return 'sirens-near';
   return null;
+}
+
+/** The lowest the marker went over a night's history (0 if it never dipped). */
+export function lowestMeter(history: readonly Pick<HistoryEntry, 'moved'>[]): number {
+  let m = 0;
+  let low = 0;
+  for (const h of history) {
+    m += h.moved;
+    low = Math.min(low, m);
+  }
+  return low;
 }
 
 /** "Bar 893" tables: a room code with 8, 9, 3 in a row. */

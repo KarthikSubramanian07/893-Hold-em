@@ -1,5 +1,6 @@
-// Your own two cards, held up close to the camera so they are always readable,
-// on any screen, above the HUD at the bottom.
+// Your own two cards, held up close to the camera, above the HUD at the
+// bottom. During a hand they show their backs with a "?": the one hand at the
+// table you can't see. At the showdown they turn over, a beat apart.
 
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef, useState } from 'react';
@@ -10,7 +11,7 @@ import { Card } from './Card';
 
 const DIST = 1.4;
 
-export function HeroCards({ cards, glow, folded }: { cards: Slot[]; glow: boolean[]; folded: boolean }) {
+export function HeroCards({ cards, glow, folded = false }: { cards: Slot[]; glow: boolean[]; folded?: boolean }) {
   const group = useRef<THREE.Group>(null);
   const size = useThree((s) => s.size);
   const aspect = size.width / Math.max(1, size.height);
@@ -47,6 +48,7 @@ export function HeroCards({ cards, glow, folded }: { cards: Slot[]; glow: boolea
             crewGlow={glow[k]}
             dealFrom={[side * 0.3, baseY - px.cardHeight * perPx * 1.2, -DIST]}
             delay={0.15 + k * 0.25}
+            mystery
           />
         );
       })}

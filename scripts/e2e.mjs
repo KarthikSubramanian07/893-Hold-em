@@ -123,7 +123,10 @@ await shot(guest, '03-egg-kanpai-mobile');
 await host.getByRole('button', { name: /start the night/i }).click();
 step('night started');
 
-// Play: both humans call Stay by keyboard; press Next at each showdown.
+// Play: on the flop the host nods by keyboard (N then 1) or passes (P), the
+// guest taps a teammate chip; on the river the host picks In or Out by key
+// (I / O) and the guest taps In. Press Next at each showdown.
+let nods = 0;
 let calls = 0;
 let showdowns = 0;
 let lastShowdown = '';
@@ -135,17 +138,42 @@ while (Date.now() - started < 300_000) {
     [guest, 'guest'],
   ]) {
     const phase = await phaseOf(page);
-    if (phase === 'call') {
-      const stay = page.getByRole('button', { name: /^stay/i });
-      if (await stay.isEnabled().catch(() => false)) {
-        if (calls === 0 && label === 'host') {
+    if (phase === 'nod') {
+      const pass = page.getByRole('button', { name: /^pass/i });
+      if (await pass.isEnabled().catch(() => false)) {
+        if (nods === 0 && label === 'host') {
           await page.waitForTimeout(2500);
+          await watch(page);
+          await shot(page, '04-first-nod');
+          await shot(guest, '04-first-nod-mobile');
+        }
+        if (label === 'host') {
+          if (nods % 3 === 2) await page.keyboard.press('p');
+          else {
+            await page.keyboard.press('n');
+            await page.keyboard.press('1');
+          }
+          nods++;
+        } else {
+          await page.locator('.dock--nod .mate').first().tap().catch(() => page.locator('.dock--nod .mate').first().click());
+        }
+      }
+    }
+    if (phase === 'call') {
+      const inBtn = page.getByRole('button', { name: /^in\b/i });
+      if (await inBtn.isEnabled().catch(() => false)) {
+        if (calls === 0 && label === 'host') {
+          await page.waitForTimeout(2000);
           await watch(page);
           await shot(page, '04-first-call');
           await shot(guest, '04-first-call-mobile');
         }
-        await page.keyboard.press('s');
-        if (label === 'host') calls++;
+        if (label === 'host') {
+          await page.keyboard.press(calls % 4 === 3 ? 'o' : 'i');
+          calls++;
+        } else {
+          await inBtn.tap().catch(() => inBtn.click());
+        }
       }
     }
     if (phase === 'showdown') {
@@ -179,7 +207,7 @@ const verdict = await host
   .getAttribute('class')
   .then((c) => c?.match(/receipt--(\w+)/)?.[1] ?? null)
   .catch(() => null);
-step(`${calls} calls by keyboard, ${showdowns} showdowns, verdict: ${verdict}`);
+step(`${nods} nods and ${calls} calls by keyboard, ${showdowns} showdowns, verdict: ${verdict}`);
 
 step(`narrator spoke ${seen.lines.size} distinct lines; stamp slips: ${[...seen.toasts].join(', ') || 'none'}`);
 if (seen.lines.size < 3) errors.push(`narrator: only ${seen.lines.size} lines seen`);

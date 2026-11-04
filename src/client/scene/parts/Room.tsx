@@ -1,6 +1,6 @@
 // The bar around the table: a rain-streaked window behind the House with the
 // street's neon bleeding through it, dark wood walls, and the police lights
-// that come when the heat gets too high.
+// that come when the marker slides toward the sirens.
 
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
@@ -217,7 +217,7 @@ export function Room() {
     const u = mat.uniforms;
     u.uTime!.value = live.reducedMotion ? t * 0.35 : t;
     u.uNeonLevel!.value = live.neon;
-    u.uHeat!.value = live.heat;
+    u.uHeat!.value = live.danger;
     u.uPolice!.value = live.police;
     // 8-9-3: the signs stutter like a dying ballast, then surge.
     const egg = neonEgg(since(live, 'neon', t));

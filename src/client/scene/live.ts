@@ -9,8 +9,8 @@ import type { SceneTargets } from './derive';
 export interface Live {
   targets: SceneTargets;
   reducedMotion: boolean;
-  /** Smoothed 0..1 values. */
-  heat: number;
+  /** Smoothed 0..1 values. Danger: how close the marker is to the sirens. */
+  danger: number;
   neon: number;
   police: number;
   haze: number;
@@ -32,14 +32,14 @@ export interface Live {
 /** The eggs the room itself reacts to. */
 export type SceneEgg = 'neon' | 'lantern' | 'kanpai' | 'cat' | 'konami';
 
-/** How long after the showdown starts the watchers deliver their verdicts, in seconds. */
+/** How long after the showdown starts the House turns to stare down its seat, in seconds. */
 export const SEEN_DELAY = 1.5;
 
 export function createLive(targets: SceneTargets, reducedMotion: boolean): Live {
   return {
     targets,
     reducedMotion,
-    heat: targets.heat,
+    danger: targets.danger,
     neon: targets.neon,
     police: targets.police,
     haze: 0,

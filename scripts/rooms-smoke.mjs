@@ -25,17 +25,17 @@ function player(name) {
     if (msg.t === 'state') {
       p.view = msg.view;
       p.views++;
-      // Secrecy: outside the showdown, nobody else's hole cards may be visible.
-      const open = msg.view.phase === 'showdown' || msg.view.phase === 'over';
-      if (!open && msg.view.rule !== 'kitsune') {
-        for (const s of msg.view.seats) {
-          if (s.id !== msg.view.you && s.cards.some((c) => c && c !== 'back')) {
-            fail(`${name} saw ${s.name}'s cards: ${s.cards}`);
-          }
+      // Secrecy: during a hand you never see your own cards, the House shows
+      // exactly one, and nobody else's In/Out is visible.
+      const v = msg.view;
+      if (v.phase === 'nod' || v.phase === 'call') {
+        for (const s of v.seats) {
+          if (s.id === v.you && s.cards.some((c) => c && c !== 'back')) fail(`${name} saw their own cards: ${s.cards}`);
+          if (s.id !== v.you && s.stance !== null) fail(`${name} saw ${s.name}'s stance before the showdown`);
+          if (v.phase === 'nod' && s.id !== v.you && s.nod !== null) fail(`${name} saw ${s.name}'s nod early`);
         }
-        for (const h of msg.view.house) {
-          if (msg.view.rule !== 'kagami' && h.cards.some((c) => c && c !== 'back')) fail(`${name} saw a House card`);
-        }
+        const up = v.house.cards.filter((c) => c && c !== 'back').length;
+        if (up !== 1) fail(`${name} saw ${up} House cards face up`);
       }
     }
     for (const w of p.waiters.splice(0)) w();
@@ -77,30 +77,33 @@ a.send({ t: 'bot', op: 'add' });
 a.send({ t: 'bot', op: 'add' });
 await a.until((v) => v.seats.length === 4 && v.config.difficulty === 'shitamachi');
 a.send({ t: 'start' });
-await a.until((v) => v.phase === 'call');
+await a.until((v) => v.phase === 'nod');
 console.log('✓ night started with two regulars');
 
 const started = Date.now();
 let hands = 0;
 while (true) {
-  const v = await a.until((v) => v.phase !== 'call' || v.seats.some((s) => s.id === v.you && s.active && !s.locked) || true);
+  const v = a.view;
   if (v.phase === 'over') break;
   for (const p of [a, b]) {
     const pv = p.view;
     const me = pv.seats.find((s) => s.id === pv.you);
-    if (pv.phase === 'call' && me?.active && !me.locked) p.send({ t: 'call', stance: 'stay' });
+    const mate = pv.seats.find((s) => s.id !== pv.you);
+    if (pv.phase === 'nod' && me && !me.locked) p.send({ t: 'nod', at: pv.hand % 2 ? (mate?.id ?? null) : null });
+    if (pv.phase === 'call' && me && !me.locked) p.send({ t: 'call', stance: 'in' });
     if (pv.phase === 'showdown' && !pv.ready.includes(pv.you)) p.send({ t: 'next' });
   }
-  if (v.phase === 'showdown' && v.hand > hands) {
+  if ((v.phase === 'showdown' || v.phase === 'over') && v.result && v.hand > hands) {
     hands = v.hand;
     const r = v.result;
-    console.log(`  hand ${v.hand}: ${r.outcome}, +${r.take} take, +${r.heat} heat (${r.crewBest?.name ?? 'walked'} vs ${r.houseBest.name})`);
+    const moved = r.moved > 0 ? `+${r.moved}` : String(r.moved);
+    console.log(`  hand ${v.hand}: ${r.outcome}, ${moved} (${r.ins.length} In; ${r.crewBest?.name ?? 'everyone Out'} vs ${r.houseBest.name}), marker ${v.meter}`);
   }
   await new Promise((r) => setTimeout(r, 150));
   if (Date.now() - started > 240_000) fail('night took too long');
 }
 const end = a.view;
-console.log(`✓ night over: ${end.verdict} with ${end.take}/${end.target} take, ${end.heat}/${end.heatLimit} heat`);
+console.log(`✓ night over: ${end.verdict}, marker ${end.meter} (door ${end.door}, sirens -${end.sirens}) after ${end.history.length} hands`);
 if (b.view.verdict !== end.verdict) fail('players disagree on the verdict');
 
 // Reconnect: Ren drops and comes back with the same browser id; the seat holds.

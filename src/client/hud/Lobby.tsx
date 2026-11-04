@@ -1,5 +1,5 @@
 // The menu card on the bar: who's here, which room, how fast. Host runs it.
-import { MAX_CREW, MIN_CREW, TABLES } from '../../engine/rules';
+import { MAX_CREW, MIN_CREW, RULES_IN_FOUR, TABLES, doorFor, sirensFor } from '../../engine/rules';
 import type { Difficulty, GameView, SeatView, TimerSetting } from '../../engine/types';
 import { sfx } from '../audio';
 import { isPracticeCode } from '../net/practice';
@@ -26,6 +26,7 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
   const bots = seats.filter((s) => s.bot).length;
   const full = seats.length >= MAX_CREW;
   const hostName = seats.find((s) => s.host)?.name ?? 'the host';
+  const crew = Math.max(MIN_CREW, seats.length);
 
   return (
     <section className="lobby paper" aria-labelledby="lobby-title">
@@ -111,7 +112,7 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
               const t = TABLES[id];
               const on = view.config.difficulty === id;
               return (
-                <label key={id} className={`room room--${id}${on ? ' is-on' : ''}`}>
+                <label key={id} className={`room room--${id}${on ? ' is-on' : ''}`} title={`The House holds ${t.house} cards. ${doorFor(id, crew)} steps to the door, ${sirensFor(id, crew)} to the sirens.`}>
                   <input
                     type="radio"
                     name="difficulty"
@@ -132,18 +133,30 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
                         <i key={p} className={p <= i ? 'on' : ''} />
                       ))}
                     </span>
-                    {on ? `Need ${view.target} · raid at ${view.heatLimit}` : `${t.odds} clean`}
+                    {`${t.house} cards · ${doorFor(id, crew)}/${sirensFor(id, crew)}`}
                   </span>
                 </label>
               );
             })}
           </div>
-          <p className="lobby__blurb">{TABLES[view.config.difficulty].blurb}</p>
+          <p className="lobby__blurb">
+            {TABLES[view.config.difficulty].blurb} With {crew} players: {doorFor(view.config.difficulty, crew)} steps to the door,{' '}
+            {sirensFor(view.config.difficulty, crew)} to the sirens.
+          </p>
         </fieldset>
+
+        <div className="lobby__field lobby__how">
+          <p className="label lobby__legend">How a hand plays</p>
+          <ol className="lobby__rules">
+            {RULES_IN_FOUR.map((r, i) => (
+              <li key={i}>{r}</li>
+            ))}
+          </ol>
+        </div>
 
         <fieldset className="lobby__field" disabled={!host}>
           <legend className="label lobby__legend">Time to choose</legend>
-          <div className="seg" role="radiogroup" aria-label="Call timer">
+          <div className="seg" role="radiogroup" aria-label="Decision timer">
             {TIMERS.map((t) => (
               <label key={t.v} className={`seg__opt${view.config.timer === t.v ? ' is-on' : ''}`}>
                 <input
@@ -180,7 +193,7 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
               <p className="lobby__fine">
                 {seats.length < MIN_CREW
                   ? 'You need at least two players. Send the link to a friend, or add a bot.'
-                  : `${seats.length} players, six hands. Win ${view.target} take before you reach ${view.heatLimit} heat.`}
+                  : `${seats.length} players. Reach the door (${view.door} steps) before the sirens (${view.sirens}). Last orders after ${view.lastOrders} hands.`}
               </p>
             </>
           ) : (

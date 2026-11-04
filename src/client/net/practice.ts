@@ -15,7 +15,7 @@ export const PRACTICE_PATH = '/practice';
 /** How the bar sets up a practice table before you touch anything. */
 export const PRACTICE_DEFAULTS = {
   regulars: 3,
-  // The easy room, and a long fuse: practice is for learning the calls.
+  // The easy room, and a long fuse: practice is for learning the nod.
   config: { difficulty: 'shitamachi', timer: 60 } satisfies TableConfig,
 } as const;
 

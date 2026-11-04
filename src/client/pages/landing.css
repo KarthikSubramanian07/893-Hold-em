@@ -560,226 +560,6 @@
   transform: rotate(-3deg);
 }
 
-/* ---- The fanned deck -------------------------------------------------- */
-
-.deck {
-  padding-block: clamp(3rem, 7vw, 6rem);
-  border-top: 1px solid var(--hair-strong);
-}
-
-.deck .sec-head {
-  margin-inline: auto;
-  text-align: center;
-  justify-items: center;
-}
-
-.fan {
-  --card-w: 184px;
-  --card-h: 268px;
-  --spread: 8deg;
-  position: relative;
-  height: calc(var(--card-h) + 150px);
-  margin: 0 auto;
-  padding: 0;
-  list-style: none;
-}
-
-.fan__slot {
-  position: absolute;
-  left: 50%;
-  bottom: 24px;
-  width: var(--card-w);
-  height: var(--card-h);
-  margin-left: calc(var(--card-w) / -2);
-  transform-origin: 50% 210%;
-  transform: rotate(calc((var(--i) - (var(--n) - 1) / 2) * var(--spread)));
-  transition: transform 0.5s var(--ease-out);
-}
-
-.fan__slot:hover,
-.fan__slot:focus-within {
-  z-index: 20;
-}
-
-.fan:has(.fan__slot:hover) .fan__slot {
-  --spread: 9.2deg;
-}
-
-.rc {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  perspective: 1000px;
-  text-align: left;
-}
-
-.rc__inner {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  transition: transform 0.7s var(--ease-out);
-}
-
-@media (hover: hover) {
-  .rc:hover .rc__inner {
-    transform: translateY(-46px) rotateY(180deg);
-  }
-}
-
-.rc:focus-visible .rc__inner,
-.rc.is-flipped .rc__inner {
-  transform: translateY(-46px) rotateY(180deg);
-}
-
-.rc:focus-visible {
-  outline: none;
-}
-
-.rc:focus-visible .rc__back {
-  outline: 2px solid var(--shu);
-  outline-offset: 4px;
-}
-
-.rc__face {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  border-radius: 7px;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  box-shadow:
-    0 1px 0 rgb(0 0 0 / 0.08),
-    0 14px 28px -14px rgb(40 30 15 / 0.45);
-}
-
-.rc__front {
-  grid-template-rows: auto 1fr auto auto;
-  justify-items: center;
-  padding: 14px;
-  background: #f8f3e8;
-  border: 1px solid rgb(27 26 23 / 0.18);
-}
-
-.rc__front::before {
-  content: '';
-  position: absolute;
-  inset: 7px;
-  border: 1px solid rgb(27 26 23 / 0.2);
-  border-radius: 4px;
-  pointer-events: none;
-}
-
-.rc--boon .rc__front::before {
-  border-color: rgb(210 65 42 / 0.55);
-}
-
-.rc--wild .rc__front::before {
-  border-color: var(--kin);
-  box-shadow: inset 0 0 0 3px #f8f3e8, inset 0 0 0 4px rgb(201 164 92 / 0.5);
-}
-
-.rc__corner {
-  justify-self: start;
-  font: 600 9px/1 var(--mono);
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-.rc__corner--b {
-  justify-self: end;
-}
-
-.rc__kanji {
-  align-self: center;
-  font-size: 5.4rem;
-  font-weight: 800;
-  line-height: 1;
-  color: var(--sumi);
-}
-
-.rc--boon .rc__kanji {
-  color: var(--shu);
-}
-
-.rc__name {
-  margin-bottom: 0.4rem;
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.rc__back {
-  transform: rotateY(180deg);
-  align-content: start;
-  gap: 0.35rem;
-  padding: 16px 16px 14px;
-  background: var(--sumi);
-  color: var(--washi);
-  border: 1px solid rgb(201 164 92 / 0.45);
-}
-
-.rc__bk {
-  font-size: 1.6rem;
-  font-weight: 800;
-  line-height: 1;
-  color: var(--shu);
-}
-
-.rc__bname {
-  font-size: 1.05rem;
-  font-weight: 800;
-}
-
-.rc__text {
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: rgb(239 232 218 / 0.88);
-}
-
-.rc__flavor {
-  margin-top: 0.2rem;
-  font-size: 12.5px;
-  line-height: 1.4;
-  color: var(--kin);
-}
-
-.rc__kind {
-  position: absolute;
-  left: 16px;
-  bottom: 13px;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font: 600 8.5px/1 var(--mono);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--night-ink-soft);
-}
-
-.rc__kind::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.rc__kind--boon {
-  color: var(--matcha);
-  filter: brightness(1.35);
-}
-
-.rc__kind--bane {
-  color: var(--neon);
-}
-
-.rc__kind--wild {
-  color: var(--kin);
-}
-
 /* ---- Tables ----------------------------------------------------------- */
 
 .tables {
@@ -888,23 +668,6 @@
   font: 600 1.15rem/1 var(--mono);
 }
 
-.plaque__deck {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 0.5rem;
-}
-
-.plaque__deck span {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border: 1px solid var(--hair-strong);
-  font-size: 13px;
-  font-weight: 800;
-}
-
 .plaque--oyabun {
   background: var(--sumi);
   color: var(--washi);
@@ -928,11 +691,6 @@
 
 .plaque--oyabun .plaque__stats {
   border-color: var(--night-hair-strong);
-}
-
-.plaque--oyabun .plaque__deck span {
-  border-color: var(--night-hair-strong);
-  color: var(--kin);
 }
 
 .plaque--oyabun .plaque__pips i.on {
@@ -1319,40 +1077,6 @@
     right: 0;
   }
 
-  /* The fan becomes a hand you can thumb through. */
-  .fan {
-    --card-w: 168px;
-    --card-h: 244px;
-    display: flex;
-    gap: 14px;
-    height: auto;
-    margin-inline: calc(-1 * var(--gutter));
-    padding: 56px var(--gutter) 28px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scroll-padding-inline: var(--gutter);
-    scrollbar-width: none;
-  }
-
-  .fan::-webkit-scrollbar {
-    display: none;
-  }
-
-  .fan__slot {
-    position: relative;
-    left: auto;
-    bottom: auto;
-    flex: 0 0 var(--card-w);
-    margin: 0;
-    transform: rotate(calc((var(--i) - 4) * 0.6deg));
-    scroll-snap-align: start;
-  }
-
-  .rc.is-flipped .rc__inner,
-  .rc:focus-visible .rc__inner {
-    transform: translateY(-30px) rotateY(180deg);
-  }
-
   .quiet {
     grid-template-columns: 1fr;
   }
@@ -1425,4 +1149,133 @@
     animation: none;
     color: var(--neon);
   }
+}
+
+/* ---- The track: one marker between the sirens and the door ------------ */
+
+.track-sec {
+  padding-block: clamp(3rem, 7vw, 6rem);
+  border-top: 1px solid var(--hair-strong);
+}
+
+.track-sec .sec-head {
+  margin-inline: auto;
+  text-align: center;
+  justify-items: center;
+}
+
+.ptrack {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(0.8rem, 2vw, 1.6rem);
+  max-width: 860px;
+  margin: 2.2rem auto 0;
+  padding: clamp(1.2rem, 3vw, 2rem) clamp(1rem, 3vw, 2.2rem);
+  background: var(--sumi);
+  color: var(--night-ink);
+  box-shadow: 0 18px 40px -24px rgb(0 0 0 / 0.6);
+}
+
+.ptrack__end {
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  font: 600 10px/1 var(--mono);
+  letter-spacing: var(--track);
+  text-transform: uppercase;
+}
+
+.ptrack__end b {
+  font: 800 clamp(1.6rem, 4vw, 2.4rem) / 1 var(--serif);
+  letter-spacing: 0;
+}
+
+.ptrack__end--sirens {
+  color: var(--neon);
+}
+
+.ptrack__end--door {
+  color: var(--kin-hi);
+}
+
+.ptrack__rail {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 26px;
+}
+
+.ptrack__rail::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: linear-gradient(90deg, rgb(255 79 109 / 0.7), rgb(239 232 218 / 0.2) 45%, rgb(201 164 92 / 0.75));
+}
+
+.ptrack__rail i {
+  position: relative;
+  width: 1px;
+  height: 10px;
+}
+
+.ptrack__rail i.is-red {
+  background: rgb(255 79 109 / 0.7);
+}
+
+.ptrack__rail i.is-gold {
+  background: rgb(201 164 92 / 0.8);
+}
+
+.ptrack__rail i.is-start {
+  height: 16px;
+  background: var(--night-ink-soft);
+}
+
+.ptrack__marker {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  background: var(--washi);
+  box-shadow:
+    0 0 0 3px var(--sumi),
+    0 0 0 4px var(--washi),
+    0 0 18px rgb(239 232 218 / 0.6);
+  animation: ptrack-drift 9s var(--ease-out) infinite;
+}
+
+@keyframes ptrack-drift {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  30% {
+    transform: translateX(300%);
+  }
+  55% {
+    transform: translateX(-120%);
+  }
+  80% {
+    transform: translateX(160%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ptrack__marker {
+    animation: none;
+  }
+}
+
+.ptrack__note {
+  margin-top: 1rem;
+  text-align: center;
+  color: var(--ink-soft);
 }

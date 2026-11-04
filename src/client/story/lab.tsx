@@ -122,16 +122,13 @@ function NarratorLab() {
     <div className="lab-narrator">
       <div className={`lab-table lab-table--${tone}`}>
         <div className="lab-table__hud">
-          <span>手 {v.hand || '—'}/{v.hands}</span>
-          <span className="lab-gold">円 {v.take}/{v.target}</span>
-          <span className="lab-neon">熱 {v.heat}/{v.heatLimit}</span>
-          {v.rule ? <span>{v.rule}</span> : null}
+          <span>手 {v.hand || '—'}/{v.lastOrders}</span>
+          <span className="lab-neon">警 {v.sirens + Math.min(0, v.meter)}</span>
+          <span className="lab-gold">門 {v.door - v.meter}</span>
+          {v.phase !== 'lobby' ? <span>{v.phase}</span> : null}
         </div>
         <div className="lab-table__masks" aria-hidden="true">
-          {v.house.map((_, i) => {
-            const m = TABLE_MASKS[v.config.difficulty][i] ?? 'oni';
-            return <MaskFace key={i} id={m} />;
-          })}
+          {v.phase !== 'lobby' && <MaskFace id={TABLE_MASKS[v.config.difficulty][0]!} />}
         </div>
         <div className="lab-table__rim" aria-hidden="true" />
         <Narrator key={`${step}-${tone}`} lines={lines} tone={tone} className="lab-table__narrator" />
@@ -217,7 +214,7 @@ function MatchbookLab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const pressSome = () => {
-    const ids: StampId[] = ['first-night', 'corner', 'yakuza', 'ride-or-die', 'close-call', 'night-owl', 'seen', 'the-knock', 'cat'];
+    const ids: StampId[] = ['first-night', 'getaway', 'corner', 'yakuza', 'the-nod', 'close-shave', 'night-owl', 'never-knew', 'the-knock', 'cat'];
     const day = 86_400_000;
     const stamps = Object.fromEntries(ids.map((id, i) => [id, Date.UTC(2026, 9, 20) + i * day]));
     useMatchbook.setState((s) => ({ data: { ...s.data, stamps: { ...s.data.stamps, ...stamps }, cleared: ['shitamachi'], nights: 7 } }));

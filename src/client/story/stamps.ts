@@ -9,29 +9,31 @@
 
 import { create } from 'zustand';
 import type { Difficulty, GameView } from '../../engine/types';
-import { burned, classifyShowdown, isRoyal, playedYakuza } from './analysis';
+import { isMonster, isRoyal, lowestMeter, nodsOn, playedYakuza } from './analysis';
 import { MATCHBOOK_KEY } from './firstVisit';
 
 export { MATCHBOOK_KEY };
 
 export type StampId =
   | 'first-night'
+  | 'getaway'
   | 'corner'
   | 'neon'
   | 'oyabun'
-  | 'yakuza'
-  | 'ride-or-die'
-  | 'lone-rider'
+  | 'the-nod'
+  | 'blind-faith'
+  | 'good-eye'
+  | 'all-in'
+  | 'close-shave'
   | 'sweep'
+  | 'last-orders'
+  | 'never-knew'
+  | 'so-close'
   | 'ghosts'
+  | 'yakuza'
   | 'royal'
-  | 'close-call'
-  | 'under-the-wire'
   | 'night-owl'
-  | 'full-house'
-  | 'snakebit'
-  | 'upside-down'
-  | 'seen'
+  | 'full-bar'
   | 'the-knock'
   | 'regular'
   | 'cat'
@@ -50,22 +52,24 @@ export interface Stamp {
 
 export const STAMPS: readonly Stamp[] = [
   { id: 'first-night', kanji: '初', name: 'First Night', verse: 'Everyone has a first stool.', shape: 'round' },
+  { id: 'getaway', kanji: '逃', name: 'Clean Getaway', verse: 'Out the door before the sirens. Any table counts.', shape: 'round' },
   { id: 'corner', kanji: '下町', name: 'Small Debts', verse: 'The corner table, paid in full.', shape: 'square' },
-  { id: 'neon', kanji: '歌舞伎', name: 'Every Sign Is Lying', verse: 'Out of Kabukichō with money. People don’t.', shape: 'square' },
-  { id: 'oyabun', kanji: '親分', name: 'Oyabun’s Favor', verse: 'He bowed. He has never bowed.', shape: 'square' },
-  { id: 'yakuza', kanji: '八九三', name: 'Ya-ku-za', verse: 'Eight, nine, three. The worst hand, and it paid.', shape: 'square' },
-  { id: 'ride-or-die', kanji: '道連', name: 'Ride or Die', verse: 'Paid, holding the worst hand at the table.', shape: 'round' },
-  { id: 'lone-rider', kanji: '一騎', name: 'Lone Rider', verse: 'Everyone else folded. You went anyway, and won.', shape: 'round' },
-  { id: 'sweep', kanji: '総取', name: 'Clean Sweep', verse: 'Six hands. Six wins. Tell no one.', shape: 'square' },
-  { id: 'ghosts', kanji: '幽霊', name: 'Ghosts', verse: 'Every hand on the felt. The street noticed anyway.', shape: 'round' },
+  { id: 'neon', kanji: '歌舞伎', name: 'Every Sign Is Lying', verse: 'Out of Kabukichō clean. People don’t.', shape: 'square' },
+  { id: 'oyabun', kanji: '親分', name: 'Oyabun’s Favor', verse: 'Five cards in his hand, and he still bowed.', shape: 'square' },
+  { id: 'the-nod', kanji: '頷', name: 'The Nod', verse: 'They nodded at you. You carried it.', shape: 'round' },
+  { id: 'blind-faith', kanji: '盲信', name: 'Blind Faith', verse: 'No nods. In anyway. Carried the crew.', shape: 'round' },
+  { id: 'good-eye', kanji: '目利', name: 'Good Eye', verse: 'Your nod went to the hand that carried.', shape: 'round' },
+  { id: 'all-in', kanji: '総入', name: 'Full House In', verse: 'Every stool In, and the House folded.', shape: 'square' },
+  { id: 'close-shave', kanji: '紙一重', name: 'Close Shave', verse: 'One step from the sirens, then out the door.', shape: 'square' },
+  { id: 'sweep', kanji: '総取', name: 'Clean Sweep', verse: 'Not one step toward the sirens all night.', shape: 'square' },
+  { id: 'last-orders', kanji: '終', name: 'Last Orders', verse: 'Ten hands, and the shutters came down.', shape: 'round' },
+  { id: 'never-knew', kanji: '化物', name: 'Never Knew', verse: 'A straight or better in your hands, unseen until the end.', shape: 'round' },
+  { id: 'so-close', kanji: '惜', name: 'So Close', verse: 'Out, holding the winner. Your crew saw it coming.', shape: 'round' },
+  { id: 'ghosts', kanji: '幽霊', name: 'Ghosts', verse: 'Everyone Out. The street noticed anyway.', shape: 'round' },
+  { id: 'yakuza', kanji: '八九三', name: 'Ya-ku-za', verse: 'Eight, nine, three. The worst hand, and it carried.', shape: 'square' },
   { id: 'royal', kanji: '王', name: 'Royal', verse: 'Ten to the ace, one suit, our side.', shape: 'round' },
-  { id: 'close-call', kanji: '紙一重', name: 'Close Call', verse: 'Clean, by the width of a sheet of paper.', shape: 'square' },
-  { id: 'under-the-wire', kanji: '滑込', name: 'Under the Wire', verse: 'Short until the sixth hand. Then not.', shape: 'round' },
   { id: 'night-owl', kanji: '梟', name: 'Night Owl', verse: 'Played at three in the morning. The real one.', shape: 'round' },
-  { id: 'full-house', kanji: '満席', name: 'Full House', verse: 'Six stools, six people, no regulars.', shape: 'square' },
-  { id: 'snakebit', kanji: '蛇', name: 'Snakebit', verse: 'A tie, under the Serpent. A loss with manners.', shape: 'round' },
-  { id: 'upside-down', kanji: '逆', name: 'Upside Down', verse: 'The worst hand won. The boss smiled.', shape: 'round' },
-  { id: 'seen', kanji: '見', name: 'You Were Seen', verse: 'They got paid. You got remembered.', shape: 'round' },
+  { id: 'full-bar', kanji: '満席', name: 'Full Bar', verse: 'Six stools, six people, no regulars.', shape: 'square' },
   { id: 'the-knock', kanji: '踏込', name: 'The Knock', verse: 'Everyone hears it once. Out the back.', shape: 'square' },
   { id: 'regular', kanji: '常連', name: 'Regular', verse: 'Five nights. The stool knows your shape.', shape: 'square' },
   { id: 'cat', kanji: '九', name: 'Kyū', verse: 'The cat let you pet her. She is the nine.', secret: true, shape: 'round' },
@@ -89,30 +93,30 @@ export function detectStamps(prev: GameView | null, next: GameView, you: string 
   const me = next.seats.find((s) => s.id === you);
   if (!me) return [];
   const out = new Set<StampId>();
-  const playing = next.phase === 'call' || next.phase === 'showdown';
+  const playing = next.phase === 'nod' || next.phase === 'call' || next.phase === 'showdown';
 
   if (playing && (ctx.now ?? new Date()).getHours() === 3) out.add('night-owl');
 
   // The night starts with six people and no bots.
-  const started = next.phase === 'call' && next.hand === 1 && (!prev || prev.phase === 'lobby' || prev.phase === 'over');
-  if (started && next.seats.length === 6 && next.seats.every((s) => !s.bot)) out.add('full-house');
+  const started = next.phase === 'nod' && next.hand === 1 && (!prev || prev.phase === 'lobby' || prev.phase === 'over');
+  if (started && next.seats.length === 6 && next.seats.every((s) => !s.bot)) out.add('full-bar');
 
   // A hand resolves.
   const resolved = next.result !== null && (!prev || prev.result === null || prev.hand !== next.hand);
   if (resolved) {
     const r = next.result!;
-    const { kind } = classifyShowdown(next);
     if (r.outcome === 'walked') out.add('ghosts');
-    if (me.active) {
-      if (r.outcome === 'crew') {
+    if (isMonster(me.hand)) out.add('never-knew');
+    if (me.stance === 'out' && r.couldHave.includes(you) && r.outcome !== 'crew') out.add('so-close');
+    if (r.outcome === 'crew') {
+      if (r.ins.length >= 2 && r.ins.length === next.seats.length) out.add('all-in');
+      if (me.nod && r.crewChampions.includes(me.nod)) out.add('good-eye');
+      if (me.champion) {
+        if (nodsOn(next, you) > 0) out.add('the-nod');
+        else if (next.seats.length > 2) out.add('blind-faith');
         if (playedYakuza(me, next.board)) out.add('yakuza');
-        if (isRoyal(r.crewBest) && next.rule !== 'gyaku') out.add('royal');
-        if (next.rule === 'gyaku') out.add('upside-down');
-        if (next.seats.filter((s) => s.active).length === 1) out.add('lone-rider');
-        if (next.rule !== 'gyaku' && worstAtTable(next, you)) out.add('ride-or-die');
-        if (burned(next).includes(you)) out.add('seen');
+        if (isRoyal(r.crewBest)) out.add('royal');
       }
-      if (kind === 'serpent') out.add('snakebit');
     }
   }
 
@@ -122,23 +126,15 @@ export function detectStamps(prev: GameView | null, next: GameView, you: string 
     out.add('first-night');
     if ((ctx.nights ?? 0) + 1 >= 5) out.add('regular');
     if (next.verdict === 'raid') out.add('the-knock');
+    if (next.verdict === 'dawn') out.add('last-orders');
     if (next.verdict === 'clean') {
+      out.add('getaway');
       out.add(CHAPTER_STAMP[next.config.difficulty]);
-      if (next.heat === next.heatLimit - 1) out.add('close-call');
-      if (next.history.length >= next.hands && next.history.every((h) => h.outcome === 'crew')) out.add('sweep');
-      const last = next.history[next.history.length - 1];
-      if (last && last.take > 0 && next.take - last.take < next.target) out.add('under-the-wire');
+      if (lowestMeter(next.history) <= -(next.sirens - 1)) out.add('close-shave');
+      if (next.history.length >= 2 && next.history.every((h) => h.moved > 0)) out.add('sweep');
     }
   }
   return [...out];
-}
-
-/** Your hand was the weakest of every crew hand on the table, and the crew had more than one. */
-function worstAtTable(view: GameView, you: string): boolean {
-  const hands = view.seats.filter((s) => s.hand);
-  const me = hands.find((s) => s.id === you);
-  if (!me || hands.length < 2) return false;
-  return hands.every((s) => s.id === you || s.hand!.score > me.hand!.score);
 }
 
 // ---------------------------------------------------------------------------

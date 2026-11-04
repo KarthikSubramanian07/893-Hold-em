@@ -1,17 +1,18 @@
 // The night, itemized. Printed on the bar's thermal roll and stamped.
 import type { ReactNode } from 'react';
-import { RULES, TABLES } from '../../engine/rules';
+import { TABLES } from '../../engine/rules';
 import type { GameView, HistoryEntry } from '../../engine/types';
 import { sfx } from '../audio';
 import { Link, navigate } from '../app/router';
-import { amHost, VERDICT_LINE, VERDICT_SUB } from '../net/selectors';
+import { amHost, signed, VERDICT_LINE, VERDICT_SUB } from '../net/selectors';
+import { Track } from './TopBar';
 import { useTable } from '../net/store';
 import { Seal } from '../ui/Seal';
 
 export function Receipt({ view, aside }: { view: GameView; aside?: ReactNode }) {
   const send = useTable((s) => s.send);
   const leave = useTable((s) => s.leave);
-  const verdict = view.verdict ?? 'short';
+  const verdict = view.verdict ?? 'dawn';
   const host = amHost(view);
   const table = TABLES[view.config.difficulty];
   const stamp = new Date(view.now).toLocaleString('en-GB', {
@@ -41,20 +42,12 @@ export function Receipt({ view, aside }: { view: GameView; aside?: ReactNode }) 
           ))}
         </ol>
 
-        <dl className="receipt__totals">
-          <div>
-            <dt>Take</dt>
-            <dd>
-              {view.take} <span>/ {view.target} 円</span>
-            </dd>
-          </div>
-          <div>
-            <dt>Heat</dt>
-            <dd>
-              {view.heat} <span>/ {view.heatLimit} 熱</span>
-            </dd>
-          </div>
-        </dl>
+        <div className="receipt__track">
+          <Track view={view} size="big" />
+          <p>
+            {view.history.length} {view.history.length === 1 ? 'hand' : 'hands'} · marker at {signed(view.meter)} · door {view.door}, sirens {view.sirens}
+          </p>
+        </div>
 
         <div className="receipt__verdict">
           <h2 id="receipt-verdict" className={`verdict-stamp verdict-stamp--${verdict}`} aria-live="polite">
@@ -102,28 +95,28 @@ export function Receipt({ view, aside }: { view: GameView; aside?: ReactNode }) 
   );
 }
 
+const TAG = { crew: 'Won', house: 'Lost', tie: 'Even', walked: 'All out' } as const;
+
 function Line({ h }: { h: HistoryEntry }) {
-  const rule = h.rule ? RULES[h.rule] : null;
-  const amount =
-    h.outcome === 'crew' ? `+${h.take} 円` : h.outcome === 'house' || h.outcome === 'walked' ? `+${h.heat} 熱` : 'push';
-  const tag = { crew: 'Won', house: 'Burned', tie: 'Push', walked: 'Walked' }[h.outcome];
+  const who = h.carrier
+    ? `${h.carrier} carried${h.carrierNods ? ` · ${h.carrierNods} ${h.carrierNods === 1 ? 'nod' : 'nods'}` : ' · no nods'}`
+    : h.ins === 0
+      ? 'Nobody went In'
+      : null;
   return (
     <li className={`rl rl--${h.outcome}`}>
       <span className="rl__n">{String(h.hand).padStart(2, '0')}</span>
       <span className="rl__main">
         <span className="rl__title">
-          {tag}
-          {rule && (
-            <span className="rl__rule">
-              {rule.kanji} {rule.name}
-            </span>
-          )}
+          {TAG[h.outcome]}
+          <span className="rl__ins">{h.ins} In</span>
         </span>
+        {who && <span className="rl__who">{who}</span>}
         <span className="rl__vs">
-          {h.crewBestName ?? 'All folded'} <i>vs</i> {h.houseBestName}
+          {h.crewBestName ?? 'Everyone Out'} <i>vs</i> {h.houseBestName}
         </span>
       </span>
-      <span className="rl__amt">{amount}</span>
+      <span className="rl__amt">{signed(h.moved)}</span>
     </li>
   );
 }

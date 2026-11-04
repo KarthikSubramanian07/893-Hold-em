@@ -121,32 +121,38 @@ describe('practice table', () => {
     p.line.close();
   });
 
-  it.each([20261101, 893, 8, 42, 77])('plays a whole night (seed %i): regulars act on their own, the clock calls for you, and a verdict lands', async (seed) => {
+  it.each([20261101, 893, 8, 42, 77])('plays a whole night (seed %i): regulars act on their own, the clock decides for you, and a verdict lands', async (seed) => {
     const p = sitDown(null, seed);
     await settle();
     p.send({ t: 'config', config: { timer: 15 } });
     p.send({ t: 'start' });
-    expect(p.view().phase).toBe('call');
+    expect(p.view().phase).toBe('nod');
     expect(p.view().deadline).toBe(Date.now() + 15_000);
 
     let timedOut = false;
-    let botCallsSeen = 0;
     for (let tick = 0; tick < 5000 && p.view().phase !== 'over'; tick++) {
       const v = p.view();
       const me = v.seats.find((s) => s.id === v.you)!;
-      if (v.phase === 'call' && me.active && !me.locked) {
+      if (v.phase === 'nod' && !me.locked) {
         if (!timedOut) {
-          // Sit on your hands for the first call: the timer has to make it for you.
-          const street = v.street;
+          // Sit on your hands for the first nod: the clock has to pass for you.
           await vi.advanceTimersByTimeAsync(15_000 + 100);
           const after = p.view();
           expect(after.hand).toBe(v.hand);
-          expect(after.seats.find((s) => s.id === after.you)!.calls[street]).toBe('stay');
+          const mine = after.seats.find((s) => s.id === after.you)!;
+          expect(mine.nod).toBeNull();
+          expect(after.phase === 'call' || mine.locked).toBe(true);
           timedOut = true;
           continue;
         }
-        const stance: Stance = me.stake! < 3 && v.street === 1 ? 'raise' : 'stay';
+        const mate = v.seats.find((s) => s.id !== v.you)!;
+        p.send({ t: 'nod', at: v.hand % 2 ? mate.id : null });
+        continue;
+      }
+      if (v.phase === 'call' && !me.locked) {
+        const stance: Stance = v.hand % 3 === 0 ? 'out' : 'in';
         p.send({ t: 'call', stance });
+        expect(p.view().seats.find((s) => s.id === v.you)!.stance ?? stance).toBe(stance);
         continue;
       }
       if (v.phase === 'showdown' && !v.ready.includes(v.you!)) {
@@ -156,21 +162,26 @@ describe('practice table', () => {
       await vi.advanceTimersByTimeAsync(250);
     }
 
+    let botMoves = 0;
     for (const v of p.views()) {
-      for (const s of v.seats) if (s.bot) botCallsSeen += s.calls.filter((c) => c !== null).length;
+      for (const s of v.seats) if (s.bot && (s.nod !== null || s.stance !== null)) botMoves++;
     }
 
     const end = p.view();
     expect(end.phase).toBe('over');
-    expect(end.verdict).toMatch(/^(clean|raid|short)$/);
+    expect(end.verdict).toMatch(/^(clean|raid|dawn)$/);
     expect(end.history.length).toBeGreaterThan(0);
-    expect(end.history.length).toBeLessThanOrEqual(end.hands);
+    expect(end.history.length).toBeLessThanOrEqual(end.lastOrders);
+    if (end.verdict === 'clean') expect(end.meter).toBeGreaterThanOrEqual(end.door);
+    if (end.verdict === 'raid') expect(end.meter).toBeLessThanOrEqual(-end.sirens);
+    // The marker is the sum of every hand's movement.
+    expect(end.history.reduce((n, h) => n + h.moved, 0)).toBe(end.meter);
     expect(timedOut).toBe(true);
-    expect(botCallsSeen).toBeGreaterThan(0);
+    expect(botMoves).toBeGreaterThan(0);
     // Nothing waits on the clock once the night is over.
     expect(vi.getTimerCount()).toBe(0);
 
-    assertOnlyYourCards(p.views());
+    assertBlindNod(p.views());
     p.line.close();
   });
 
@@ -187,10 +198,11 @@ describe('practice table', () => {
     await settle();
     const v = again.view();
     expect(v.you).toBe('s0');
-    expect(v.phase).toBe('call');
+    expect(v.phase).toBe('nod');
     expect(v.hand).toBe(before.hand);
     expect(v.seats).toHaveLength(4);
-    expect(v.seats[0]!.cards).toEqual(before.seats[0]!.cards);
+    expect(v.seats[0]!.cards).toEqual(['back', 'back']);
+    expect(v.seats[1]!.cards).toEqual(before.seats[1]!.cards);
     again.line.close();
   });
 
@@ -228,14 +240,15 @@ describe('practice table', () => {
 });
 
 /**
- * Hidden information: before a hand opens up, the views handed to the page carry
- * only your own hole cards. The real cards of every seat are learned from the
- * showdown, then checked against every earlier view of that hand.
+ * Hidden information, blind-nod style: before a hand opens up, you see every
+ * teammate's real cards and never your own, the House shows exactly one card,
+ * and the board shows three cards during the nod. Your own cards are learned
+ * from the showdown and checked against every earlier view of that hand.
  */
-function assertOnlyYourCards(views: GameView[]) {
+function assertBlindNod(views: GameView[]) {
   const truth = new Map<string, Card[]>(); // `${hand}:${seat}` -> hole cards
   for (const v of views) {
-    if (v.phase !== 'showdown' && v.phase !== 'over') continue;
+    if (v.phase !== 'showdown') continue;
     for (const s of v.seats) {
       if (s.cards.every((c) => c && c !== 'back')) truth.set(`${v.hand}:${s.id}`, s.cards as Card[]);
     }
@@ -244,24 +257,25 @@ function assertOnlyYourCards(views: GameView[]) {
 
   let checked = 0;
   for (const v of views) {
-    if (v.phase === 'showdown' || v.phase === 'over') continue;
-    const shown = v.seats.filter((s) => s.id !== v.you && s.cards.some((c) => c && c !== 'back'));
-    // The Fox turns exactly one seat face up for everyone; nothing else is ever visible.
-    if (v.rule === 'kitsune') expect(shown.length).toBeLessThanOrEqual(1);
-    else expect(shown).toEqual([]);
+    if (v.phase !== 'nod' && v.phase !== 'call') continue;
+    const mine = v.seats.find((s) => s.id === v.you)!;
+    expect(mine.cards).toEqual(['back', 'back']);
+    const real = truth.get(`${v.hand}:${mine.id}`) ?? [];
+    expect(JSON.stringify(v)).not.toMatch(new RegExp(real.map((c) => `"${c}"`).join('|') || '^$'));
     for (const s of v.seats) {
-      if (s.id === v.you || shown.includes(s)) continue;
-      const real = truth.get(`${v.hand}:${s.id}`) ?? [];
-      for (const c of s.cards) expect(real).not.toContain(c);
+      if (s.id === v.you) continue;
+      expect(s.cards.every((c) => c && c !== 'back')).toBe(true);
+      const known = truth.get(`${v.hand}:${s.id}`);
+      if (known) expect(s.cards).toEqual(known);
+      // Others' In/Out stays hidden until the showdown.
+      expect(s.stance).toBeNull();
+      if (v.phase === 'nod') expect(s.nod).toBeNull();
       checked++;
     }
-    const mine = v.seats.find((s) => s.id === v.you)!;
-    if (v.phase === 'call') expect(mine.cards.every((c) => c && c !== 'back')).toBe(true);
-    // The House keeps its hands down too, except the one card Mirror flips.
-    for (const h of v.house) {
-      const up = h.cards.filter((c) => c && c !== 'back').length;
-      expect(up).toBeLessThanOrEqual(v.rule === 'kagami' ? 1 : 0);
-    }
+    const up = v.house.cards.filter((c) => c && c !== 'back').length;
+    expect(up).toBe(1);
+    const board = v.board.filter((c) => c && c !== 'back').length;
+    expect(board).toBe(v.phase === 'nod' ? 3 : 5);
   }
   expect(checked).toBeGreaterThan(0);
 }
