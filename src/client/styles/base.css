@@ -3,6 +3,7 @@
 @import '@fontsource-variable/jetbrains-mono/wght.css';
 @import '@fontsource/caveat/latin-500.css';
 @import './tokens.css';
+@import './paper-motion.css';
 
 *,
 *::before,
