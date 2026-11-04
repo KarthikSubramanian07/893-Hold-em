@@ -171,31 +171,6 @@
   color: var(--shu);
 }
 
-.rules__counters {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  margin: 0;
-  background: var(--hair);
-  border: 1px solid var(--hair);
-}
-
-.rules__counters > div {
-  padding: 0.9rem 1rem;
-  background: var(--washi);
-}
-
-.rules__counters dt {
-  font-weight: 800;
-}
-
-.rules__counters dd {
-  margin: 0.3rem 0 0;
-  font-size: 15px;
-  color: var(--ink-soft);
-}
-
-.rules__verdicts,
 .rules__steps {
   display: grid;
   gap: 0.6rem;
@@ -224,36 +199,9 @@
   background: rgb(201 164 92 / 0.08);
 }
 
-.rules__deck {
-  display: grid;
-  gap: 0.9rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.rules__deck li {
-  display: grid;
-  grid-template-columns: 34px 1fr;
-  gap: 0.9rem;
-  align-items: start;
-}
-
-.rules__deck li > div {
-  display: grid;
-}
-
-.rules__deck span:not(.rules__romaji) {
-  color: var(--ink-soft);
-  font-size: 15px;
-}
-
-.rules__romaji {
-  margin-left: 0.4rem;
-  font: 500 10px/1 var(--mono);
-  letter-spacing: var(--track);
-  text-transform: uppercase;
-  color: var(--ink-faint);
+.rules__scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .rules__tables {
@@ -289,12 +237,6 @@
 .rules__fine {
   font-size: 14px;
   color: var(--ink-faint);
-}
-
-@media (max-width: 520px) {
-  .rules__counters {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* The short version, first: five lines a newcomer can hold in their head. */

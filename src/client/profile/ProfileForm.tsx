@@ -45,7 +45,7 @@ export function ProfileForm({
         Table <span className="pf__code">{code}</span>
       </p>
       <h2 className="pf__title">Who's drinking tonight?</h2>
-      <p className="pf__sub">A name and a seal. No account, no email. We keep it on this device.</p>
+      <p className="pf__sub">A name and a seal. Your crew will see your cards tonight; you won't. No account, no email. We keep it on this device.</p>
 
       <div className="pf__field">
         <label htmlFor={`${id}-name`} className="label pf__label">

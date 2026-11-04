@@ -1,7 +1,7 @@
 // The paper world. A matchbook from a Golden Gai bar that has no website.
 import { useState, type FormEvent } from 'react';
-import { RULES, TABLES } from '../../engine/rules';
-import type { Difficulty, RuleId } from '../../engine/types';
+import { LAST_ORDERS, TABLES, doorFor, sirensFor } from '../../engine/rules';
+import type { Difficulty } from '../../engine/types';
 import { makeRoomCode } from '../../protocol';
 import { sfx } from '../audio';
 import { Link, navigate } from '../app/router';
@@ -14,9 +14,7 @@ import './landing.css';
 
 const REPO = 'https://github.com/KarthikSubramanian07/893-Hold-em';
 const TIP_JAR = 'https://buymeacoffee.com/winnerkarthik';
-const DECK: RuleId[] = ['kiri', 'kagami', 'oni', 'shizuka', 'homura', 'kizuna', 'hebi', 'kitsune', 'gyaku'];
 const TABLE_ORDER: Difficulty[] = ['shitamachi', 'kabukicho', 'oyabun'];
-const KIND_LABEL = { boon: 'In your favour', bane: 'Against you', wild: 'Either way' } as const;
 
 export function Landing() {
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -36,7 +34,7 @@ export function Landing() {
       <main id="main">
         <Hero />
         <Beats />
-        <Deck />
+        <Track />
         <Tables />
         <Quiet />
       </main>
@@ -212,25 +210,25 @@ const BEATS = [
   {
     n: '一',
     title: 'The deal',
-    body: 'Two cards each, face down. Across the table, the House deals a pair to every mask.',
+    body: "Two cards each, facing out. You see every teammate's hand but never your own. The House shows one of its cards.",
     art: <ArtDeal />,
   },
   {
     n: '二',
-    title: 'The House Rule',
-    body: 'From the second hand, one card flips and bends the rules. Fog hides the river. Serpent takes the ties.',
-    art: <ArtRule />,
+    title: 'The nod',
+    body: "After the flop, nod at one teammate: you're good. Or pass. Every nod turns over at once.",
+    art: <ArtNod />,
   },
   {
     n: '三',
-    title: 'Four quiet calls',
-    body: 'Pre-flop, flop, turn, river. Everyone picks Fold, Stay, or Raise in secret. Then every call flips at once.',
+    title: 'In or Out',
+    body: 'After the river, everyone picks In or Out at the same moment. No take-backs.',
     art: <ArtCalls />,
   },
   {
     n: '四',
     title: 'The showdown',
-    body: "The crew's best hand faces the House's best: win, and every stake still in gets paid. But each mask watches two seats. Lose to yours and you draw heat anyway.",
+    body: "Every card flips, yours too. The best hand that's In faces the House. Win and the crew steps toward the door, one step per player In.",
     art: <ArtShowdown />,
   },
 ];
@@ -260,61 +258,48 @@ function Beats() {
         ))}
       </ol>
       <p className="beats__aside hand reveal" aria-hidden="true">
-        weak hand? ride the strong one's raise.
+        can't see your cards? your crew can.
       </p>
     </section>
   );
 }
 
-function Deck() {
-  const [flipped, setFlipped] = useState<RuleId | null>(null);
+function Track() {
+  const door = doorFor('shitamachi', 4);
+  const sirens = sirensFor('shitamachi', 4);
+  const span = door + sirens;
   return (
-    <section className="deck" aria-labelledby="deck-title">
+    <section className="track-sec" aria-labelledby="track-title">
       <header className="sec-head reveal">
-        <p className="label sec-head__k">House Rules · 掟</p>
-        <h2 id="deck-title" className="sec-head__title">
-          Nine cards. One flips each hand.
+        <p className="label sec-head__k">A night · 一夜</p>
+        <h2 id="track-title" className="sec-head__title">
+          One marker. A door and the sirens.
         </h2>
-        <p className="sec-head__sub">Hover or tap a card to read it. The House is polite about it.</p>
+        <p className="sec-head__sub">
+          Win a hand and the marker moves toward the door, one step for every player In. Lose and it slides toward the sirens
+          the same way. Everyone Out costs a step. Reach the door for a clean getaway. Reach the sirens and the bar is raided.
+          After {LAST_ORDERS} hands it is last orders.
+        </p>
       </header>
-      <ul className="fan" style={{ ['--n' as string]: DECK.length }}>
-        {DECK.map((id, i) => {
-          const r = RULES[id];
-          const isFlipped = flipped === id;
-          return (
-            <li key={id} className="fan__slot" style={{ ['--i' as string]: i }}>
-              <button
-                type="button"
-                className={`rc rc--${r.kind}${isFlipped ? ' is-flipped' : ''}`}
-                aria-pressed={isFlipped}
-                aria-label={`${r.name}, ${r.romaji}. ${r.text} ${KIND_LABEL[r.kind]}.`}
-                onClick={() => {
-                  sfx.unlock();
-                  sfx.flip();
-                  setFlipped(isFlipped ? null : id);
-                }}
-                onMouseEnter={() => sfx.hover()}
-              >
-                <span className="rc__inner" aria-hidden="true">
-                  <span className="rc__face rc__front">
-                    <span className="rc__corner">{r.romaji}</span>
-                    <span className="rc__kanji">{r.kanji}</span>
-                    <span className="rc__name">{r.name}</span>
-                    <span className="rc__corner rc__corner--b">{String(i + 1).padStart(2, '0')}</span>
-                  </span>
-                  <span className="rc__face rc__back">
-                    <span className="rc__bk">{r.kanji}</span>
-                    <span className="rc__bname">{r.name}</span>
-                    <span className="rc__text">{r.text}</span>
-                    <span className="rc__flavor">“{r.flavor}”</span>
-                    <span className={`rc__kind rc__kind--${r.kind}`}>{KIND_LABEL[r.kind]}</span>
-                  </span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="ptrack reveal" role="img" aria-label={`A track of ${span} steps: ${sirens} to the sirens on the left, ${door} to the door on the right.`}>
+        <span className="ptrack__end ptrack__end--sirens">
+          <b>警</b>
+          <span>Sirens</span>
+        </span>
+        <span className="ptrack__rail">
+          {Array.from({ length: span + 1 }, (_, i) => (
+            <i key={i} className={i === sirens ? 'is-start' : i < sirens ? 'is-red' : 'is-gold'} />
+          ))}
+          <span className="ptrack__marker" style={{ left: `${(sirens / span) * 100}%` }} />
+        </span>
+        <span className="ptrack__end ptrack__end--door">
+          <b>門</b>
+          <span>Door</span>
+        </span>
+      </div>
+      <p className="ptrack__note hand reveal" aria-hidden="true">
+        four of you, Shitamachi: {door} steps out, {sirens} steps down.
+      </p>
     </section>
   );
 }
@@ -353,21 +338,16 @@ function Tables() {
                     <dd>{t.odds}</dd>
                   </div>
                   <div>
-                    <dt>Rules deck</dt>
-                    <dd>{t.deck.length}</dd>
+                    <dt>House holds</dt>
+                    <dd>{t.house}</dd>
                   </div>
                   <div>
-                    <dt>First rule</dt>
-                    <dd>Hand {t.ruleFrom}</dd>
+                    <dt>Track, 4 players</dt>
+                    <dd>
+                      {doorFor(id, 4)} / {sirensFor(id, 4)}
+                    </dd>
                   </div>
                 </dl>
-                <p className="plaque__deck" aria-label={`Rules in this deck: ${t.deck.map((r) => RULES[r].name).join(', ')}`}>
-                  {t.deck.map((r) => (
-                    <span key={r} title={RULES[r].name}>
-                      {RULES[r].kanji}
-                    </span>
-                  ))}
-                </p>
               </div>
             </article>
           );
@@ -386,16 +366,17 @@ function Quiet() {
       <div className="quiet__body reveal">
         <p className="label sec-head__k">Why it's quiet</p>
         <h2 id="quiet-title" className="quiet__title">
-          The only conversation is the flip.
+          The only conversation is the nod.
         </h2>
         <p className="quiet__p">
-          <span className="quiet__drop">Y</span>ou can't tell the crew what you're holding. There's no chat, no voice, no table
-          talk. All you can do is commit: fold, stay, or raise, and watch what everyone else committed to when the calls turn
-          over together.
+          <span className="quiet__drop">Y</span>ou can see everyone's cards except your own. There's no chat, no voice, no
+          table talk. All you get is one nod a hand, at the teammate whose cards look strong, and the nods that come back to
+          you.
         </p>
         <p className="quiet__p">
-          A raise says <em>I've got this one, pile in.</em> A fold from the wrong seat leaves everybody exposed. After a few
-          hands, a crew of strangers starts reading each other like old friends. That's the game.
+          Three nods on you says <em>go In, you've got this.</em> None says <em>sit this one out.</em> Then you pick, and
+          every card turns over, yours too. After a few hands, a crew of strangers starts reading each other like old friends.
+          That's the game.
         </p>
         <p className="quiet__sig hand">— the Master</p>
       </div>
@@ -510,16 +491,17 @@ function ArtDeal() {
   );
 }
 
-function ArtRule() {
+function ArtNod() {
   return (
     <svg viewBox="0 0 160 110" aria-hidden="true">
-      <rect x="34" y="18" width="50" height="72" rx="4" {...ink} fill="#f7f2e7" />
-      <text x="59" y="62" textAnchor="middle" fontFamily="var(--serif)" fontWeight="800" fontSize="30" fill="var(--sumi)">
-        霧
+      <circle cx="40" cy="62" r="16" {...ink} fill="#f7f2e7" />
+      <circle cx="120" cy="62" r="16" {...ink} fill="#f7f2e7" />
+      <path d="M40 44c14-26 66-26 80 0" fill="none" stroke="var(--kin)" strokeWidth={1.8} strokeLinecap="round" />
+      <path d="M113 38l7 6-9 2" fill="none" stroke="var(--kin)" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <text x="80" y="30" textAnchor="middle" fontFamily="var(--serif)" fontWeight="800" fontSize="16" fill="var(--kin)">
+        頷
       </text>
-      <path d="M96 22c6 0 10 0 14 3v62c-4-3-8-3-14-3z" {...ink} fill="var(--sumi)" />
-      <path d="M90 40c8-8 22-10 32-4" {...ink} strokeDasharray="2 4" />
-      <path d="M118 31l5 5-6 3" {...ink} />
+      <path d="M34 60h12M114 60h12" {...ink} />
       <path d="M24 100h112" {...ink} strokeWidth={1} opacity={0.5} />
     </svg>
   );
@@ -527,9 +509,8 @@ function ArtRule() {
 
 function ArtCalls() {
   const stamps = [
-    { k: '降', c: 'var(--sumi)', x: 14, r: -6 },
-    { k: '待', c: 'var(--ai)', x: 58, r: 3 },
-    { k: '攻', c: 'var(--shu)', x: 102, r: -2 },
+    { k: '入', c: 'var(--shu)', x: 30, r: -5 },
+    { k: '出', c: 'var(--sumi)', x: 86, r: 4 },
   ];
   return (
     <svg viewBox="0 0 160 110" aria-hidden="true">
@@ -542,7 +523,7 @@ function ArtCalls() {
         </g>
       ))}
       <path d="M20 92h120" {...ink} strokeWidth={1} opacity={0.5} />
-      <path d="M36 86v-6M80 86v-6M124 86v-6" {...ink} strokeWidth={1} />
+      <path d="M52 86v-6M108 86v-6" {...ink} strokeWidth={1} />
     </svg>
   );
 }
