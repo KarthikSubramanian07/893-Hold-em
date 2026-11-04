@@ -25,13 +25,13 @@ pub const LAST_ORDERS: u8 = 10;
 /// Seconds the showdown waits for "next" before dealing on.
 pub const SHOWDOWN_SECONDS: u64 = 10;
 
-/// How many cards the House holds at this table. It plays its best five with
-/// the board, like anyone else.
-pub const fn house_cards(d: Difficulty) -> usize {
-    match d {
-        Difficulty::Shitamachi => 3,
-        Difficulty::Kabukicho => 4,
-        Difficulty::Oyabun => 5,
+/// How many cards the House holds: one more than there are players, two more
+/// at the harder tables. It plays its best five with the board, like anyone
+/// else, so a bigger crew faces a stronger House.
+pub const fn house_cards(d: Difficulty, crew: usize) -> usize {
+    crew + match d {
+        Difficulty::Shitamachi => 1,
+        Difficulty::Kabukicho | Difficulty::Oyabun => 2,
     }
 }
 
@@ -73,10 +73,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn harder_tables_hold_more_cards() {
-        assert_eq!(house_cards(Difficulty::Shitamachi), 3);
-        assert_eq!(house_cards(Difficulty::Kabukicho), 4);
-        assert_eq!(house_cards(Difficulty::Oyabun), 5);
+    fn the_house_outnumbers_the_crew() {
+        assert_eq!(house_cards(Difficulty::Shitamachi, 2), 3);
+        assert_eq!(house_cards(Difficulty::Kabukicho, 2), 4);
+        assert_eq!(house_cards(Difficulty::Oyabun, 6), 8);
+        // Six seats, the House, and the board always fit in one deck.
+        assert!(6 * 2 + house_cards(Difficulty::Oyabun, 6) + 5 <= 52);
     }
 
     #[test]

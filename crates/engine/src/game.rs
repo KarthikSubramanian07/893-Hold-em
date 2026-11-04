@@ -527,7 +527,7 @@ impl Game {
             s.clear_hand();
             s.hole = hole;
         }
-        self.house = (0..house_cards(self.config.difficulty))
+        self.house = (0..house_cards(self.config.difficulty, self.seats.len()))
             .map(|_| draw())
             .collect();
         self.board = (0..5).map(|_| draw()).collect();
@@ -892,7 +892,7 @@ mod tests {
             assert_eq!(s.hole.len(), 2);
             all.extend(&s.hole);
         }
-        assert_eq!(g.house.len(), 5);
+        assert_eq!(g.house.len(), 8);
         assert!(HOUSE_UP < g.house.len());
         all.extend(&g.house);
         let n = all.len();

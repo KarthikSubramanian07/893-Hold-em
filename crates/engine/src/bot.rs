@@ -49,13 +49,13 @@ pub struct Knobs {
 
 /// The tuned policy. See `crates/sim/README.md` for the search behind it.
 pub const KNOBS: Knobs = Knobs {
-    nod_min: 0.45,
+    nod_min: 0.2,
     nod_trust: 0.8,
     nodded_in: 0.85,
-    visible_in: 0.6,
-    caution: 1.0,
-    urgency: 1.0,
-    in_margin: 0.0,
+    visible_in: 0.45,
+    caution: 0.3,
+    urgency: 3.0,
+    in_margin: -0.3,
     jitter: 0.15,
 };
 
@@ -199,6 +199,98 @@ fn score2(hole: [Card; 2], board: u64) -> u32 {
     score_mask(board | card_mask(hole[0]) | card_mask(hole[1]))
 }
 
+/// How likely each possible two-card hand is to beat the House, judged from
+/// the flop: the same judgement a teammate makes when deciding whom to nod at.
+/// Built from `deals` shared completions (the House's hidden cards, the turn
+/// and the river), so every hand is measured on the same deals.
+struct Strength {
+    odds: Vec<f32>,
+}
+
+impl Strength {
+    fn at_flop(t: &Table, deals: u32, rng: &mut Rng) -> Strength {
+        let flop = &t.board[..3];
+        let flop_mask = hand_mask(flop);
+        let up = hand_mask(&t.house_up);
+        // Cards a teammate couldn't be holding from my point of view: the flop,
+        // the House's face-up card, and the hands I can see.
+        let mut known = CardSet::default();
+        for c in flop.iter().chain(&t.house_up) {
+            known.insert(*c);
+        }
+        for c in t.holes.iter().flatten().flatten() {
+            known.insert(*c);
+        }
+        let pool: Vec<Card> = full_deck().into_iter().filter(|c| !known.contains(*c)).collect();
+        let mut wins = vec![0u16; 52 * 52];
+        let mut seen = vec![0u16; 52 * 52];
+        let mut deck: Vec<Card> = full_deck()
+            .into_iter()
+            .filter(|c| !flop.contains(c) && !t.house_up.contains(c))
+            .collect();
+        let need = t.house_hidden + 2;
+        for _ in 0..deals.max(1) {
+            for i in 0..need {
+                let j = i + rng.below((deck.len() - i) as u32) as usize;
+                deck.swap(i, j);
+            }
+            let drawn = hand_mask(&deck[..need]);
+            let board = flop_mask | hand_mask(&deck[t.house_hidden..need]);
+            let house = score_mask(board | up | hand_mask(&deck[..t.house_hidden]));
+            for (a, &x) in pool.iter().enumerate() {
+                if drawn & card_mask(x) != 0 {
+                    continue;
+                }
+                let bx = board | card_mask(x);
+                for &y in &pool[a + 1..] {
+                    if drawn & card_mask(y) != 0 {
+                        continue;
+                    }
+                    let k = Self::key(x, y);
+                    seen[k] += 1;
+                    if score_mask(bx | card_mask(y)) > house {
+                        wins[k] += 1;
+                    }
+                }
+            }
+        }
+        // Hands I can see weren't in the pool; measure them on fresh deals.
+        let mut odds: Vec<f32> = wins
+            .iter()
+            .zip(&seen)
+            .map(|(w, n)| if *n == 0 { 0.0 } else { f32::from(*w) / f32::from(*n) })
+            .collect();
+        for h in t.holes.iter().flatten() {
+            let (mut w, mut n) = (0u32, 0u32);
+            for _ in 0..deals.max(1) {
+                for i in 0..need {
+                    let j = i + rng.below((deck.len() - i) as u32) as usize;
+                    deck.swap(i, j);
+                }
+                let drawn = hand_mask(&deck[..need]);
+                if drawn & (card_mask(h[0]) | card_mask(h[1])) != 0 {
+                    continue;
+                }
+                let board = flop_mask | hand_mask(&deck[t.house_hidden..need]);
+                let house = score_mask(board | up | hand_mask(&deck[..t.house_hidden]));
+                n += 1;
+                w += u32::from(score2(*h, board) > house);
+            }
+            odds[Self::key(h[0], h[1])] = if n == 0 { 0.0 } else { w as f32 / n as f32 };
+        }
+        Strength { odds }
+    }
+
+    fn key(a: Card, b: Card) -> usize {
+        let (a, b) = (a.index().min(b.index()), a.index().max(b.index()));
+        a as usize * 52 + b as usize
+    }
+
+    fn of(&self, h: [Card; 2]) -> f64 {
+        f64::from(self.odds[Self::key(h[0], h[1])])
+    }
+}
+
 /// The bot's decision for the phase the view is in, or `None` if it has none to make.
 pub fn decide(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Option<Decision> {
     match view.phase {
@@ -220,33 +312,17 @@ pub fn nod(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Option<S
         }
         Policy::Regular | Policy::Deaf => {}
     }
-    let odds = beat_odds(&table, t.samples, rng);
-    let (best, p) = odds
-        .into_iter()
+    let strength = Strength::at_flop(&table, deals(t.samples), rng);
+    let (best, p) = table
+        .teammates()
+        .map(|(i, h)| (i, strength.of(h)))
         .max_by(|a, b| a.1.total_cmp(&b.1))?;
     (p >= t.knobs.nod_min).then(|| view.seats[best].id.clone())
 }
 
-/// For each teammate, the chance their hand beats the House at the showdown.
-fn beat_odds(t: &Table, samples: u32, rng: &mut Rng) -> Vec<(usize, f64)> {
-    let mates: Vec<(usize, [Card; 2])> = t.teammates().collect();
-    let mut wins = vec![0u32; mates.len()];
-    let mut deck = t.unseen.clone();
-    let n = samples.max(1);
-    for _ in 0..n {
-        let d = deal(t, &mut deck, rng);
-        let house = score_mask(d.house);
-        for (k, (_, hole)) in mates.iter().enumerate() {
-            if score2(*hole, d.board) > house {
-                wins[k] += 1;
-            }
-        }
-    }
-    mates
-        .iter()
-        .zip(wins)
-        .map(|((i, _), w)| (*i, f64::from(w) / f64::from(n)))
-        .collect()
+/// Deals behind the strength table: a fifth of the bot's sample budget.
+fn deals(samples: u32) -> u32 {
+    (samples / 5).max(20)
 }
 
 /// In or Out.
@@ -258,11 +334,11 @@ pub fn call(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Stance 
         return Stance::Out;
     };
     let k = &t.knobs;
-    let flop = hand_mask(&table.board[..3.min(table.board.len())]);
-    let flop_scores: Vec<Option<u32>> = table
+    let strength = Strength::at_flop(&table, deals(t.samples), rng);
+    let seen_strength: Vec<f64> = table
         .holes
         .iter()
-        .map(|h| h.map(|h| score2(h, flop)))
+        .map(|h| h.map_or(0.0, |h| strength.of(h)))
         .collect();
     let nod_of = |i: usize| -> Option<usize> {
         let at = view.seats[i].nod.as_deref()?;
@@ -294,27 +370,21 @@ pub fn call(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Stance 
         // How well do these cards of mine explain the nods?
         let mut weight = 1.0;
         if read {
-            let my_flop = score2(d.mine, flop);
+            let mine_strength = strength.of(d.mine);
             for (j, _) in &mates {
                 // What teammate j saw on the flop: everyone but themselves.
-                let best_seen = (0..table.holes.len())
-                    .filter(|&i| i != *j)
-                    .map(|i| if i == table.me { my_flop } else { flop_scores[i].unwrap_or(0) })
-                    .max()
-                    .unwrap_or(0);
-                let i_looked_best = my_flop >= best_seen;
-                weight *= match nod_of(*j) {
-                    Some(at) if at == table.me => {
-                        if i_looked_best { trust } else { 1.0 - trust }
-                    }
-                    Some(_) => {
-                        if i_looked_best { 1.0 - trust } else { trust }
-                    }
-                    // A pass: nobody looked good to them, me included.
-                    None => {
-                        if i_looked_best { 0.4 } else { 0.6 }
-                    }
+                let strength_of = |i: usize| {
+                    if i == table.me { mine_strength } else { seen_strength[i] }
                 };
+                let others = (0..table.holes.len()).filter(|&i| i != *j);
+                let best_seen = others.clone().map(strength_of).fold(0.0, f64::max);
+                let fits = match nod_of(*j) {
+                    Some(at) => {
+                        strength_of(at) >= best_seen - 1e-9 && strength_of(at) >= k.nod_min
+                    }
+                    None => best_seen < k.nod_min,
+                };
+                weight *= if fits { trust } else { 1.0 - trust };
             }
         }
         for (m, s) in mate_scores.iter().enumerate() {

@@ -445,3 +445,28 @@ fn ten_cards_agree_with_the_best_five_card_subset() {
         assert_eq!(evaluate(&hand).score, best);
     }
 }
+
+#[test]
+fn twelve_cards_agree_with_the_best_five_card_subset() {
+    // The House holds up to seven cards at a full Oyabun table.
+    let mut rng = Rng::seeded(37);
+    for _ in 0..400 {
+        let mut deck = full_deck();
+        rng.shuffle(&mut deck);
+        let hand: Vec<Card> = deck[..12].to_vec();
+        let mut best = 0;
+        for a in 0..12 {
+            for b in a + 1..12 {
+                for c in b + 1..12 {
+                    for d in c + 1..12 {
+                        for e in d + 1..12 {
+                            best = best.max(score5([hand[a], hand[b], hand[c], hand[d], hand[e]]));
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(score_best(&hand), best, "{hand:?}");
+        assert_eq!(evaluate(&hand).score, best);
+    }
+}

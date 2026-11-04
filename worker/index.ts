@@ -52,12 +52,17 @@ export class Table extends DurableObject<Env> {
     if (this.engine) return this.engine;
     const saved = await this.ctx.storage.get<string>('room');
     if (saved) {
-      this.engine = Engine.load(saved);
-    } else {
-      const c = code ?? (await this.ctx.storage.get<string>('code')) ?? 'XXXXX';
-      const seed = crypto.getRandomValues(new Uint32Array(2));
-      this.engine = new Engine(c, seed[0]! * 2 ** 21 + (seed[1]! >>> 11));
+      try {
+        this.engine = Engine.load(saved);
+        return this.engine;
+      } catch {
+        // Saved by an older version of the rules: start this table over.
+        await this.ctx.storage.delete('room');
+      }
     }
+    const c = code ?? (await this.ctx.storage.get<string>('code')) ?? 'XXXXX';
+    const seed = crypto.getRandomValues(new Uint32Array(2));
+    this.engine = new Engine(c, seed[0]! * 2 ** 21 + (seed[1]! >>> 11));
     return this.engine;
   }
 

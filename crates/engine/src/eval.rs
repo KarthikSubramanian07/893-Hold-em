@@ -101,13 +101,13 @@ pub fn score5(cards: [Card; 5]) -> u32 {
     score_mask(hand_mask(&cards))
 }
 
-/// Score the best five of 5 to 10 cards. Cheap; no allocation. This is the hot
+/// Score the best five of 5 to 12 cards. Cheap; no allocation. This is the hot
 /// path for Monte Carlo, so it must be fast.
 #[inline]
 pub fn score_best(cards: &[Card]) -> u32 {
     debug_assert!(
-        (5..=10).contains(&cards.len()),
-        "score_best takes 5 to 10 cards"
+        (5..=12).contains(&cards.len()),
+        "score_best takes 5 to 12 cards"
     );
     score_mask(hand_mask(cards))
 }
@@ -118,7 +118,7 @@ pub fn category_of(score: u32) -> Category {
 }
 
 /// Score the best five of the cards in a [`card_mask`] layout mask holding 5 to
-/// 10 distinct cards. This is the evaluator itself; the other entry points build
+/// 12 distinct cards. This is the evaluator itself; the other entry points build
 /// the mask and call it.
 #[inline]
 pub fn score_mask(m: u64) -> u32 {
@@ -264,11 +264,11 @@ pub fn name_of(score: u32) -> String {
     }
 }
 
-/// Full evaluation of 5 to 10 cards, with the name and the best five.
+/// Full evaluation of 5 to 12 cards, with the name and the best five.
 pub fn evaluate(cards: &[Card]) -> HandValue {
     assert!(
-        (5..=10).contains(&cards.len()),
-        "evaluate takes 5 to 10 cards, got {}",
+        (5..=12).contains(&cards.len()),
+        "evaluate takes 5 to 12 cards, got {}",
         cards.len()
     );
     let score = score_best(cards);
@@ -282,7 +282,7 @@ pub fn evaluate(cards: &[Card]) -> HandValue {
     let mut sorted: Vec<Card> = cards.to_vec();
     sorted.sort_by(|a, b| b.rank().cmp(&a.rank()).then(a.suit().cmp(&b.suit())));
 
-    // With ten cards two suits can both hold five, so pick the suit that
+    // With ten or more cards two suits can both hold five, so pick the suit that
     // actually makes the scored hand.
     let in_suit = |s: u8, r: u8| sorted.iter().any(|c| c.suit() == s && c.rank() == r);
     let flush_suit = (0..4u8).find(|&s| match category {
