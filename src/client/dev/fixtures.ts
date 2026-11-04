@@ -16,34 +16,30 @@ function seat(i: number, over: Partial<SeatView> = {}): SeatView {
     host: i === 0,
     connected: true,
     cards: ['back', 'back'],
-    active: true,
-    stake: 1,
     locked: false,
-    calls: [null, null, null, null],
+    nod: null,
+    stance: null,
     hand: null,
     champion: false,
-    watcher: Math.floor(i / 2),
     ...over,
   };
 }
 
+// Shitamachi with a crew of four: 11 steps to the door, 8 to the sirens.
 const base: GameView = {
   code: 'K7QX2',
   phase: 'lobby',
-  config: { difficulty: 'kabukicho', timer: 30 },
+  config: { difficulty: 'shitamachi', timer: 30 },
   you: 's0',
   seats: [],
-  house: [],
+  house: { cards: [], hand: null },
   board: [null, null, null, null, null],
-  street: 0,
   night: 1,
   hand: 0,
-  hands: 6,
-  take: 0,
-  heat: 0,
-  target: 20,
-  heatLimit: 8,
-  rule: null,
+  lastOrders: 10,
+  meter: 0,
+  door: 11,
+  sirens: 8,
   deadline: null,
   result: null,
   history: [],
@@ -59,56 +55,58 @@ const hv = (score: number, category: HandValue['category'], name: string, best: 
   best,
 });
 
+const FULL_HOUSE = hv(7_000_000, 'full-house', 'Full house, sevens full of queens', ['7h', '7s', '7d', 'Qs', 'Qh']);
+const HOUSE_TWO_PAIR = hv(3_100_000, 'two-pair', 'Two pair, kings and sevens', ['Kh', 'Kc', '7s', '7d', 'Qh']);
+
 export const FIXTURES: Record<string, GameView> = {
   lobby: {
     ...base,
     seats: [seat(0, { cards: [] }), seat(1, { cards: [] }), seat(3, { cards: [], bot: true })],
+    door: 9,
+    sirens: 7,
   },
 
   /** The host is still drinking alone: the lobby offers the practice table. */
   'lobby-alone': {
     ...base,
     seats: [seat(0, { cards: [] })],
+    door: 5,
+    sirens: 5,
   },
 
-  preflop: {
+  /** Hand one, the flop is out, two teammates have already nodded or passed. */
+  nod: {
     ...base,
-    phase: 'call',
+    phase: 'nod',
     hand: 1,
+    board: ['Kh', '7s', '7d', null, null],
     seats: [
-      seat(0, { cards: ['Ah', 'Kd'] }),
-      seat(1, { locked: true }),
-      seat(2),
-      seat(3, { locked: true }),
+      seat(0),
+      seat(1, { cards: ['7h', 'Qs'], locked: true }),
+      seat(2, { cards: ['5c', '3d'] }),
+      seat(3, { cards: ['Ts', 'Jc'], locked: true }),
     ],
-    house: [{ cards: ['back', 'back'], hand: null, champion: false }, { cards: ['back', 'back'], hand: null, champion: false }],
+    house: { cards: ['Kc', 'back', 'back'], hand: null },
     deadline: NOW + 22_000,
   },
 
-  river: {
+  /** Hand three, the river is out, nods are on the table, In or Out. */
+  call: {
     ...base,
     phase: 'call',
     hand: 3,
-    street: 3,
-    take: 7,
-    heat: 3,
-    rule: 'kagami',
+    meter: 1,
     board: ['Kh', '7s', '7d', '2c', 'Qh'],
     seats: [
-      seat(0, { cards: ['Ah', 'Kd'], stake: 2, calls: ['stay', 'raise', 'stay', null] }),
-      seat(1, { stake: 3, locked: true, calls: ['raise', 'raise', 'stay', null] }),
-      seat(2, { active: false, stake: 1, calls: ['stay', 'fold', null, null] }),
-      seat(3, { stake: 1, locked: true, calls: ['stay', 'stay', 'stay', null] }),
-      seat(4, { stake: 1, calls: ['stay', 'stay', 'stay', null] }),
+      seat(0, { nod: 's1' }),
+      seat(1, { cards: ['7h', 'Qs'], locked: true }),
+      seat(2, { cards: ['5c', '3d'], nod: 's1' }),
+      seat(3, { cards: ['Ts', 'Jc'], locked: true, nod: 's0' }),
     ],
-    house: [
-      { cards: ['9c', 'back'], hand: null, champion: false },
-      { cards: ['Js', 'back'], hand: null, champion: false },
-      { cards: ['4h', 'back'], hand: null, champion: false },
-    ],
+    house: { cards: ['Kc', 'back', 'back'], hand: null },
     history: [
-      { hand: 1, rule: null, outcome: 'crew', take: 4, heat: 0, crewBestName: 'Flush, ace high', houseBestName: 'Two pair, jacks and fours' },
-      { hand: 2, rule: 'oni', outcome: 'house', take: 0, heat: 3, crewBestName: 'Pair of nines', houseBestName: 'Trip queens' },
+      { hand: 1, outcome: 'crew', moved: 3, ins: 3, crewBestName: 'Flush, ace high', houseBestName: 'Two pair, jacks and fours', carrier: 'Mio', carrierNods: 2 },
+      { hand: 2, outcome: 'house', moved: -2, ins: 2, crewBestName: 'Pair of nines', houseBestName: 'Trip queens', carrier: null, carrierNods: 0 },
     ],
     deadline: NOW + 14_000,
   },
@@ -117,70 +115,66 @@ export const FIXTURES: Record<string, GameView> = {
     ...base,
     phase: 'showdown',
     hand: 3,
-    street: 3,
-    take: 13,
-    heat: 3,
-    rule: 'kagami',
+    meter: 4,
     board: ['Kh', '7s', '7d', '2c', 'Qh'],
     seats: [
       seat(0, {
         cards: ['Ah', 'Kd'],
-        stake: 2,
-        calls: ['stay', 'raise', 'stay', 'stay'],
-        hand: hv(3_000_000, 'two-pair', 'Two pair, kings and sevens', ['Kh', 'Kd', '7s', '7d', 'Ah']),
-        champion: false,
+        nod: 's1',
+        stance: 'in',
+        hand: hv(3_200_000, 'two-pair', 'Two pair, kings and sevens', ['Kh', 'Kd', '7s', '7d', 'Ah']),
       }),
-      seat(1, {
-        cards: ['7h', 'Qs'],
-        stake: 3,
-        calls: ['raise', 'raise', 'stay', 'stay'],
-        hand: hv(7_000_000, 'full-house', 'Full house, sevens full of queens', ['7h', '7s', '7d', 'Qs', 'Qh']),
-        champion: true,
-      }),
+      seat(1, { cards: ['7h', 'Qs'], stance: 'in', hand: FULL_HOUSE, champion: true }),
       seat(2, {
         cards: ['5c', '3d'],
-        active: false,
-        calls: ['stay', 'fold', null, null],
+        nod: 's1',
+        stance: 'out',
         hand: hv(2_000_000, 'pair', 'Pair of sevens', ['7s', '7d', 'Kh', 'Qh', '5c']),
       }),
       seat(3, {
         cards: ['Ts', 'Jc'],
-        calls: ['stay', 'stay', 'stay', 'stay'],
+        nod: 's0',
+        stance: 'in',
         hand: hv(2_100_000, 'pair', 'Pair of sevens', ['7s', '7d', 'Kh', 'Qh', 'Jc']),
       }),
     ],
-    house: [
-      { cards: ['9c', '9d'], hand: hv(3_100_000, 'two-pair', 'Two pair, nines and sevens', ['9c', '9d', '7s', '7d', 'Kh']), champion: false },
-      { cards: ['Js', 'Kc'], hand: hv(3_200_000, 'two-pair', 'Two pair, kings and sevens', ['Kh', 'Kc', '7s', '7d', 'Qh']), champion: true },
-    ],
+    house: { cards: ['Kc', '9c', '4h'], hand: HOUSE_TWO_PAIR },
     result: {
       outcome: 'crew',
-      take: 6,
-      heat: 1,
-      crewBest: hv(7_000_000, 'full-house', 'Full house, sevens full of queens', ['7h', '7s', '7d', 'Qs', 'Qh']),
-      houseBest: hv(3_200_000, 'two-pair', 'Two pair, kings and sevens', ['Kh', 'Kc', '7s', '7d', 'Qh']),
+      moved: 3,
+      ins: ['s0', 's1', 's3'],
+      crewBest: FULL_HOUSE,
+      houseBest: HOUSE_TWO_PAIR,
       crewChampions: ['s1'],
-      houseChampions: [1],
-      burned: ['s3'],
+      couldHave: ['s0', 's1'],
     },
+    history: [
+      { hand: 1, outcome: 'crew', moved: 3, ins: 3, crewBestName: 'Flush, ace high', houseBestName: 'Two pair, jacks and fours', carrier: 'Mio', carrierNods: 2 },
+      { hand: 2, outcome: 'house', moved: -2, ins: 2, crewBestName: 'Pair of nines', houseBestName: 'Trip queens', carrier: null, carrierNods: 0 },
+      { hand: 3, outcome: 'crew', moved: 3, ins: 3, crewBestName: 'Full house, sevens full of queens', houseBestName: 'Two pair, kings and sevens', carrier: 'Mio', carrierNods: 2 },
+    ],
     ready: ['s1'],
   },
 
   over: {
     ...base,
     phase: 'over',
-    hand: 6,
-    take: 24,
-    heat: 5,
+    hand: 7,
+    meter: 11,
     verdict: 'clean',
     seats: [seat(0, { cards: [] }), seat(1, { cards: [] }), seat(2, { cards: [] }), seat(3, { cards: [] })],
     history: [
-      { hand: 1, rule: null, outcome: 'crew', take: 4, heat: 0, crewBestName: 'Flush, ace high', houseBestName: 'Two pair, jacks and fours' },
-      { hand: 2, rule: 'oni', outcome: 'house', take: 0, heat: 3, crewBestName: 'Pair of nines', houseBestName: 'Trip queens' },
-      { hand: 3, rule: 'kagami', outcome: 'crew', take: 6, heat: 0, crewBestName: 'Full house, sevens full of queens', houseBestName: 'Two pair, kings and sevens' },
-      { hand: 4, rule: 'hebi', outcome: 'tie', take: 0, heat: 0, crewBestName: 'Straight, ten high', houseBestName: 'Straight, ten high' },
-      { hand: 5, rule: 'homura', outcome: 'crew', take: 10, heat: 0, crewBestName: 'Trip aces', houseBestName: 'Pair of jacks' },
-      { hand: 6, rule: 'kiri', outcome: 'house', take: 0, heat: 2, crewBestName: 'Ace high', houseBestName: 'Pair of fours' },
+      { hand: 1, outcome: 'crew', moved: 3, ins: 3, crewBestName: 'Flush, ace high', houseBestName: 'Two pair, jacks and fours', carrier: 'Mio', carrierNods: 2 },
+      { hand: 2, outcome: 'house', moved: -2, ins: 2, crewBestName: 'Pair of nines', houseBestName: 'Trip queens', carrier: null, carrierNods: 0 },
+      { hand: 3, outcome: 'crew', moved: 3, ins: 3, crewBestName: 'Full house, sevens full of queens', houseBestName: 'Two pair, kings and sevens', carrier: 'Mio', carrierNods: 2 },
+      { hand: 4, outcome: 'tie', moved: 0, ins: 2, crewBestName: 'Straight, ten high', houseBestName: 'Straight, ten high', carrier: 'Ren', carrierNods: 1 },
+      { hand: 5, outcome: 'walked', moved: -1, ins: 0, crewBestName: null, houseBestName: 'Pair of jacks', carrier: null, carrierNods: 0 },
+      { hand: 6, outcome: 'crew', moved: 4, ins: 4, crewBestName: 'Trip aces', houseBestName: 'Pair of fours', carrier: 'Karthik', carrierNods: 3 },
+      { hand: 7, outcome: 'crew', moved: 4, ins: 4, crewBestName: 'Straight, queen high', houseBestName: 'Two pair, aces and nines', carrier: 'Daichi', carrierNods: 0 },
     ],
   },
 };
+
+// Older names, kept so bookmarked screenshots and scripts still land somewhere sensible.
+FIXTURES.preflop = FIXTURES.nod!;
+FIXTURES.river = FIXTURES.call!;

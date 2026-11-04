@@ -1,9 +1,6 @@
 // Read-only helpers over a GameView. Pure, so the HUD stays thin and testable.
-import type { GameView, HandOutcome, SeatView, Stance, Street, Verdict } from '../../engine/types';
+import type { GameView, HandOutcome, HandValue, SeatView, Stance, Verdict } from '../../engine/types';
 import type { Reaction } from '../../protocol';
-import { MAX_STAKE } from '../../engine/rules';
-
-export const STREET_NAMES: Record<Street, string> = { 0: 'Pre-flop', 1: 'Flop', 2: 'Turn', 3: 'River' };
 
 export function mySeat(view: GameView): SeatView | null {
   return view.you ? (view.seats.find((s) => s.id === view.you) ?? null) : null;
@@ -13,14 +10,29 @@ export function amHost(view: GameView): boolean {
   return mySeat(view)?.host ?? false;
 }
 
-export function seatById(view: GameView, id: string): SeatView | null {
-  return view.seats.find((s) => s.id === id) ?? null;
+export function seatById(view: GameView, id: string | null | undefined): SeatView | null {
+  return id ? (view.seats.find((s) => s.id === id) ?? null) : null;
 }
 
-/** Active seats (other than you) that have not locked a call yet. */
+/** Everyone at the table but you. */
+export function teammates(view: GameView): SeatView[] {
+  return view.seats.filter((s) => s.id !== view.you);
+}
+
+/** Is a hand being played (nod or call)? */
+export function inHand(view: GameView): boolean {
+  return view.phase === 'nod' || view.phase === 'call';
+}
+
+/** Seat ids that have decided in the current phase. */
+export function lockedSeats(view: GameView): string[] {
+  return inHand(view) ? view.seats.filter((s) => s.locked).map((s) => s.id) : [];
+}
+
+/** Seats (other than you) that have not decided yet in this phase. */
 export function stillDeciding(view: GameView): SeatView[] {
-  if (view.phase !== 'call') return [];
-  return view.seats.filter((s) => s.active && !s.locked && s.id !== view.you);
+  if (!inHand(view)) return [];
+  return view.seats.filter((s) => !s.locked && s.id !== view.you);
 }
 
 /** Humans who count toward the "next" quorum. */
@@ -30,68 +42,167 @@ export function readyQuorum(view: GameView): { ready: number; needed: number } {
   return { ready, needed: humans.length };
 }
 
-/** What you called this street, if anything is known. */
-export function myCall(view: GameView): Stance | null {
+/**
+ * Your nod this hand: a seat id, `null` if you passed, `undefined` if you have
+ * not decided yet (or are not seated).
+ */
+export function myNod(view: GameView): string | null | undefined {
   const me = mySeat(view);
-  const c = me?.calls[view.street];
-  return c === 'fold' || c === 'stay' || c === 'raise' ? c : null;
+  if (!me || view.phase === 'lobby') return undefined;
+  if (me.nod) return me.nod;
+  // Past the nod phase, a seat with no nod passed.
+  if (view.phase === 'nod') return me.locked ? null : undefined;
+  return null;
 }
 
-export type DockMode = 'decide' | 'locked' | 'folded' | 'spectator' | 'none';
+/** Have every seat's nods been turned over? They are, from the call on. */
+export function nodsRevealed(view: GameView): boolean {
+  return view.phase === 'call' || view.phase === 'showdown' || view.phase === 'over';
+}
 
+/** Seats that nodded at `id` (only known once the nods are revealed, except your own). */
+export function noddersOf(view: GameView, id: string): SeatView[] {
+  return view.seats.filter((s) => s.nod === id && s.id !== id);
+}
+
+/** How many nods `id` received this hand. */
+export function nodsOn(view: GameView, id: string): number {
+  return noddersOf(view, id).length;
+}
+
+/** Every revealed nod as a pair of seat ids. */
+export function nodPairs(view: GameView): { from: string; to: string }[] {
+  return view.seats.filter((s) => s.nod && s.nod !== s.id).map((s) => ({ from: s.id, to: s.nod! }));
+}
+
+/** Your In/Out this hand if you have picked. */
+export function myStance(view: GameView): Stance | null {
+  return mySeat(view)?.stance ?? null;
+}
+
+export interface MeterProgress {
+  meter: number;
+  door: number;
+  sirens: number;
+  /** Total steps from sirens to door. */
+  span: number;
+  /** 0 = at the sirens, 1 = at the door. */
+  fraction: number;
+  toDoor: number;
+  toSirens: number;
+  /** 0 = safe, 1 = one step from the sirens. */
+  danger: number;
+}
+
+export function meterProgress(view: Pick<GameView, 'meter' | 'door' | 'sirens'>): MeterProgress {
+  const door = Math.max(1, view.door);
+  const sirens = Math.max(1, view.sirens);
+  const meter = Math.max(-sirens, Math.min(door, view.meter));
+  const span = door + sirens;
+  const toSirens = sirens + meter;
+  return {
+    meter,
+    door,
+    sirens,
+    span,
+    fraction: toSirens / span,
+    toDoor: door - meter,
+    toSirens,
+    danger: Math.max(0, Math.min(1, 1 - (toSirens - 1) / Math.max(1, sirens))),
+  };
+}
+
+export type DockMode = 'nod' | 'nodded' | 'call' | 'called' | 'spectator' | 'none';
+
+/** What the bottom dock should offer you right now. */
 export function dockMode(view: GameView, localLocked: boolean): DockMode {
-  if (view.phase !== 'call') return 'none';
+  if (!inHand(view)) return 'none';
   const me = mySeat(view);
   if (!me) return 'spectator';
-  if (!me.active) return 'folded';
-  if (me.locked || localLocked) return 'locked';
-  return 'decide';
+  const locked = me.locked || localLocked;
+  if (view.phase === 'nod') return locked ? 'nodded' : 'nod';
+  return locked ? 'called' : 'call';
 }
 
 export const OUTCOME_LINE: Record<HandOutcome, string> = {
-  crew: 'Paid.',
-  house: 'Burned.',
-  tie: 'Even.',
-  walked: 'Walked.',
+  crew: 'Beat the House.',
+  house: 'The House wins.',
+  tie: 'Dead even.',
+  walked: 'Everyone sat out.',
 };
 
-export const OUTCOME_SUB: Record<HandOutcome, string> = {
-  crew: "The crew's best hand beat the House's. Every bet still in gets paid.",
-  house: "The House's best hand won. Nobody gets paid this hand.",
-  tie: 'The crew and the House tied. Nobody gets paid.',
-  walked: 'Everyone folded. Walking away still adds heat.',
+/** One plain sentence: how far the marker moved and which way. */
+export function movedLine(moved: number): string {
+  if (moved === 0) return 'The marker stays put.';
+  const n = Math.abs(moved);
+  const steps = n === 1 ? 'one step' : `${n} steps`;
+  return moved > 0 ? `The marker moves ${steps} toward the door.` : `The marker moves ${steps} toward the sirens.`;
+}
+
+/** "+2" / "−1" / "±0" for compact lines. */
+export function signed(moved: number): string {
+  if (moved > 0) return `+${moved}`;
+  if (moved < 0) return `−${-moved}`;
+  return '±0';
+}
+
+function lowerFirst(s: string): string {
+  return s.charAt(0).toLowerCase() + s.slice(1);
+}
+
+const STRONG = new Set<HandValue['category']>(['straight', 'flush', 'full-house', 'quads', 'straight-flush']);
+
+/** Is this a hand worth making a fuss about when it turns over? */
+export function isMonster(hand: HandValue | null | undefined): boolean {
+  return !!hand && STRONG.has(hand.category);
+}
+
+const SHORT: Partial<Record<HandValue['category'], string>> = {
+  straight: 'a straight',
+  flush: 'a flush',
+  'full-house': 'a full house',
+  'straight-flush': 'a straight flush',
 };
 
 /**
- * What the hand just did to you, in one plain sentence: whether your bet was
- * paid, and whether the mask watching you beat you (which is what draws
- * heat). Null for spectators and before the showdown.
+ * A hand as it reads mid-sentence: "a pair of kings", "two pair, kings and
+ * sevens", "trip fives", "a flush". Monster hands get their short name so the
+ * line stays punchy.
  */
-export function yourHand(view: GameView): string | null {
-  const r = view.result;
+export function handPhrase(hand: HandValue): string {
+  if (hand.name === 'Royal flush') return 'a royal flush';
+  const short = SHORT[hand.category];
+  if (short) return short;
+  const name = lowerFirst(hand.name);
+  return hand.category === 'pair' ? `a ${name}` : name;
+}
+
+/**
+ * The reveal: the first time you see your own cards. One plain line, e.g.
+ * "You had a flush the whole time." Null for spectators and before the showdown.
+ */
+export function revealLine(view: GameView): string | null {
   const me = mySeat(view);
-  if (!r || !me || view.phase === 'lobby') return null;
-  if (!me.active) return 'You folded, so this hand cost you nothing.';
-  const mult = view.rule === 'homura' ? 2 : 1;
-  const bet = (me.stake ?? 1) * mult;
-  const mine = me.hand?.name ? me.hand.name.charAt(0).toLowerCase() + me.hand.name.slice(1) : 'hand';
-  const paid = r.outcome === 'crew' ? `Your bet of ${bet} was paid` : 'Your bet was not paid';
-  const seen = (r.burned ?? []).includes(me.id);
-  return seen
-    ? `${paid}, and the mask watching you beat your ${mine}: +${bet} heat.`
-    : `${paid}, and your ${mine} held against the mask watching you: no heat.`;
+  const r = view.result;
+  if (!me?.hand || !r) return null;
+  const had = handPhrase(me.hand);
+  const beat = r.couldHave.includes(me.id);
+  if (me.champion) return `You had ${had}, and it carried the crew.`;
+  if (beat && me.stance === 'out') return `You had ${had} the whole time. It would have beaten the House.`;
+  if (isMonster(me.hand)) return `You had ${had} the whole time.`;
+  return `You had ${had}.`;
 }
 
 export const VERDICT_LINE: Record<Verdict, string> = {
   clean: 'Clean getaway',
   raid: 'Raid',
-  short: 'Came up short',
+  dawn: 'Last orders',
 };
 
 export const VERDICT_SUB: Record<Verdict, string> = {
-  clean: 'Out the back door with the take. Nobody saw a thing.',
+  clean: 'Out the back door before anyone looked up.',
   raid: 'Sirens on the stairs. The night is over.',
-  short: 'Six hands and not enough to show for it.',
+  dawn: 'The shutters came down at dawn. Nobody won, nobody was caught.',
 };
 
 export function canReact(view: GameView): boolean {
@@ -102,11 +213,10 @@ export function canStart(view: GameView): boolean {
   return view.phase === 'lobby' && amHost(view) && view.seats.length >= 2;
 }
 
-export type { Reaction };
-
-/** What each call does to you, in plain words, given your current bet. */
-export function callHint(stance: Stance, stake: number): string {
-  if (stance === 'fold') return 'Sit this one out';
-  if (stance === 'stay') return `Keep betting ${stake}`;
-  return stake >= MAX_STAKE ? 'At the max' : `Bet ${stake + 1}`;
+export function listNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, and ${names.at(-1)}`;
 }
+
+export type { Reaction };

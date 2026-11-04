@@ -6,7 +6,7 @@
 // With `?fixture=<name>` in the URL the store serves a static mock view
 // instead, for UI work and screenshots.
 import { create } from 'zustand';
-import type { Avatar, GameView } from '../../engine/types';
+import type { Avatar, GameView, Stance } from '../../engine/types';
 import type { ClientMessage, ErrorCode, Reaction, ServerMessage } from '../../protocol';
 import { FIXTURES } from '../dev/fixtures';
 import { dialSocket, type Line, type LineHandlers } from './line';
@@ -37,6 +37,10 @@ export interface TableStore {
   reactions: ReactionEvent[];
   connect(code: string, profile: Profile): void;
   send(msg: ClientMessage): void;
+  /** During `nod`: nod at a teammate, or pass with `null`. */
+  nod(at: string | null): void;
+  /** During `call`: In or Out. */
+  call(stance: Stance): void;
   leave(): void;
 }
 
@@ -198,6 +202,12 @@ export const useTable = create<TableStore>((set, get) => {
       }
       if (socket?.open) socket.send(JSON.stringify(msg));
       else flashError('net', 'Lost the line to the bar. Knocking again.');
+    },
+    nod(at) {
+      get().send({ t: 'nod', at });
+    },
+    call(stance) {
+      get().send({ t: 'call', stance });
     },
     leave() {
       current = null;
