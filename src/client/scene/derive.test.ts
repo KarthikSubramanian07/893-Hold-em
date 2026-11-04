@@ -1,20 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { FIXTURES } from '../dev/fixtures';
 import type { GameView } from '../../engine/types';
-import { deriveSeats, deriveTargets, heatRatio, lastCall, maskMood, orderSeats } from './derive';
+import { dangerRatio, deriveSeats, deriveTargets, houseMask, maskMood, nodThreads, orderSeats } from './derive';
 
 const F = (name: string): GameView => structuredClone(FIXTURES[name]!);
 
 describe('orderSeats', () => {
   it('rotates the viewer to the front and keeps seat order around the table', () => {
-    const v = F('river');
-    const order = orderSeats(v.seats, 's3').map((s) => s.id);
-    expect(order).toEqual(['s3', 's4', 's0', 's1', 's2']);
+    const v = F('call');
+    expect(orderSeats(v.seats, 's2').map((s) => s.id)).toEqual(['s2', 's3', 's0', 's1']);
   });
 
   it('leaves spectators in seat order', () => {
-    const v = F('river');
-    expect(orderSeats(v.seats, null).map((s) => s.id)).toEqual(['s0', 's1', 's2', 's3', 's4']);
+    expect(orderSeats(F('call').seats, null).map((s) => s.id)).toEqual(['s0', 's1', 's2', 's3']);
   });
 });
 
@@ -28,48 +26,79 @@ describe('deriveSeats', () => {
   });
 
   it('only shows occupied seats once the night starts', () => {
-    expect(deriveSeats(F('river'))).toHaveLength(5);
+    expect(deriveSeats(F('call'))).toHaveLength(4);
   });
 
-  it('lights candles only while calls are open', () => {
-    const v = F('preflop');
+  it('lights candles while a nod or a call is open, and not after', () => {
+    const v = F('nod');
     expect(deriveSeats(v).filter((s) => s.locked).map((s) => s.key)).toEqual(['s1', 's3']);
     v.phase = 'showdown';
     expect(deriveSeats(v).some((s) => s.locked)).toBe(false);
   });
-});
 
-describe('lastCall', () => {
-  it('returns the latest revealed call with a stable key', () => {
-    const v = F('river');
-    expect(lastCall(v.seats[1]!, 3)).toEqual({ street: 2, stance: 'stay', key: '3:2:stay' });
-    expect(lastCall(v.seats[2]!, 3)?.stance).toBe('fold');
-    expect(lastCall(F('preflop').seats[0]!, 1)).toBeNull();
+  it('counts nods only once they are turned over', () => {
+    expect(deriveSeats(F('nod')).every((s) => s.nods === 0)).toBe(true);
+    const seats = deriveSeats(F('call'));
+    expect(seats.find((s) => s.key === 's1')!.nods).toBe(2);
+    expect(seats.find((s) => s.key === 's0')!.nods).toBe(1);
+  });
+
+  it('drops a stance slip at the showdown and darkens those who sat out', () => {
+    const seats = deriveSeats(F('showdown'));
+    const ren = seats.find((s) => s.key === 's2')!;
+    expect(ren.stance).toBe('out');
+    expect(ren.out).toBe(true);
+    expect(ren.slipKey).not.toBe('');
+    expect(seats.find((s) => s.key === 's1')!.out).toBe(false);
+    expect(deriveSeats(F('call')).every((s) => s.slipKey === '')).toBe(true);
   });
 });
 
-describe('heatRatio', () => {
-  it('clamps to 0..1', () => {
-    expect(heatRatio({ heat: 4, heatLimit: 8 })).toBe(0.5);
-    expect(heatRatio({ heat: 12, heatLimit: 8 })).toBe(1);
-    expect(heatRatio({ heat: 1, heatLimit: 0 })).toBe(0);
+describe('dangerRatio', () => {
+  it('is calm at or above the start, and full one step from the sirens', () => {
+    expect(dangerRatio({ meter: 0, door: 11, sirens: 8 })).toBe(0);
+    expect(dangerRatio({ meter: 5, door: 11, sirens: 8 })).toBe(0);
+    expect(dangerRatio({ meter: -7, door: 11, sirens: 8 })).toBe(1);
+    const mid = dangerRatio({ meter: -4, door: 11, sirens: 8 });
+    expect(mid).toBeGreaterThan(0.3);
+    expect(mid).toBeLessThan(0.8);
+  });
+});
+
+describe('nodThreads', () => {
+  it('draws a thread per revealed nod, never during the nod itself', () => {
+    expect(nodThreads(F('nod'))).toEqual([]);
+    expect(nodThreads(F('call'))).toEqual([
+      { from: 's0', to: 's1' },
+      { from: 's2', to: 's1' },
+      { from: 's3', to: 's0' },
+    ]);
+    expect(nodThreads(F('lobby'))).toEqual([]);
   });
 });
 
 describe('deriveTargets', () => {
-  it('hides cards, masks, and the rule in the lobby', () => {
+  it('hides cards and the House in the lobby', () => {
     const t = deriveTargets(F('lobby'));
     expect(t.house).toEqual([]);
     expect(t.heroCards).toEqual([]);
-    expect(t.rule).toBeNull();
     expect(t.board.every((b) => b.slot === null)).toBe(true);
   });
 
-  it('hands the viewer their own cards to hold up', () => {
-    expect(deriveTargets(F('preflop')).heroCards).toEqual(['Ah', 'Kd']);
+  it('hands the viewer their own cards face down, then face up at the showdown', () => {
+    expect(deriveTargets(F('nod')).heroCards).toEqual(['back', 'back']);
+    expect(deriveTargets(F('showdown')).heroCards).toEqual(['Ah', 'Kd']);
   });
 
-  it('marks the champions best five at the showdown', () => {
+  it('seats one House with its cards, first face up', () => {
+    const t = deriveTargets(F('nod'));
+    expect(t.house).toHaveLength(1);
+    expect(t.house[0]!.cards).toEqual(['Kc', 'back', 'back']);
+    expect(t.house[0]!.mask).toBe('okame');
+    expect(t.house[0]!.watches).toEqual(['s0', 's1', 's2', 's3']);
+  });
+
+  it('marks the best fives at the showdown', () => {
     const t = deriveTargets(F('showdown'));
     // Board Kh 7s 7d 2c Qh. Crew best: 7h 7s 7d Qs Qh. House best: Kh Kc 7s 7d Qh.
     expect(t.board.map((b) => b.crew)).toEqual([false, true, true, false, true]);
@@ -78,71 +107,49 @@ describe('deriveTargets', () => {
     expect(champ.key).toBe('s1');
     expect(champ.glow).toEqual([true, true]);
     expect(t.seats.find((s) => s.key === 's0')!.glow).toEqual([false, false]);
-    const houseChamp = t.house.find((h) => h.champion)!;
-    expect(houseChamp.glow).toEqual([false, true]);
-    expect(t.house.find((h) => !h.champion)!.glow).toEqual([false, false]);
+    expect(t.house[0]!.glow).toEqual([true, false, false]);
+    // The House stares down the hand that beat it.
+    expect(t.house[0]!.saw).toEqual(['s1']);
   });
 
-  it('turns up the neon and the police lights as heat climbs', () => {
-    const cool = F('river');
-    cool.heat = 0;
-    const hot = F('river');
-    hot.heat = 8;
-    expect(deriveTargets(hot).neon).toBeGreaterThan(deriveTargets(cool).neon);
-    expect(deriveTargets(cool).police).toBe(0);
-    expect(deriveTargets(hot).police).toBe(1);
+  it('turns up the neon and the police lights as the marker nears the sirens', () => {
+    const calm = F('call');
+    calm.meter = 2;
+    const tight = F('call');
+    tight.meter = -7;
+    expect(deriveTargets(tight).neon).toBeGreaterThan(deriveTargets(calm).neon);
+    expect(deriveTargets(calm).police).toBe(0);
+    expect(deriveTargets(tight).police).toBe(1);
+    expect(deriveTargets(tight).danger).toBe(1);
   });
 
-  it('dims the lantern when the crew walks away', () => {
+  it('dims the lantern when everyone sits out, and at dawn', () => {
     const v = F('showdown');
     v.result!.outcome = 'walked';
     expect(deriveTargets(v).lantern).toBeLessThan(0.5);
+    const dawn = F('over');
+    dawn.verdict = 'dawn';
+    expect(deriveTargets(dawn).lantern).toBeLessThan(1);
   });
 
-  it('sets the haze and mask moods by outcome', () => {
+  it('sets the haze and the House mood by outcome', () => {
     const v = F('showdown');
     expect(deriveTargets(v).haze).toBe(0);
-    expect(deriveTargets(v).house.every((h) => h.mood === 'retreat')).toBe(true);
+    expect(deriveTargets(v).house[0]!.mood).toBe('retreat');
     v.result!.outcome = 'house';
     const t = deriveTargets(v);
     expect(t.haze).toBe(1);
-    expect(t.house.map((h) => h.mood)).toEqual(['lean', 'flare']);
+    expect(t.house[0]!.mood).toBe('flare');
+    expect(t.house[0]!.saw).toEqual(['s0']);
   });
 
-  it('keeps masks idle outside the showdown', () => {
-    expect(maskMood(true, F('river'))).toBe('idle');
-  });
-});
-
-describe('masks and watchers', () => {
-  it('names each House hand by the mask that holds it at this table', () => {
-    const v = F('river');
-    expect(deriveTargets(v).house.map((h) => h.mask)).toEqual(['kitsune', 'tengu', 'hannya']);
-    v.config.difficulty = 'oyabun';
-    expect(deriveTargets(v).house.map((h) => h.mask)).toEqual(['okina', 'hannya', 'kitsune']);
-    v.rule = 'oni';
-    expect(deriveTargets(v).house.map((h) => h.mask).at(-1)).toBe('oni');
+  it('keeps the House idle outside the showdown', () => {
+    expect(maskMood(F('call'))).toBe('idle');
   });
 
-  it("lists the seats each mask watches and gives each seat its watcher", () => {
-    const t = deriveTargets(F('river'));
-    expect(t.house.map((h) => h.watches)).toEqual([['s0', 's1'], ['s2', 's3'], ['s4']]);
-    expect(t.seats.find((s) => s.key === 's3')!.watcher).toBe(1);
-  });
-
-  it('marks who was seen at the showdown, even when the crew wins', () => {
-    const t = deriveTargets(F('showdown'));
-    expect(t.outcome).toBe('crew');
-    expect(t.seats.find((s) => s.key === 's3')!.seen).toBe('seen');
-    expect(t.seats.find((s) => s.key === 's0')!.seen).toBe('clear');
-    expect(t.seats.find((s) => s.key === 's2')!.seen).toBeNull();
-    expect(t.house[1]!.saw).toEqual(['s3']);
-    expect(t.house[0]!.saw).toEqual([]);
-  });
-
-  it('has no masks or watchers in the lobby', () => {
-    const t = deriveTargets(F('lobby'));
-    expect(t.house).toEqual([]);
-    expect(t.seats.every((s) => s.watcher === null && s.seen === null)).toBe(true);
+  it('gives each table its own House mask', () => {
+    expect(houseMask('shitamachi')).toBe('okame');
+    expect(houseMask('kabukicho')).toBe('kitsune');
+    expect(houseMask('oyabun')).toBe('okina');
   });
 });

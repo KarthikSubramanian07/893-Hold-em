@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aspectBlend, bottomCalm, boardSpot, cameraFrame, heroCardPixels, lanternHeight, MASK_FACE, maskLayout, projectNdc, seatAnchor, seatLayout, stageLayout, TABLE, type Vec3 } from './layout';
+import { aspectBlend, bottomCalm, boardSpot, cameraFrame, heroCardPixels, houseCardSpots, lanternHeight, MASK_FACE, maskLayout, projectNdc, seatAnchor, seatLayout, stageLayout, TABLE, type Vec3 } from './layout';
 
 describe('seatLayout', () => {
   it('puts the viewer at the front centre', () => {
@@ -161,15 +161,13 @@ describe('stageLayout', () => {
     }
   });
 
-  it('never stands the rule card in front of a face', () => {
+  it('lays every House card on screen, even all five at Oyabun', () => {
     for (const a of ASPECTS) {
-      for (let n = 1; n <= 4; n++) {
-        const st = stageLayout(n, a);
-        const rule = box(st.rule, 0.21, 0.37, 0.37, a);
-        for (const m of st.masks) {
-          const face = box(m, MASK_FACE.hw * st.scale, MASK_FACE.hh * st.scale, MASK_FACE.hh * st.scale * 0.85, a);
-          expect(overlap(rule, face), `rule vs face, n=${n}, aspect=${a.toFixed(2)}`).toBe(false);
-        }
+      const st = stageLayout(1, a);
+      for (const c of houseCardSpots(st.masks[0]!, 5)) {
+        const p = projectNdc(c, a);
+        expect(Math.abs(p.x), `house card x, aspect=${a.toFixed(2)}`).toBeLessThan(0.98);
+        expect(Math.abs(p.y)).toBeLessThan(1);
       }
     }
   });

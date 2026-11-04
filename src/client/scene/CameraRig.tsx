@@ -23,8 +23,8 @@ export function CameraRig() {
     const t = clock.elapsedTime;
     const bx = still ? 0 : Math.sin(t * 0.21) * 0.035 + Math.sin(t * 0.13) * 0.02;
     const by = still ? 0 : Math.sin(t * 0.29 + 1) * 0.022;
-    // A hot room feels closer: lean in a touch as heat climbs.
-    const lean = live.heat * 0.18;
+    // A tight night feels closer: lean in a touch as the sirens get near.
+    const lean = live.danger * 0.18;
     cam.position.set(f.position.x + p.x * 0.18 + bx, f.position.y + p.y * 0.08 + by - lean * 0.3, f.position.z - lean);
     look.current.set(f.target.x + p.x * 0.05, f.target.y, f.target.z);
     if (!p.ready) p.ready = true;

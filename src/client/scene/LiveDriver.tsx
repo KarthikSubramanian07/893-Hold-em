@@ -10,7 +10,7 @@ export function LiveDriver() {
   const lastShowdown = useRef('');
   useFrame(({ clock }, dt) => {
     const t = live.targets;
-    // One showdown per hand: remember when it began, so the watchers' beats line up.
+    // One showdown per hand: remember when it began, so the House's beat lines up.
     const key = t.phase === 'showdown' ? `${t.code}:${t.hand}` : '';
     if (key !== lastShowdown.current) {
       lastShowdown.current = key;
@@ -20,7 +20,7 @@ export function LiveDriver() {
       if (t.outcome === 'house') live.surge = 1.4;
       lastOutcome.current = t.outcome;
     }
-    live.heat = damp(live.heat, t.heat, 1.5, dt);
+    live.danger = damp(live.danger, t.danger, 1.5, dt);
     live.neon = damp(live.neon, t.neon, 1.2, dt);
     live.police = damp(live.police, t.police, 1.5, dt);
     live.haze = damp(live.haze, t.haze, 1.4, dt);
