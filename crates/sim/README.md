@@ -10,6 +10,8 @@ The balancing simulator for 893 Hold'em. It plays whole nights with a regular
 
 Seeds are fixed, so reruns are reproducible and two settings are compared on
 the same deals. Nights run in parallel across cores (`THREADS=n` caps it).
+`TABLE=kabukicho` limits a run to one table, and `CREWS=2,4,6` to some crew
+sizes, which helps when you're only retuning one corner.
 
 ## Build
 
@@ -27,8 +29,10 @@ Always use `--release`: a debug build is roughly 30 times slower.
 
 For each table and crew size:
 
-1. **The sirens** sit a fixed distance away: twice the crew, plus one at
-   Shitamachi. That is about two bad hands with everyone In.
+1. **The sirens** sit a fixed distance away: the crew size plus three at
+   Shitamachi, plus one at Kabukichō, and just the crew size at Oyabun
+   (`sirens_for` in `src/main.rs`). At Oyabun that is about one bad hand with
+   everyone In.
 2. **The door** is bisected until the regulars get away clean closest to
    70% (Shitamachi), 50% (Kabukichō) or 30% (Oyabun) of nights. Every
    candidate is played at its own numbers, because the regulars weigh each
@@ -48,15 +52,15 @@ Plays every cell at the numbers in `BALANCE` with five crews:
 
 | Crew | Nods | Reads nods | In or Out |
 |---|---|---|---|
-| regulars | at the teammate most likely to win | yes | weighs the marker |
-| random nod | at a random teammate | yes | weighs the marker |
+| regulars | at whichever of its two neighbours is likelier to win | yes | weighs the marker |
+| random nod | at one of its two neighbours, at random | yes | weighs the marker |
 | no nods | never | yes | weighs the marker |
-| deaf | at the teammate most likely to win | no | weighs the marker |
+| deaf | at whichever of its two neighbours is likelier to win | no | weighs the marker |
 | always in | never | no | always In |
 
 Columns: clean, raid and dawn rates; hands per night; how often players went
 In and nodded; **convert** (of hands someone could have won, how many the crew
-won); **carried** (of won hands, how many the carrier had been nodded at); and
+won); **hit%** (of hands that went In, how many beat the House); and
 **comeback** (nights won from the sirens' side, or lost from the door's side).
 
 If the regulars don't clearly beat "no nods" and "deaf", the nod isn't doing
@@ -69,10 +73,8 @@ its job, and that's a rules problem, not a bot problem.
 
 | Knob | Meaning |
 |---|---|
-| `nod_min` | Nod only at a teammate who beats the House at least this often |
-| `nod_trust` | How reliably a nod points at the strongest hand on the flop |
-| `nodded_in` | Chance a nodded teammate goes In |
-| `visible_in` | A teammate who visibly beats the House this often is expected In |
+| `nod_min` | Nod only at a neighbour who beats the House at least this often |
+| `nod_trust` | How reliably a nod points at the stronger of the two hands it sees |
 | `caution` | Extra weight on steps toward the sirens, the closer they are |
 | `urgency` | Extra weight on steps toward the door, the fewer hands are left |
 | `in_margin` | How much better In must look than Out |
@@ -80,7 +82,9 @@ its job, and that's a rules problem, not a bot problem.
 
 ## Cost
 
-Each decision builds a strength table from the flop (about 40 deals, every
-two-card hand scored on each) and then samples a few hundred completions:
-one to two milliseconds natively. A full tune is a few thousand nights per
+Each decision builds a strength table from the board as it stands at the nod,
+the flop and the turn (about 40 deals, every two-card hand scored on each),
+and then samples a few hundred completions. A regular can't see its own hand
+or the hands across the table, so every sample deals those too, along with
+the House's hidden card and the river. One to two milliseconds natively. A full tune is a few thousand nights per
 table; run it with `THREADS=2` under `nice` on a shared machine.

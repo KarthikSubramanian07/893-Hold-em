@@ -1,27 +1,28 @@
 //! The regulars: bots that fill empty chairs.
 //!
 //! A bot decides from its own `GameView`, the same redacted view a human gets,
-//! so it can't peek: it sees its teammates' cards, the board, and the House's
-//! face-up card, and never its own hand.
+//! so it can't peek: it sees the two teammates beside it, the board, and the
+//! House's face-up card, and never its own hand.
 //!
-//! **The nod.** With the flop out, the bot deals out everything it can't see
-//! (its own cards, the House's hidden cards, the turn and the river) a few
-//! hundred times, and nods at the teammate most likely to beat the House, if
-//! that chance is good enough. Otherwise it passes.
+//! **The nod.** With the flop and the turn out, the bot deals out everything it can't see
+//! (its own cards, the hands across the table, the House's hidden cards, the
+//! turn and the river) a few hundred times, and nods at whichever of the two
+//! beside it is more likely to beat the House, if that chance is good enough.
+//! Otherwise it passes.
 //!
-//! **In or Out.** With the river out, the bot reads the nods. Each teammate
-//! who nodded at it is evidence its own hand looked strongest on the flop;
-//! each teammate who nodded at someone else is evidence it didn't. Samples of
-//! its own hidden cards are weighted by how well they explain the nods, which
-//! gives the chance the bot itself beats the House. Teammates who were nodded
-//! at, or whose cards plainly beat the House, are expected to be In. The bot
-//! then compares the marker's expected move with it In against Out, weighing
-//! steps toward the sirens more heavily the closer they are, and steps toward
-//! the door more heavily the fewer hands are left to reach it.
+//! **In or Out.** Every In hand plays the House on its own, so the bot needs
+//! one number: the chance its own hand wins. Only the two beside it saw that
+//! hand, and a nod is one of two, so it reads every nod at the table. It
+//! samples its own cards and the hands it can't see, and weights each sample
+//! by how well it explains the nods: a neighbour who nodded at it, one who
+//! nodded past it at someone it can see is weaker, one who passed. Then it
+//! weighs a step toward the door against a step toward the sirens: the closer
+//! the sirens, the more a loss hurts; the less time left, the more a win counts.
 
 use crate::card::{Card, CardSet, Rng, full_deck};
 use crate::eval::{card_mask, hand_mask, score_mask};
 use crate::game::{Phase, Stance};
+use crate::rules::NOD_BOARD;
 use crate::view::{GameView, Slot};
 
 /// The numbers behind the policy. `KNOBS` holds the tuned values; the
@@ -30,18 +31,14 @@ use crate::view::{GameView, Slot};
 pub struct Knobs {
     /// Nod at the best teammate only if they beat the House at least this often.
     pub nod_min: f64,
-    /// How reliably a nod points at the hand that looked best on the flop.
+    /// How reliably a nod points at the hand that looked best at the nod.
     pub nod_trust: f64,
-    /// Chance a teammate who was nodded at goes In.
-    pub nodded_in: f64,
-    /// A teammate whose visible hand beats the House this often is expected In.
-    pub visible_in: f64,
     /// Extra weight on steps toward the sirens, scaled by how close they are.
     pub caution: f64,
     /// How much more a step toward the door is worth when the clock is short:
     /// scaled by the steps still needed per player per hand left.
     pub urgency: f64,
-    /// How much better In must look than Out, in steps.
+    /// How much better In must look than Out, in steps (Out is worth zero).
     pub in_margin: f64,
     /// Noise on every call, in steps, so regulars aren't clockwork.
     pub jitter: f64,
@@ -49,13 +46,11 @@ pub struct Knobs {
 
 /// The tuned policy. See `crates/sim/README.md` for the search behind it.
 pub const KNOBS: Knobs = Knobs {
-    nod_min: 0.2,
-    nod_trust: 0.8,
-    nodded_in: 0.85,
-    visible_in: 0.45,
+    nod_min: 0.35,
+    nod_trust: 0.9,
     caution: 0.3,
     urgency: 3.0,
-    in_margin: -0.3,
+    in_margin: 0.0,
     jitter: 0.15,
 };
 
@@ -117,8 +112,11 @@ fn card(s: &Slot) -> Option<Card> {
 /// Everything the bot can see, with the unseen deck.
 struct Table {
     me: usize,
-    /// Teammates' hole cards by seat index (`None` at the bot's own index).
+    /// Teammates' hole cards by seat index (`None` at the bot's own index and
+    /// for teammates out of sight).
     holes: Vec<Option<[Card; 2]>>,
+    /// Teammates whose cards the bot can't see.
+    hidden: Vec<usize>,
     board: Vec<Card>,
     house_up: Vec<Card>,
     house_hidden: usize,
@@ -138,6 +136,9 @@ impl Table {
                 }
                 Some([card(s.cards.first()?)?, card(s.cards.get(1)?)?])
             })
+            .collect();
+        let hidden: Vec<usize> = (0..holes.len())
+            .filter(|&i| i != me && holes[i].is_none())
             .collect();
         let board: Vec<Card> = view.board.iter().filter_map(card).collect();
         let house_up: Vec<Card> = view.house.cards.iter().filter_map(card).collect();
@@ -159,6 +160,7 @@ impl Table {
         Some(Table {
             me,
             holes,
+            hidden,
             board,
             house_up,
             house_hidden,
@@ -174,34 +176,46 @@ impl Table {
     }
 }
 
-/// One deal of everything unseen: the bot's cards, the House's hidden cards,
-/// and the rest of the board.
+/// One deal of everything unseen: the bot's cards, the hands of teammates
+/// out of sight, the House's hidden cards, and the rest of the board.
 struct Deal {
     mine: [Card; 2],
+    /// Hands for `Table::hidden`, in the same order.
+    hidden: Vec<[Card; 2]>,
     board: u64,
     house: u64,
 }
 
 fn deal(t: &Table, deck: &mut [Card], rng: &mut Rng) -> Deal {
-    let need = 2 + t.house_hidden + (5 - t.board.len());
+    let held = 2 + 2 * t.hidden.len();
+    let need = held + t.house_hidden + (5 - t.board.len());
     for i in 0..need {
         let j = i + rng.below((deck.len() - i) as u32) as usize;
         deck.swap(i, j);
     }
     let mine = [deck[0], deck[1]];
+    let hidden = (0..t.hidden.len())
+        .map(|k| [deck[2 + 2 * k], deck[3 + 2 * k]])
+        .collect();
     let mut house = hand_mask(&t.house_up);
-    for &c in &deck[2..2 + t.house_hidden] {
+    for &c in &deck[held..held + t.house_hidden] {
         house |= card_mask(c);
     }
     let mut board = hand_mask(&t.board);
-    for &c in &deck[2 + t.house_hidden..need] {
+    for &c in &deck[held + t.house_hidden..need] {
         board |= card_mask(c);
     }
     Deal {
         mine,
+        hidden,
         board,
         house: house | board,
     }
+}
+
+/// Seats sit in a ring; each sees the two beside it.
+fn sees(n: usize, a: usize, b: usize) -> bool {
+    a != b && ((a + 1) % n == b || (b + 1) % n == a)
 }
 
 fn score2(hole: [Card; 2], board: u64) -> u32 {
@@ -209,7 +223,7 @@ fn score2(hole: [Card; 2], board: u64) -> u32 {
 }
 
 /// How likely each possible two-card hand is to beat the House, judged from
-/// the flop: the same judgement a teammate makes when deciding whom to nod at.
+/// the nod board: the same judgement a teammate makes when deciding whom to nod at.
 /// Built from `deals` shared completions (the House's hidden cards, the turn
 /// and the river), so every hand is measured on the same deals.
 struct Strength {
@@ -217,11 +231,11 @@ struct Strength {
 }
 
 impl Strength {
-    fn at_flop(t: &Table, deals: u32, rng: &mut Rng) -> Strength {
-        let flop = &t.board[..3];
+    fn at_nod(t: &Table, deals: u32, rng: &mut Rng) -> Strength {
+        let flop = &t.board[..NOD_BOARD]; // the flop and the turn
         let flop_mask = hand_mask(flop);
         let up = hand_mask(&t.house_up);
-        // Cards a teammate couldn't be holding from my point of view: the flop,
+        // Cards a teammate couldn't be holding from my point of view: the board,
         // the House's face-up card, and the hands I can see.
         let mut known = CardSet::default();
         for c in flop.iter().chain(&t.house_up) {
@@ -240,7 +254,7 @@ impl Strength {
             .into_iter()
             .filter(|c| !flop.contains(c) && !t.house_up.contains(c))
             .collect();
-        let need = t.house_hidden + 2;
+        let need = t.house_hidden + (5 - NOD_BOARD);
         for _ in 0..deals.max(1) {
             for i in 0..need {
                 let j = i + rng.below((deck.len() - i) as u32) as usize;
@@ -330,7 +344,7 @@ pub fn nod(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Option<S
         }
         Policy::Regular | Policy::Deaf => {}
     }
-    let strength = Strength::at_flop(&table, deals(t.samples), rng);
+    let strength = Strength::at_nod(&table, deals(t.samples), rng);
     let (best, p) = table
         .teammates()
         .map(|(i, h)| (i, strength.of(h)))
@@ -352,124 +366,59 @@ pub fn call(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Stance 
         return Stance::Out;
     };
     let k = &t.knobs;
-    let strength = Strength::at_flop(&table, deals(t.samples), rng);
-    let seen_strength: Vec<f64> = table
-        .holes
-        .iter()
-        .map(|h| h.map_or(0.0, |h| strength.of(h)))
-        .collect();
+    let strength = Strength::at_nod(&table, deals(t.samples), rng);
     let nod_of = |i: usize| -> Option<usize> {
         let at = view.seats[i].nod.as_deref()?;
         view.seats.iter().position(|s| s.id == at)
     };
-    let nods_on = |i: usize| {
-        (0..view.seats.len())
-            .filter(|&j| nod_of(j) == Some(i))
-            .count()
-    };
 
-    // Teammates' showdown scores are fixed once the river is out; the House's
-    // hidden cards are not, so who beats it is still a sample.
-    let mates: Vec<(usize, [Card; 2])> = table.teammates().collect();
+    // The bot's own cards, the hands out of its sight, and the House's hidden
+    // cards are sampled. Each sample is weighted by how well it explains
+    // every nod at the table: what each teammate saw was the two beside them.
+    let seats = table.holes.len();
+    let mut strengths: Vec<f64> = table
+        .holes
+        .iter()
+        .map(|h| h.map_or(0.0, |h| strength.of(h)))
+        .collect();
     let mut deck = table.unseen.clone();
-    let n = t.samples.max(1);
     let read = t.policy != Policy::Deaf;
-    let trust = k.nod_trust;
-
-    struct Sample {
-        weight: f64,
-        mine: u32,
-        house: u32,
-        mates: Vec<u32>,
-    }
-    let mut draws = Vec::with_capacity(n as usize);
-    let mut mate_wins = vec![0.0f64; mates.len()];
-    for _ in 0..n {
+    let (mut total, mut win, mut tie) = (0.0, 0.0, 0.0);
+    for _ in 0..t.samples.max(1) {
         let d = deal(&table, &mut deck, rng);
-        let house = score_mask(d.house);
-        let mine = score2(d.mine, d.board);
-        let mate_scores: Vec<u32> = mates.iter().map(|(_, h)| score2(*h, d.board)).collect();
-        // How well do these cards of mine explain the nods?
         let mut weight = 1.0;
         if read {
-            let mine_strength = strength.of(d.mine);
-            for (j, _) in &mates {
-                // What teammate j saw on the flop: everyone but themselves.
-                let strength_of = |i: usize| {
-                    if i == table.me {
-                        mine_strength
-                    } else {
-                        seen_strength[i]
-                    }
-                };
-                let others = (0..table.holes.len()).filter(|&i| i != *j);
-                let best_seen = others.clone().map(strength_of).fold(0.0, f64::max);
-                let fits = match nod_of(*j) {
-                    Some(at) => strength_of(at) >= best_seen - 1e-9 && strength_of(at) >= k.nod_min,
+            strengths[table.me] = strength.of(d.mine);
+            for (h, &i) in d.hidden.iter().zip(&table.hidden) {
+                strengths[i] = strength.of(*h);
+            }
+            for j in (0..seats).filter(|&j| j != table.me) {
+                let best_seen = (0..seats)
+                    .filter(|&i| sees(seats, j, i))
+                    .map(|i| strengths[i])
+                    .fold(0.0, f64::max);
+                let fits = match nod_of(j) {
+                    Some(at) => strengths[at] >= best_seen - 1e-9 && strengths[at] >= k.nod_min,
                     None => best_seen < k.nod_min,
                 };
-                weight *= if fits { trust } else { 1.0 - trust };
+                weight *= if fits { k.nod_trust } else { 1.0 - k.nod_trust };
             }
         }
-        for (m, s) in mate_scores.iter().enumerate() {
-            if *s > house {
-                mate_wins[m] += 1.0;
-            }
-        }
-        draws.push(Sample {
-            weight,
-            mine,
-            house,
-            mates: mate_scores,
-        });
-    }
-
-    // Who else is likely In: nodded teammates, and teammates who plainly win.
-    let expected_in: Vec<(usize, f64)> = mates
-        .iter()
-        .enumerate()
-        .map(|(m, (i, _))| {
-            let visible = mate_wins[m] / f64::from(n);
-            let q = if nods_on(*i) > 0 || visible >= k.visible_in {
-                k.nodded_in
-            } else {
-                0.0
-            };
-            (m, q)
-        })
-        .filter(|(_, q)| *q > 0.0)
-        .collect();
-    let others_in: f64 = expected_in.iter().map(|(_, q)| q).sum();
-
-    let total: f64 = draws.iter().map(|s| s.weight).sum::<f64>().max(1e-12);
-    let mut win_in = 0.0;
-    let mut tie_in = 0.0;
-    let mut win_out = 0.0;
-    let mut tie_out = 0.0;
-    for s in &draws {
-        let carried = expected_in
-            .iter()
-            .map(|(m, _)| s.mates[*m])
-            .max()
-            .unwrap_or(0);
-        let with_me = carried.max(s.mine);
-        if with_me > s.house {
-            win_in += s.weight;
-        } else if with_me == s.house {
-            tie_in += s.weight;
-        }
-        if !expected_in.is_empty() {
-            if carried > s.house {
-                win_out += s.weight;
-            } else if carried == s.house {
-                tie_out += s.weight;
-            }
+        let mine = score2(d.mine, d.board);
+        let house = score_mask(d.house);
+        total += weight;
+        if mine > house {
+            win += weight;
+        } else if mine == house {
+            tie += weight;
         }
     }
-    let (win_in, tie_in) = (win_in / total, tie_in / total);
-    let (win_out, tie_out) = (win_out / total, tie_out / total);
+    let total = f64::max(total, 1e-12);
+    let (win, tie) = (win / total, tie / total);
+    let lose = (1.0 - win - tie).max(0.0);
 
-    // Steps toward the sirens hurt more the closer they are.
+    // Steps toward the sirens hurt more the closer they are; steps toward the
+    // door count for more the less time is left to reach it.
     let sirens_left = (f64::from(view.sirens as i32 + view.meter)).max(1.0);
     let door_left = (f64::from(view.door as i32 - view.meter)).max(1.0);
     let crew = view.seats.len() as f64;
@@ -477,20 +426,9 @@ pub fn call(view: &GameView, me: &str, t: Temperament, rng: &mut Rng) -> Stance 
     let hands_left = f64::from(view.last_orders.saturating_sub(view.hand) + 1);
     let pace = door_left / (hands_left * crew);
     let gain_weight = 1.0 + k.urgency * pace.min(3.0);
-    // Steps past the door are worth nothing extra.
-    let gain = |steps: f64| steps.min(door_left) * gain_weight;
-    let value = |ins: f64, win: f64, tie: f64| {
-        let lose = (1.0 - win - tie).max(0.0);
-        win * gain(ins) - lose * ins * loss_weight
-    };
-    let ev_in = value(others_in + 1.0, win_in, tie_in);
-    let ev_out = if expected_in.is_empty() {
-        0.0
-    } else {
-        value(others_in, win_out, tie_out)
-    };
+    let ev_in = win * gain_weight - lose * loss_weight;
     let noise = (rng.unit() - 0.5) * 2.0 * k.jitter;
-    if ev_in - ev_out + t.boldness + noise > k.in_margin {
+    if ev_in + t.boldness + noise > k.in_margin {
         Stance::In
     } else {
         Stance::Out
@@ -556,20 +494,62 @@ mod tests {
     }
 
     #[test]
-    fn goes_in_behind_a_teammate_who_plainly_wins() {
+    fn stays_out_when_its_neighbours_pass_it_over() {
         let (mut g, _) = table(2);
         g.board = cards("Ah Kh Qh 2c 3d");
         g.seats[0].hole = cards("Jh Th");
-        g.seats[1].hole = cards("4s 5s");
-        g.seats[2].hole = cards("7c 8d");
+        g.seats[1].hole = cards("7c 8d"); // the bot itself, blind to it
+        g.seats[2].hole = cards("9d 6c");
         g.house = cards("9s 9c 6d");
-        for id in ["s0", "s1", "s2"] {
-            g.nod(id, if id == "s0" { None } else { Some("s0") }, 1)
-                .unwrap();
-        }
+        // s0 saw the bot and s2 and passed; s2 nodded at s0, not the bot.
+        g.nod("s0", None, 1).unwrap();
+        g.nod("s1", Some("s0"), 1).unwrap();
+        g.nod("s2", Some("s0"), 1).unwrap();
         let v = view_for(&g, Some("s1"), 2);
         let mut rng = Rng::seeded(3);
+        assert_eq!(call(&v, "s1", calm(), &mut rng), Stance::Out);
+    }
+
+    #[test]
+    fn at_a_big_table_it_reads_the_two_beside_it() {
+        let (mut g, _) = table(4);
+        g.board = cards("Ah Kh Qh 2c 3d");
+        g.seats[0].hole = cards("4s 5s");
+        g.seats[1].hole = cards("Jh Th"); // the bot itself, blind to it
+        g.seats[2].hole = cards("7c 8d");
+        g.seats[3].hole = cards("9d 6c");
+        g.seats[4].hole = cards("Jd 4c");
+        g.house = cards("9s 9c 6d");
+        let v = view_for(&g, Some("s1"), 1);
+        assert!(v.seats[0].in_sight && v.seats[2].in_sight);
+        assert!(!v.seats[3].in_sight && !v.seats[4].in_sight);
+        // The two beside it nod at it, past the hands it can see.
+        for (id, at) in [
+            ("s0", Some("s1")),
+            ("s1", None),
+            ("s2", Some("s1")),
+            ("s3", None),
+            ("s4", None),
+        ] {
+            g.nod(id, at, 1).unwrap();
+        }
+        let v = view_for(&g, Some("s1"), 2);
+        let mut rng = Rng::seeded(7);
         assert_eq!(call(&v, "s1", calm(), &mut rng), Stance::In);
+        // A nod only ever goes to someone in sight.
+        let mut g2 = g.clone();
+        g2.phase = Phase::Nod;
+        for s in &mut g2.seats {
+            s.nodded = false;
+            s.nod = None;
+        }
+        let v = view_for(&g2, Some("s3"), 1);
+        let mut rng = Rng::seeded(8);
+        for _ in 0..20 {
+            if let Some(at) = nod(&v, "s3", calm(), &mut rng) {
+                assert!(at == "s2" || at == "s4", "nodded out of sight at {at}");
+            }
+        }
     }
 
     #[test]

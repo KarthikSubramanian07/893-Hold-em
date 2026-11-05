@@ -4,7 +4,8 @@
 //! spectator). It is the only path from hidden state to the wire, so every
 //! secrecy rule lives here:
 //!
-//! - During a hand you see every teammate's cards but never your own.
+//! - During a hand you see the cards of the two players beside you, never
+//!   your own. At two or three players that's everyone else.
 //! - Spectators see no hole cards at all, so a second tab can't peek at yours.
 //! - The House shows its first card; the rest wait for the showdown.
 //! - Nods stay secret until everyone has nodded; In and Out until the showdown.
@@ -45,6 +46,9 @@ pub struct SeatView {
     pub host: bool,
     pub connected: bool,
     pub cards: Vec<Slot>,
+    /// You can see this seat's cards this hand (and so may nod at it).
+    #[serde(rename = "inSight")]
+    pub in_sight: bool,
     /// Has this seat decided in the current phase (nodded, or picked In/Out)?
     pub locked: bool,
     /// Who this seat nodded at. Hidden from others until every nod is in.
@@ -100,8 +104,9 @@ pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
         .iter()
         .map(|s| {
             let mine = you == Some(s.id.as_str());
-            // Seated players see their teammates; nobody sees their own hand.
-            let visible = open || (you.is_some() && !mine);
+            // Seated players see the two beside them; nobody sees their own hand.
+            let in_sight = you.is_some_and(|y| g.sees(y, &s.id));
+            let visible = open || in_sight;
             let cards = s
                 .hole
                 .iter()
@@ -120,6 +125,7 @@ pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
                 host: g.host.as_deref() == Some(s.id.as_str()),
                 connected: s.connected,
                 cards,
+                in_sight,
                 locked,
                 nod: if nods_public || mine {
                     s.nod.clone()
@@ -189,6 +195,7 @@ pub fn view_for(g: &Game, you: Option<&str>, now: Ms) -> GameView {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::rules::NOD_BOARD;
 
     fn running() -> Game {
         let mut g = Game::new("K7QX2", 9);
@@ -204,7 +211,7 @@ mod tests {
     }
 
     #[test]
-    fn you_see_everyone_but_yourself() {
+    fn at_three_you_see_everyone_but_yourself() {
         let g = running();
         let v = view_for(&g, Some("s0"), 5);
         assert_eq!(v.seats[0].cards, vec![Slot::Back, Slot::Back]);
@@ -217,14 +224,37 @@ mod tests {
         for c in &g.house[HOUSE_UP..] {
             assert!(!text.contains(&format!("\"{c}\"")), "leaked House card {c}");
         }
-        for c in &g.board[3..] {
-            assert!(
-                !text.contains(&format!("\"{c}\"")),
-                "leaked the turn or river {c}"
-            );
+        for c in &g.board[NOD_BOARD..] {
+            assert!(!text.contains(&format!("\"{c}\"")), "leaked the river {c}");
         }
         assert!(matches!(v.house.cards[0], Slot::Card(_)));
         assert!(v.house.cards[HOUSE_UP..].iter().all(|c| *c == Slot::Back));
+    }
+
+    #[test]
+    fn at_a_big_table_you_see_only_the_two_beside_you() {
+        let mut g = Game::new("K7QX2", 4);
+        let a = g.join("pid-aaaaaaaa", "A", "koi").unwrap();
+        for _ in 0..4 {
+            g.add_bot(&a).unwrap();
+        }
+        g.start(&a, 0).unwrap();
+        let v = view_for(&g, Some("s0"), 1);
+        let sight: Vec<bool> = v.seats.iter().map(|s| s.in_sight).collect();
+        assert_eq!(sight, vec![false, true, false, false, true]);
+        let text = json(&v);
+        for i in [0, 2, 3] {
+            assert!(v.seats[i].cards.iter().all(|c| *c == Slot::Back));
+            for c in &g.seats[i].hole {
+                assert!(
+                    !text.contains(&format!("\"{c}\"")),
+                    "leaked {c} from seat {i}"
+                );
+            }
+        }
+        assert!(matches!(v.seats[1].cards[0], Slot::Card(_)));
+        assert!(matches!(v.seats[4].cards[0], Slot::Card(_)));
+        assert!(text.contains("\"inSight\":true"));
     }
 
     #[test]
@@ -240,7 +270,7 @@ mod tests {
     }
 
     #[test]
-    fn the_board_shows_the_flop_then_all_five() {
+    fn the_board_shows_the_turn_then_all_five() {
         let mut g = running();
         let count = |v: &GameView| {
             v.board
@@ -248,7 +278,7 @@ mod tests {
                 .filter(|s| matches!(s, Slot::Card(_)))
                 .count()
         };
-        assert_eq!(count(&view_for(&g, Some("s0"), 0)), 3);
+        assert_eq!(count(&view_for(&g, Some("s0"), 0)), 4);
         for id in ["s0", "s1", "s2"] {
             g.nod(id, None, 1).unwrap();
         }

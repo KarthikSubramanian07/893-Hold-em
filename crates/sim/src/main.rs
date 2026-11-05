@@ -44,14 +44,14 @@ fn table_name(d: Difficulty) -> &'static str {
     }
 }
 
-/// The sirens' distance per table and crew: about two bad hands with the
-/// whole crew In, a step closer at each harder table.
+/// The sirens' distance per table and crew: a little more than one bad hand
+/// with the whole crew In at Shitamachi, about one at Oyabun.
 fn sirens_for(d: Difficulty, crew: usize) -> u32 {
-    let base = 2 * crew as u32;
+    let base = crew as u32;
     match d {
-        Difficulty::Shitamachi => base + 1,
-        Difficulty::Kabukicho => base,
-        Difficulty::Oyabun => base - 1,
+        Difficulty::Shitamachi => base + 3,
+        Difficulty::Kabukicho => base + 1,
+        Difficulty::Oyabun => base,
     }
 }
 
@@ -73,8 +73,9 @@ struct Stats {
     winnable: u64,
     /// Winnable hands the crew won.
     converted: u64,
-    /// Hands where the carrier had been nodded at.
-    carried_nodded: u64,
+    /// Hands that were In, and how many of them beat the House.
+    in_hands: u64,
+    in_wins: u64,
     /// Nights won from the sirens' side of the track, or lost from the door's side.
     comebacks: u64,
 }
@@ -95,7 +96,8 @@ impl Stats {
         self.walked += o.walked;
         self.winnable += o.winnable;
         self.converted += o.converted;
-        self.carried_nodded += o.carried_nodded;
+        self.in_hands += o.in_hands;
+        self.in_wins += o.in_wins;
         self.comebacks += o.comebacks;
     }
     fn pct(x: u64, of: u64) -> f64 {
@@ -183,13 +185,10 @@ fn play(
                     }
                     if !r.could_have.is_empty() {
                         st.winnable += 1;
-                        st.converted += u64::from(r.outcome == Outcome::Crew);
+                        st.converted += u64::from(!r.crew_champions.is_empty());
                     }
-                    if r.outcome == Outcome::Crew
-                        && r.crew_champions.iter().any(|c| g.nods_on(c) > 0)
-                    {
-                        st.carried_nodded += 1;
-                    }
+                    st.in_hands += r.ins.len() as u64;
+                    st.in_wins += r.crew_champions.len() as u64;
                 }
             }
             Phase::Showdown => g.tick(now + 60_000),
@@ -275,8 +274,6 @@ fn knobs_from_env() -> Knobs {
             match key {
                 "nod_min" => k.nod_min = v,
                 "nod_trust" => k.nod_trust = v,
-                "nodded_in" => k.nodded_in = v,
-                "visible_in" => k.visible_in = v,
                 "caution" => k.caution = v,
                 "urgency" => k.urgency = v,
                 "in_margin" => k.in_margin = v,
@@ -286,6 +283,16 @@ fn knobs_from_env() -> Knobs {
         }
     }
     k
+}
+
+/// `TABLE=kabukicho` limits a run to one table.
+fn wanted_table(d: Difficulty) -> bool {
+    std::env::var("TABLE").map_or(true, |t| t == table_name(d))
+}
+
+/// `CREWS=2,4,6` limits a run to some crew sizes.
+fn wanted_crew(c: usize) -> bool {
+    std::env::var("CREWS").map_or(true, |v| v.split(',').any(|x| x.trim() == c.to_string()))
 }
 
 fn arg(args: &[String], i: usize, default: u64) -> u64 {
@@ -304,14 +311,14 @@ fn row(name: &str, crew: usize, numbers: (u32, u32), s: &Stats) {
         Stats::pct(s.ins, s.decisions),
         Stats::pct(s.nods, s.nod_chances),
         Stats::pct(s.converted, s.winnable),
-        Stats::pct(s.carried_nodded, s.crew_wins),
+        Stats::pct(s.in_wins, s.in_hands),
         Stats::pct(s.comebacks, s.nights),
     );
 }
 
 fn header() {
     println!(
-        "table      crew  door sir |  clean    raid    dawn | hands |   in%  nod%  | convert carried comeback"
+        "table      crew  door sir |  clean    raid    dawn | hands |   in%  nod%  | convert   hit% comeback"
     );
 }
 
@@ -324,13 +331,16 @@ fn probe(nights: u64, samples: u32, knobs: &Knobs) {
         ("always in", Policy::AlwaysIn),
     ];
     for (ti, d) in TABLES.iter().enumerate() {
+        if !wanted_table(*d) {
+            continue;
+        }
         println!(
             "\n== {} (goal {:.0}% clean)",
             table_name(*d),
             GOALS[ti] * 100.0
         );
         header();
-        for crew in MIN_CREW..=MAX_CREW {
+        for crew in (MIN_CREW..=MAX_CREW).filter(|c| wanted_crew(*c)) {
             let numbers = BALANCE[ti][crew - MIN_CREW];
             for (name, p) in policies {
                 let s = batch(*d, crew, nights, 1, samples, knobs, numbers, p);

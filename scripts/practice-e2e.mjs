@@ -72,9 +72,9 @@ await page.waitForTimeout(400);
 await page.getByRole('button', { name: /start the night/i }).click();
 step('night started');
 
-// Play by keyboard: nod at a teammate (1, 2, 3 in turn) or pass (P) on the
-// flop; mostly In, sometimes Out, on the river.
-const nodKeys = ['1', 'p', '2', '3', 'p'];
+// Play by keyboard: nod at one of the two beside you (1 or 2) or pass (P) on
+// the turn; mostly In, sometimes Out, on the river.
+const nodKeys = ['1', 'p', '2', 'p'];
 const callKeys = ['i', 'i', 'o', 'i'];
 let nods = 0;
 let calls = 0;

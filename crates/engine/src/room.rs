@@ -226,6 +226,7 @@ fn bartender(e: &GameError) -> &'static str {
         GameError::AlreadyLocked => "You already decided. It's in.",
         GameError::SelfNod => "Nodding at yourself. Bold. Not allowed.",
         GameError::NotSeated => "You're not at the table.",
+        GameError::OutOfSight => "You can only nod at the two beside you.",
         GameError::BadPhase => "Not now.",
     }
 }

@@ -2,12 +2,14 @@
 //!
 //! The rules in four lines:
 //!
-//! 1. Everyone sees every hand but their own. The House shows one card.
-//! 2. After the flop, each player may nod at one teammate: "you're good".
+//! 1. You see the hands of the two players beside you, never your own. The
+//!    House shows one card.
+//! 2. After the turn, each player may nod at one of the two they can see:
+//!    "you're good".
 //! 3. After the river, everyone picks In or Out at once.
-//! 4. The best hand that's In against the House: a win moves the marker one
-//!    step toward the door per player in, a loss one step toward the sirens.
-//!    Everyone Out moves nothing, but the clock runs: ten hands to the door.
+//! 4. Every hand that's In plays the House on its own: each one that beats it
+//!    moves the marker a step toward the door, each one that loses a step
+//!    toward the sirens. Out moves nothing, but the clock runs: ten hands.
 //!
 //! `Game` is the whole truth, including every hidden card. It is pure: time is
 //! passed in as epoch milliseconds, randomness comes from the seeded `Rng` it
@@ -22,8 +24,8 @@ use serde::{Deserialize, Serialize};
 use crate::card::{Card, Rng, full_deck};
 use crate::eval::{HandValue, evaluate};
 use crate::rules::{
-    Difficulty, LAST_ORDERS, MAX_CREW, MIN_CREW, SHOWDOWN_SECONDS, door_for, house_cards,
-    sirens_for,
+    Difficulty, LAST_ORDERS, MAX_CREW, MIN_CREW, NOD_BOARD, SHOWDOWN_SECONDS, door_for,
+    house_cards, sirens_for,
 };
 
 pub type Ms = u64;
@@ -39,7 +41,7 @@ pub enum Stance {
 #[serde(rename_all = "lowercase")]
 pub enum Phase {
     Lobby,
-    /// The flop is out; each player may nod at one teammate.
+    /// The flop and turn are out; each player may nod at one of the two beside them.
     Nod,
     /// The river is out; each player picks In or Out.
     Call,
@@ -139,9 +141,10 @@ pub struct HandResult {
     pub moved: i32,
     /// Seat ids that were In.
     pub ins: Vec<String>,
+    /// The best hand that was In.
     pub crew_best: Option<HandValue>,
     pub house_best: HandValue,
-    /// Seat ids whose hand was the crew's best (more than one on a tie).
+    /// Seat ids that were In and beat the House.
     pub crew_champions: Vec<String>,
     /// Seat ids whose hand would have beaten the House had they been In.
     pub could_have: Vec<String>,
@@ -155,6 +158,11 @@ pub struct HistoryEntry {
     pub moved: i32,
     /// How many were In.
     pub ins: u32,
+    /// How many of those beat the House, and how many lost to it.
+    #[serde(default)]
+    pub won: u32,
+    #[serde(default)]
+    pub lost: u32,
     pub crew_best_name: Option<String>,
     pub house_best_name: String,
     /// The name of the seat whose hand carried the crew, if any.
@@ -171,6 +179,8 @@ pub enum GameError {
     NotSeated,
     AlreadyLocked,
     SelfNod,
+    /// A nod at someone you can't see.
+    OutOfSight,
     TooFew,
 }
 
@@ -289,6 +299,23 @@ impl Game {
 
     fn sort_seats(&mut self) {
         self.seats.sort_by(|a, b| a.id.cmp(&b.id));
+    }
+
+    /// Can `viewer` see `target`'s cards during a hand? Seats sit in a ring in
+    /// seat order, and each player sees the two beside them. At two or three
+    /// players that's everyone else; from four up, nobody sees the whole table.
+    pub fn sees(&self, viewer: &str, target: &str) -> bool {
+        if viewer == target {
+            return false;
+        }
+        let n = self.seats.len();
+        let (Some(a), Some(b)) = (
+            self.seats.iter().position(|s| s.id == viewer),
+            self.seats.iter().position(|s| s.id == target),
+        ) else {
+            return false;
+        };
+        (a + 1) % n == b || (b + 1) % n == a
     }
 
     /// Nods this seat received this hand (only meaningful once nods are revealed).
@@ -564,10 +591,13 @@ impl Game {
         if at == Some(seat) {
             return Err(GameError::SelfNod);
         }
-        if let Some(t) = at
-            && self.seat(t).is_none()
-        {
-            return Err(GameError::NotSeated);
+        if let Some(t) = at {
+            if self.seat(t).is_none() {
+                return Err(GameError::NotSeated);
+            }
+            if !self.sees(seat, t) {
+                return Err(GameError::OutOfSight);
+            }
         }
         let s = self.seat_mut(seat).ok_or(GameError::NotSeated)?;
         if s.nodded {
@@ -649,21 +679,18 @@ impl Game {
             .filter(|s| s.stance == Some(Stance::In))
             .map(|s| s.id.clone())
             .collect();
-        let crew_top = values
-            .iter()
-            .filter(|(id, _)| ins.contains(id))
-            .map(|(_, v)| v.score)
-            .max();
-        let crew_champions: Vec<String> = match crew_top {
-            Some(top) => values
-                .iter()
-                .filter(|(id, v)| ins.contains(id) && v.score == top)
-                .map(|(id, _)| id.clone())
-                .collect(),
-            None => Vec::new(),
-        };
-        let crew_best = crew_top
-            .and_then(|top| values.iter().find(|(_, v)| v.score == top))
+        let in_values = || values.iter().filter(|(id, _)| ins.contains(id));
+        // Every In hand plays the House on its own.
+        let crew_champions: Vec<String> = in_values()
+            .filter(|(_, v)| v.score > house_best.score)
+            .map(|(id, _)| id.clone())
+            .collect();
+        let won = crew_champions.len() as i32;
+        let lost = in_values()
+            .filter(|(_, v)| v.score < house_best.score)
+            .count() as i32;
+        let crew_best = in_values()
+            .max_by_key(|(_, v)| v.score)
             .map(|(_, v)| v.clone());
         let could_have: Vec<String> = values
             .iter()
@@ -672,27 +699,33 @@ impl Game {
             .collect();
 
         let n = ins.len() as i32;
-        let outcome = match crew_top {
-            None => Outcome::Walked,
-            Some(c) if c > house_best.score => Outcome::Crew,
-            Some(c) if c == house_best.score => Outcome::Tie,
-            Some(_) => Outcome::House,
-        };
-        let moved = match outcome {
-            Outcome::Crew => n,
-            Outcome::House => -n,
-            Outcome::Tie => 0,
-            // Nobody risked anything; the clock still runs.
-            Outcome::Walked => 0,
+        // Out moves nothing; the clock still runs.
+        let moved = won - lost;
+        let outcome = match (n, moved) {
+            (0, _) => Outcome::Walked,
+            (_, m) if m > 0 => Outcome::Crew,
+            (_, m) if m < 0 => Outcome::House,
+            _ => Outcome::Tie,
         };
         self.meter += moved;
 
-        let carrier = crew_champions.first().cloned();
+        // The carrier: the best hand that beat the House.
+        let carrier = crew_champions
+            .iter()
+            .max_by_key(|id| {
+                values
+                    .iter()
+                    .find(|(v, _)| v == *id)
+                    .map_or(0, |(_, v)| v.score)
+            })
+            .cloned();
         self.history.push(HistoryEntry {
             hand: self.hand,
             outcome,
             moved,
             ins: n as u32,
+            won: won as u32,
+            lost: lost as u32,
             crew_best_name: crew_best.as_ref().map(|v| v.name.clone()),
             house_best_name: house_best.name.clone(),
             carrier: carrier
@@ -780,7 +813,7 @@ impl Game {
     pub fn dealt_board(&self) -> usize {
         match self.phase {
             Phase::Lobby => 0,
-            Phase::Nod => 3,
+            Phase::Nod => NOD_BOARD,
             Phase::Call | Phase::Showdown | Phase::Over => self.board.len(),
         }
     }
@@ -905,7 +938,7 @@ mod tests {
         all.dedup();
         assert_eq!(all.len(), n, "duplicate card dealt");
         assert_eq!(g.phase, Phase::Nod);
-        assert_eq!(g.dealt_board(), 3);
+        assert_eq!(g.dealt_board(), 4);
     }
 
     #[test]
@@ -928,7 +961,23 @@ mod tests {
     }
 
     #[test]
-    fn the_marker_moves_one_step_per_player_in() {
+    fn you_see_and_nod_only_the_two_beside_you() {
+        let (mut g, ids) = table_of(5, 0);
+        g.start(&ids[0], 0).unwrap();
+        // A ring: s0 sits between s4 and s1.
+        assert!(g.sees("s0", "s1") && g.sees("s0", "s4"));
+        assert!(!g.sees("s0", "s2") && !g.sees("s0", "s3") && !g.sees("s0", "s0"));
+        assert_eq!(g.nod("s0", Some("s2"), 1), Err(GameError::OutOfSight));
+        g.nod("s0", Some("s4"), 1).unwrap();
+        // At three, the two beside you are everyone else.
+        let (g3, _) = table_of(3, 0);
+        assert!(g3.sees("s0", "s1") && g3.sees("s0", "s2") && g3.sees("s2", "s1"));
+        let (g2, _) = table_of(2, 0);
+        assert!(g2.sees("s0", "s1") && g2.sees("s1", "s0"));
+    }
+
+    #[test]
+    fn every_in_hand_plays_the_house_on_its_own() {
         for seed in 0..300 {
             let mut g = Game::new("K7QX2", seed);
             let a = g.join("pid-aaaaaaaa", "A", "koi").unwrap();
@@ -942,24 +991,28 @@ mod tests {
             g.call(&c, Stance::Out, 2).unwrap();
             let r = g.result.clone().unwrap();
             let house = g.house_value().score;
-            let best = [&a, &b]
-                .iter()
-                .map(|id| g.evaluate_seat(g.seat(id).unwrap()).score)
-                .max()
-                .unwrap();
-            let expect = if best > house {
-                2
-            } else if best == house {
-                0
-            } else {
-                -2
+            let step = |id: &String| {
+                let v = g.evaluate_seat(g.seat(id).unwrap()).score;
+                (v > house) as i32 - (v < house) as i32
             };
+            let expect = step(&a) + step(&b);
             assert_eq!(r.moved, expect, "{r:?}");
             assert_eq!(g.meter, expect);
             assert_eq!(r.ins, vec![a.clone(), b.clone()]);
-            assert!(!r.crew_champions.contains(&c), "Out never carries");
+            for id in [&a, &b] {
+                assert_eq!(r.crew_champions.contains(id), step(id) == 1);
+            }
+            assert!(!r.crew_champions.contains(&c), "Out never scores");
             let c_beats = g.evaluate_seat(g.seat(&c).unwrap()).score > house;
             assert_eq!(r.could_have.contains(&c), c_beats);
+            let h = g.history.last().unwrap();
+            assert_eq!(h.won as i32 - h.lost as i32, expect);
+            let outcome = match expect {
+                m if m > 0 => Outcome::Crew,
+                m if m < 0 => Outcome::House,
+                _ => Outcome::Tie,
+            };
+            assert_eq!(r.outcome, outcome);
         }
     }
 
