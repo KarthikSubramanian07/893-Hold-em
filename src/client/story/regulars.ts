@@ -11,7 +11,7 @@ export interface Regular {
   story: string;
   /** What they say when they sit down. */
   intro: readonly string[];
-  /** When their hand carried the crew. */
+  /** When their hand beat the House. */
   carried: readonly string[];
   /** When the House took it. */
   lost: readonly string[];

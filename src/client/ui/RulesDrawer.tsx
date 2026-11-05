@@ -27,7 +27,7 @@ export function RulesContent() {
         <h3 className="rules__h">The crew</h3>
         <p>
           Two to six seats, people or regulars (bots) who fill empty chairs. You play together against one masked House.
-          Nobody talks about cards. The nod is the only signal you get.
+          Nobody talks about cards. The nod is the only signal you get, and only the two beside you can give you one.
         </p>
       </section>
 
@@ -35,20 +35,22 @@ export function RulesContent() {
         <h3 className="rules__h">A hand</h3>
         <ol className="rules__steps">
           <li>
-            <b>The deal.</b> Two cards each, facing out. You see every teammate&rsquo;s cards and never your own. The House
-            holds three to five cards, more at the harder tables and for bigger crews, and shows one of them.
+            <b>The deal.</b> Two cards each, facing out. You see the cards of the two players beside you and never your
+            own; at two or three players that&rsquo;s everyone else, and from four up nobody sees the whole table. The House
+            holds a few cards of its own, more at the harder tables, and shows one of them.
           </li>
           <li>
-            <b>The flop and the nod.</b> Three board cards turn. Each player may nod at one teammate, meaning
-            &ldquo;you&rsquo;re good&rdquo;, or pass. Nods stay secret until everyone has nodded, then they all turn over
-            together.
+            <b>The turn and the nod.</b> Four board cards turn. Each player may nod at one of the two they can see,
+            meaning &ldquo;you&rsquo;re good&rdquo;, or pass. One nod, two neighbours: if both look good, you have to pick.
+            Nods stay secret until everyone has nodded, then they all turn over together.
           </li>
           <li>
-            <b>The river and the call.</b> The last two board cards turn. Everyone picks at once:
+            <b>The river and the call.</b> The last board card turns. Nobody has seen their own hand, so read the nods:
+            who nodded at you, and who nodded past you. Then everyone picks at once:
             <span className="rules__stances">
               <span>
-                <span className="rules__k rules__k--shu">入</span> <b>In</b> Your hand counts for the crew. One step for you,
-                whichever way it goes.
+                <span className="rules__k rules__k--shu">入</span> <b>In</b> Your hand plays the House. A step for the crew
+                if it wins, a step against if it loses.
               </span>
               <span>
                 <span className="rules__k">出</span> <b>Out</b> Sit this one out. Your hand stays off the table.
@@ -56,12 +58,12 @@ export function RulesContent() {
             </span>
           </li>
           <li>
-            <b>The showdown.</b> Every card flips, yours too, for the first time. The best hand that&rsquo;s In faces the
-            House&rsquo;s best five (its cards plus the board).
+            <b>The showdown.</b> Every card flips, yours too, for the first time. Every hand that&rsquo;s In plays the
+            House&rsquo;s best five (its cards plus the board) on its own.
             <span className="rules__outcomes">
-              <span>Win: the marker moves one step toward the door for every player In.</span>
-              <span>Lose: one step toward the sirens for every player In.</span>
-              <span>Tie: the marker stays put.</span>
+              <span>Each In hand that wins: one step toward the door.</span>
+              <span>Each In hand that loses: one step toward the sirens.</span>
+              <span>A tie: that hand moves nothing.</span>
               <span>Everyone Out: nothing moves, but the clock runs. There are only {LAST_ORDERS} hands.</span>
             </span>
           </li>
@@ -79,7 +81,6 @@ export function RulesContent() {
           <thead>
             <tr>
               <th scope="col">Table</th>
-              <th scope="col">House</th>
               {CREWS.map((n) => (
                 <th key={n} scope="col">
                   {n} players
@@ -93,7 +94,6 @@ export function RulesContent() {
                 <th scope="row">
                   <span className="rules__tk">{t.kanji}</span> {t.name}
                 </th>
-                <td>{t.house} cards</td>
                 {CREWS.map((n) => (
                   <td key={n} title={`${doorFor(t.id, n)} steps to the door, ${sirensFor(t.id, n)} to the sirens`}>
                     {doorFor(t.id, n)} / {sirensFor(t.id, n)}

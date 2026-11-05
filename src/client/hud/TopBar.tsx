@@ -127,11 +127,11 @@ export function Track({ view, size = 'top' }: { view: Pick<GameView, 'meter' | '
 function TableTag({ view }: { view: GameView }) {
   const t = TABLES[view.config.difficulty];
   return (
-    <span className="ttag" title={`${t.name}: the House holds ${t.house} cards and shows one.`}>
+    <span className="ttag" title={`${t.name}: ${t.blurb}`}>
       <b aria-hidden="true">{t.kanji}</b>
       <span>
         {t.name}
-        <small>House holds {t.house}</small>
+        <small>{t.odds} get away</small>
       </span>
     </span>
   );

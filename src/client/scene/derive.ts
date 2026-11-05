@@ -20,7 +20,7 @@ export interface SeatTarget {
   /** Decided in the current phase (nodded or passed; picked In or Out). */
   locked: boolean;
   cards: Slot[];
-  /** Per hole card: part of the crew champion's best five at the showdown. */
+  /** Per hole card: part of this seat's best five, when it beat the House. */
   glow: boolean[];
   champion: boolean;
   /** In or Out, once it is on the table (your own as soon as you pick). */
@@ -138,7 +138,8 @@ function seatTarget(seat: SeatView, view: GameView, crewBest: readonly Card[] | 
     connected: seat.connected,
     locked: (view.phase === 'nod' || view.phase === 'call') && seat.locked,
     cards: seat.cards,
-    glow: seat.cards.map((c) => showdown && seat.champion && has(crewBest, c)),
+    // Every hand that beat the House lights its own best five.
+    glow: seat.cards.map((c) => showdown && seat.champion && has(seat.hand?.best ?? crewBest, c)),
     champion: showdown && seat.champion,
     stance,
     out: showdown && stance === 'out',
@@ -218,7 +219,10 @@ export function deriveTargets(view: GameView): SceneTargets {
   const hero = seats.find((s) => s.you && !s.empty);
   const playing = view.phase === 'nod' || view.phase === 'call' || showdown;
   const everyone = seats.filter((s) => !s.empty).map((s) => s.key);
-  const stare = result ? (result.outcome === 'house' ? result.ins.slice(0, 1) : result.crewChampions.slice(0, 1)) : [];
+  // The House stares down the best hand that beat it, or the first it beat.
+  const score = (id: string) => view.seats.find((s) => s.id === id)?.hand?.score ?? 0;
+  const bestWinner = result?.crewChampions.reduce<string | null>((a, id) => (a === null || score(id) > score(a) ? id : a), null);
+  const stare = result ? (result.outcome === 'house' ? result.ins.slice(0, 1) : bestWinner ? [bestWinner] : []) : [];
 
   return {
     phase: view.phase,

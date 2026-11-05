@@ -85,7 +85,7 @@ export const CHAPTERS: Record<Difficulty, Chapter> = {
     synopsis:
       'The corner table, the low end of the debt. Okame deals for the family here and smiles at everyone.',
     intro: [
-      'Shitamachi, the forgiving table. Okame holds the fewest cards. Mostly bark.',
+      'Shitamachi, the forgiving table. The sirens are a long way off. Okame is mostly bark.',
       'The corner table. Small debts. Okame smiles at everyone. Don’t take it personally.',
     ],
     epilogue: {
@@ -103,8 +103,8 @@ export const CHAPTERS: Record<Difficulty, Chapter> = {
     synopsis:
       'The lieutenants come down from the fourth floor. Kitsune deals with cards up her sleeve and one of them on the table.',
     intro: [
-      'Kabukichō. The fox holds more than you’d like. Every sign outside is lying. So is the fox.',
-      'The lieutenants came down for this. The House holds more here. They took the stairs. That’s serious.',
+      'Kabukichō. The sirens are closer here. Every sign outside is lying. So is the fox.',
+      'The lieutenants came down for this. The door is further off here. They took the stairs. That’s serious.',
     ],
     epilogue: {
       clean: [['Clean getaway from Kabukichō. Few crews manage it. The boss has heard your names. Congratulations, I think.']],
@@ -119,10 +119,10 @@ export const CHAPTERS: Record<Difficulty, Chapter> = {
     name: 'Oyabun',
     title: 'The Old Man Upstairs',
     synopsis:
-      'The room at the top of the stairs, with tatami and the one good chair. The Oyabun sits behind the Okina mask and holds the most cards.',
+      'The room at the top of the stairs, with tatami and the one good chair. The Oyabun sits behind the Okina mask, the door far behind him and the sirens close.',
     intro: [
-      'The boss’s table. He holds the most cards and plays the best of them. Shoes off. He notices.',
-      'Top of the stairs. Five cards in his hand. He drinks only water, which is somehow more frightening.',
+      'The boss’s table. The door is far and the sirens are close. Shoes off. He notices.',
+      'Top of the stairs. Two cards, same as you. He drinks only water, which is somehow more frightening.',
     ],
     epilogue: {
       clean: [['Clean getaway from the boss’s table. He bowed. I’ve poured for him thirty years. He has never bowed.']],
@@ -151,7 +151,7 @@ export const LAST_ORDERS = {
 /** When the nods turn over. Most turns get nothing; these are the ones worth a word. */
 export const NODS: Record<NodKind, Bank> = {
   'all-pass': ['Nobody nodded at anybody. Very trusting crew.', 'Not one nod. Everyone’s keeping their opinions to themselves.'],
-  'pile-on': ['Everyone nodded at {name}. No pressure, {name}.', 'The whole crew nodded at {name}. {name} can’t see why. That’s the game.'],
+  'pile-on': ['Both of {name}’s neighbours nodded. No pressure, {name}.', 'Two nods on {name}, from the only two who can see. {name} can’t see why. That’s the game.'],
   mutual: ['{names} nodded at each other. Either a pact or a coincidence.'],
 };
 
@@ -167,12 +167,12 @@ export const SHOWDOWN: Record<ShowdownKind, Bank> = {
   crew: [],
   house: [],
   tie: ['Dead even. The marker stays. The House shrugs.'],
-  walked: ['Everybody went Out. Even the cat looked disappointed.', 'All Out. Sitting on your hands still costs a step. The street saw you hesitate.'],
+  walked: ['Everybody went Out. Even the cat looked disappointed.', 'All Out. Nothing moved but the clock. The street saw you hesitate.'],
   royal: ['A royal flush. I’ve poured for two in thirty years. I’m framing this one.'],
   yakuza: ['Eight, nine, three: ya-ku-za, the worst hand in the old game. Naming a bar after it seemed funny at the time.'],
   'bad-beat': ['{Hand}, and it still lost. I’ll get you a towel.', '{Hand}. Lost. Some nights the cards just want to see you suffer.'],
   'sat-out': ['{name} went Out holding {hand}. That would have done it.', '{name} sat that one out with {hand}. Somebody should have nodded.'],
-  'blind-carry': ['Nobody nodded at {name}. {name} went In anyway and carried it.', 'No nods for {name}, and {name} carried the crew. Blind faith pays sometimes.'],
+  'blind-carry': ['Nobody nodded at {name}. {name} went In anyway and won it.', 'No nods for {name}, and {name} beat the House. Blind faith pays sometimes.'],
   'nodded-carry': [],
   'all-in': ['Everyone In, and it held. That’s a crew.', 'The whole table went In. The marker ran for the door.'],
   'big-swing': [],
@@ -214,10 +214,10 @@ export const REGULAR_MOMENTS: Partial<Record<RegularName, Partial<Record<Regular
 
 export const IDLE: Bank = [
   'Send the link to fill the stools, or add bots. The bots never complain about the music.',
-  'You see everyone’s cards but your own. Your crew sees yours. Trust them.',
-  'After the flop, one nod each. It means you’re good. Use it wisely.',
-  'In or Out, all at once. The best hand that’s In faces the House.',
-  'A win moves you toward the door, one step for every player In. A loss, the other way.',
+  'You see the two beside you, never yourself. They see you. Trust them.',
+  'After the turn, one nod each, at one of your two neighbours. It means you’re good. Use it wisely.',
+  'In or Out, all at once. Every hand that’s In plays the House on its own.',
+  'Each In hand that wins is a step toward the door. Each one that loses, the other way.',
   'New here? Shitamachi is the forgiving table. Forgiving is a strong word.',
   'Same record for eleven years. Nobody’s asked me to change it. Nobody dares.',
   'Somebody left an umbrella here in 1994. I’m still holding it for them. Debts are debts.',
@@ -256,7 +256,7 @@ export const COLD_OPEN: readonly ColdOpenBeat[] = [
   { text: 'Shinjuku. Golden Gai. Three in the morning.', hold: 2600 },
   { text: 'In the old card game, eight, nine and three add up to nothing.', hold: 3200 },
   { text: 'Ya. Ku. Za.\nThe worst hand there is.', kanji: '八九三', seal: true, hold: 3200 },
-  { text: 'A co-op poker game. You see every hand but your own. No talking.', hold: 3400 },
+  { text: 'A co-op poker game. You see the two beside you, never yourself. No talking.', hold: 3400 },
 ];
 
 // ---------------------------------------------------------------------------

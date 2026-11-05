@@ -176,17 +176,21 @@ describe('the nods', () => {
   const toCall = (edit: (v: GameView) => GameView) => narrate(fixture('nod', { hand: 3 }), edit(fixture('call')), 's0', ctx);
 
   it('reads the patterns worth a word', () => {
-    expect(nodKind(fixture('call'))).toBeNull();
-    const pile = seatOver(seatOver(fixture('call'), 's0', { nod: 's2' }), 's1', { nod: 's2' });
+    // Mio's two neighbours both nodded at Mio.
+    expect(nodKind(fixture('call'))?.kind).toBe('pile-on');
+    expect(nodKind(seatOver(fixture('call'), 's2', { nod: 's3' }))).toBeNull();
+    // Both of Ren's neighbours nodded at Ren.
+    const pile = seatOver(fixture('call'), 's1', { nod: 's2' });
     expect(nodKind(seatOver(pile, 's3', { nod: 's2' }))?.kind).toBe('pile-on');
     const none = { ...fixture('call'), seats: fixture('call').seats.map((s) => ({ ...s, nod: null })) };
     expect(nodKind(none)?.kind).toBe('all-pass');
-    const mutual = seatOver(fixture('call'), 's1', { nod: 's0' });
+    const quiet = seatOver(seatOver(fixture('call'), 's2', { nod: null }), 's3', { nod: null });
+    const mutual = seatOver(quiet, 's1', { nod: 's0' });
     expect(nodKind(seatOver(mutual, 's0', { nod: 's1' }))?.kind).toBe('mutual');
   });
 
-  it('names the teammate everyone nodded at', () => {
-    const out = toCall((v) => ({ ...v, seats: v.seats.map((s) => ({ ...s, nod: s.id === 's2' ? null : 's2' })) }));
+  it('names the teammate both neighbours nodded at', () => {
+    const out = toCall((v) => ({ ...v, seats: v.seats.map((s) => ({ ...s, nod: s.id === 's1' || s.id === 's3' ? 's2' : null })) }));
     expect(ids(out)).toEqual(['nods:pile-on']);
     expect(out[0]!.text).toContain('Ren');
     expect(out[0]!.kanji).toBe('頷');
@@ -280,10 +284,11 @@ describe('the showdown', () => {
 
   it('tells only you about the monster you never saw', () => {
     const flush = hv(6_000_000, 'flush', 'Flush, ace high', ['Ah', 'Qh', '9h', '6h', '2h']);
-    const v = seatOver(fixture('showdown'), 's0', { hand: flush });
-    const mine = narrate(fixture('call'), v, 's0', ctx);
+    // Ren sat Out on it; a hand that won says so itself.
+    const v = seatOver(fixture('showdown'), 's2', { hand: flush });
+    const mine = narrate(fixture('call'), v, 's2', ctx);
     const theirs = narrate(fixture('call'), v, 's1', ctx);
-    expect(ids(mine)).toEqual(['reveal:s0']);
+    expect(ids(mine)).toEqual(['reveal:s2']);
     expect(mine[0]!.text).toMatch(/flush/i);
     expect(REVEAL.length).toBeGreaterThan(0);
     expect(theirs).toEqual([]);

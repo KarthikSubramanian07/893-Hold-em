@@ -40,12 +40,14 @@ function script(): { name: string; view: GameView; hold: number }[] {
       id: `s${i}`,
       name: n,
       avatar: (['kitsune', 'koi', 'tora', 'tanuki', 'tsuru', 'karasu'] as const)[i]!,
-      cards: i === 0 ? ['back', 'back'] : (['Qs', 'Qd'] as Slot[]),
+      // You see the two beside you; the three across the table stay face down.
+      cards: i === 1 || i === 5 ? (['Qs', 'Qd'] as Slot[]) : ['back', 'back'],
+      inSight: i === 1 || i === 5,
       locked: i % 2 === 1,
       connected: i !== 5,
       nod: i === 0 ? null : `s${(i + 1) % 6}`,
     })),
-    house: { cards: ['9c', 'back', 'back', 'back', 'back'], hand: null },
+    house: { cards: ['9c', 'back'], hand: null },
   };
   return [
     { name: 'crowd', view: crowd, hold: 3000 },

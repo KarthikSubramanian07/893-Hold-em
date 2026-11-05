@@ -19,6 +19,17 @@ export function teammates(view: GameView): SeatView[] {
   return view.seats.filter((s) => s.id !== view.you);
 }
 
+/**
+ * The teammates you can see this hand, and so may nod at: the two beside
+ * you, starting with the one after you round the table.
+ */
+export function inSight(view: GameView): SeatView[] {
+  const at = view.seats.findIndex((s) => s.id === view.you);
+  if (at < 0) return [];
+  const ring = [...view.seats.slice(at + 1), ...view.seats.slice(0, at)];
+  return ring.filter((s) => s.inSight);
+}
+
 /** Is a hand being played (nod or call)? */
 export function inHand(view: GameView): boolean {
   return view.phase === 'nod' || view.phase === 'call';
@@ -125,11 +136,19 @@ export function dockMode(view: GameView, localLocked: boolean): DockMode {
 }
 
 export const OUTCOME_LINE: Record<HandOutcome, string> = {
-  crew: 'Beat the House.',
-  house: 'The House wins.',
+  crew: 'The crew comes out ahead.',
+  house: 'The House comes out ahead.',
   tie: 'Dead even.',
   walked: 'Everyone sat out.',
 };
+
+/** "2 of 3 In beat the House", or null if nobody was In. */
+export function tallyLine(view: GameView): string | null {
+  const r = view.result;
+  if (!r || r.ins.length === 0) return null;
+  const won = r.crewChampions.length;
+  return `${won} of ${r.ins.length} In beat the House`;
+}
 
 /** One plain sentence: how far the marker moved and which way. */
 export function movedLine(moved: number): string {
@@ -187,7 +206,8 @@ export function revealLine(view: GameView): string | null {
   if (!me?.hand || !r) return null;
   const had = handPhrase(me.hand);
   const beat = r.couldHave.includes(me.id);
-  if (me.champion) return `You had ${had}, and it carried the crew.`;
+  if (me.champion) return `You had ${had}, and it beat the House.`;
+  if (me.stance === 'in' && r.houseBest.score > me.hand.score) return `You had ${had}. The House had better.`;
   if (beat && me.stance === 'out') return `You had ${had} the whole time. It would have beaten the House.`;
   if (isMonster(me.hand)) return `You had ${had} the whole time.`;
   return `You had ${had}.`;

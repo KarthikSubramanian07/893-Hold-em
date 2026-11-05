@@ -61,9 +61,9 @@ export type ShowdownKind =
   | 'bad-beat'
   /** Someone who went Out could have beaten the House, and the crew didn't win. */
   | 'sat-out'
-  /** The carrier had no nods and went In anyway. */
+  /** The best winner had no nods and went In anyway. */
   | 'blind-carry'
-  /** The carrier was nodded at, and it held. */
+  /** The best winner was nodded at, and it held. */
   | 'nodded-carry'
   /** Everyone was In, and the crew won. */
   | 'all-in'

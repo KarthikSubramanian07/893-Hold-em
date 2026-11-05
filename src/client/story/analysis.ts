@@ -37,8 +37,10 @@ export function isRoyal(hand: HandValue | null | undefined): boolean {
 
 const BIG: ReadonlySet<HandValue['category']> = new Set(['full-house', 'quads', 'straight-flush']);
 
+/** The best hand that beat the House, if any did. */
 export function championSeat(view: GameView): SeatView | null {
-  return view.seats.find((s) => s.champion) ?? null;
+  const winners = view.seats.filter((s) => s.champion);
+  return winners.reduce<SeatView | null>((a, s) => (!a || (s.hand?.score ?? 0) > (a.hand?.score ?? 0) ? s : a), null);
 }
 
 const MONSTER: ReadonlySet<HandValue['category']> = new Set(['straight', 'flush', 'full-house', 'quads', 'straight-flush']);
@@ -87,10 +89,10 @@ export function classifyShowdown(view: GameView): { kind: ShowdownKind; seat?: S
 export function nodKind(view: GameView): { kind: NodKind; seats: SeatView[] } | null {
   const nods = view.seats.filter((s) => s.nod && s.nod !== s.id);
   if (nods.length === 0) return view.seats.length >= 2 ? { kind: 'all-pass', seats: [] } : null;
-  // Everyone but one seat nodded at that seat.
+  // Both players who can see that seat nodded at it.
   for (const who of view.seats) {
     const at = nods.filter((s) => s.nod === who.id).length;
-    if (at >= 2 && at === view.seats.length - 1) return { kind: 'pile-on', seats: [who] };
+    if (at >= 2) return { kind: 'pile-on', seats: [who] };
   }
   for (const a of nods) {
     const b = view.seats.find((s) => s.id === a.nod);

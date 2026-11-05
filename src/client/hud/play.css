@@ -445,6 +445,23 @@
   color: var(--kin);
 }
 
+/* Across the table: you never saw these cards, only the nods. */
+.read__unseen {
+  display: inline-flex;
+  align-items: center;
+  height: 1.5rem;
+  padding: 0 0.45rem;
+  border: 1px dashed var(--night-hair-strong);
+  border-radius: 4px;
+  font: italic 11.5px/1 var(--serif);
+  letter-spacing: 0.04em;
+  color: var(--night-ink-faint);
+}
+
+.read.is-unseen .read__name {
+  color: var(--night-ink-soft);
+}
+
 .dock__mates {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -880,6 +897,12 @@
   background: transparent;
   border: 1px solid var(--neon);
   color: var(--neon);
+}
+
+.sdseat__tag--lost {
+  background: transparent;
+  border: 1px solid var(--night-hair-strong);
+  color: var(--night-ink-faint);
 }
 
 .sd__foot {

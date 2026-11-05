@@ -56,9 +56,9 @@ describe('detectStamps', () => {
     expect(detect(call(), v, 's1')).not.toContain('the-nod');
   });
 
-  it('presses Good Eye when your nod went to the carrier', () => {
+  it('presses Good Eye when your nod went to a hand that beat the House', () => {
     expect(detect(call(), showdown(), 's0')).toContain('good-eye');
-    expect(detect(call(), showdown(), 's3')).not.toContain('good-eye');
+    expect(detect(call(), showdown((s) => seatOver(s, 's3', { nod: 's2' })), 's3')).not.toContain('good-eye');
     expect(detect(call(), showdown((s) => withResult(s, { outcome: 'house' })), 's0')).not.toContain('good-eye');
   });
 
