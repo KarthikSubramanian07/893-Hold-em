@@ -4,7 +4,7 @@
 
 # 893 Hold'em
 
-**A co-op poker heist for 2 to 6. You see every hand but your own. Beat the House with a nod.**
+**A co-op poker heist for 2 to 6. You see the two beside you, never yourself. Beat the House with a nod.**
 
 **[Play at holdem893.pages.dev →](https://holdem893.pages.dev)**
 
@@ -25,21 +25,21 @@ staircase too narrow for two in Shinjuku's Golden Gai. It's 3 a.m. It's raining.
 
 ## How a night plays
 
-Your crew sits on one side of the table. The House sits across, in one mask, holding
-3 cards at Shitamachi, 4 at Kabukichō, 5 at Oyabun.
+Your crew sits in a ring on one side of the table. The House sits across, in one mask,
+holding two cards. The three tables differ in how far away the door and the sirens are.
 
 The rules in four lines:
 
-1. **Everyone sees every hand but their own.** The House shows one card, and plays its best five with the board.
-2. **After the flop, each player may nod at one teammate**: *you're good*. One nod each per hand, or pass.
+1. **You see the hands of the two players beside you, never your own.** The House shows one card, and plays its best five with the board.
+2. **After the turn, each player may nod at one of the two they can see**: *you're good*. One nod each per hand, or pass. The nods turn over together.
 3. **After the river, everyone picks In 入 or Out 出 at once.**
-4. **The best hand that's In faces the House.** Win: the marker moves one step toward the door per player In. Lose: one step toward the sirens per player In. Tie: no move. Everyone Out: no move, but the clock runs.
+4. **Every hand that's In plays the House on its own.** Each one that wins moves the marker a step toward the door. Each one that loses moves it a step toward the sirens. A tie moves nothing. Out: no move, but the clock runs.
 
 Reach the door for a clean getaway. Reach the sirens and the bar gets raided. After ten
 hands it's last orders, and the night ends at dawn.
 
 The showdown is the moment: every card flips, and you see your own hand for the first
-time. *You had a flush the whole time.* Your crew knew. That's why they nodded.
+time. *You had a flush the whole time.* The two beside you knew. That's why they nodded.
 
 ## The bar
 
@@ -101,21 +101,21 @@ sequenceDiagram
   participant P as Each player
   participant DO as Table (Durable Object)
   participant E as Rust engine
-  DO->>E: deal: two hole cards each, the House's 3 to 5, the flop
+  DO->>E: deal: two hole cards each, the House's two, the flop and the turn
   E-->>DO: a private view for every seat
-  DO-->>P: everyone's cards but your own, the House's first card
-  Note over P,DO: nod: tap one teammate ("you're good"), or pass
+  DO-->>P: your two neighbours' cards, the House's face-up card, four board cards
+  Note over P,DO: nod: tap one of your two neighbours ("you're good"), or pass
   P->>DO: nod at a seat, or pass
   Note over DO: an alarm passes for anyone the clock runs out on,<br/>and the regulars think on their own clock
   DO->>E: every nod is in
-  E-->>DO: nods turn over together, turn and river dealt
+  E-->>DO: nods turn over together, the river is dealt
   DO-->>P: who nodded at whom, all five board cards
   Note over P,DO: call: In or Out, all at once
   P->>DO: In or Out
   DO->>E: every call is in
-  E-->>DO: showdown: best hand In vs the House's best five
+  E-->>DO: showdown: each In hand vs the House's best five
   DO-->>P: every card face up, yours for the first time
-  E-->>DO: marker moves: one step per player In, toward the door or the sirens
+  E-->>DO: marker moves: a step toward the door per In hand that won,<br/>a step toward the sirens per In hand that lost
   DO-->>P: the marker, the door, the sirens, or the next hand
 ```
 
@@ -155,8 +155,8 @@ is a quarter of the size.
 ### Secrecy
 
 Every message a socket receives is built by `view::view_for`, the only path from hidden state
-to the wire. Tests serialize views and assert that no other seat's hole cards, no House card,
-and no undealt board card appear in the JSON; the rooms smoke test checks every view two live
+to the wire. Tests serialize views and assert that no hole cards but your two neighbours',
+no hidden House card, and no undealt board card appear in the JSON; the rooms smoke test checks every view two live
 clients receive over a whole night.
 
 ### Practice, alone
@@ -172,8 +172,8 @@ The game lives in `sessionStorage`, so a reload picks the night back up.
 Its code is `ALONE`. There's an O in it, which the room alphabet never uses, so no server
 table can share it. The engine is fetched only when you sit down, so the landing page carries
 no wasm and no three.js. The page still only ever receives `stateFor(you)`; a Vitest suite
-plays whole nights on the real engine with fake timers and checks every view for other seats'
-cards.
+plays whole nights on the real engine with fake timers and checks every view for cards that
+seat shouldn't see.
 
 ## Run it
 
