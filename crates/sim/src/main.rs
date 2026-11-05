@@ -352,15 +352,18 @@ fn probe(nights: u64, samples: u32, knobs: &Knobs) {
 }
 
 fn tune(nights: u64, samples: u32, knobs: &Knobs) {
-    let mut table = [[(0u32, 0u32); 5]; 3];
+    let mut table = BALANCE;
     for (ti, d) in TABLES.iter().enumerate() {
+        if !wanted_table(*d) {
+            continue;
+        }
         println!(
             "\n== {} (goal {:.0}% clean)",
             table_name(*d),
             GOALS[ti] * 100.0
         );
         header();
-        for crew in MIN_CREW..=MAX_CREW {
+        for crew in (MIN_CREW..=MAX_CREW).filter(|c| wanted_crew(*c)) {
             let sirens = sirens_for(*d, crew);
             // Clean rate falls as the door moves away: bisect on the door. The
             // door is never so close that one lucky hand ends the night.
@@ -398,11 +401,12 @@ fn tune(nights: u64, samples: u32, knobs: &Knobs) {
                 (s.clean_rate() - GOALS[ti]).abs()
                     + 0.05 * (5.0 - hands).max(0.0)
                     + 0.05 * (hands - 8.0).max(0.0)
-                    + 0.5 * (dawn - 0.15).max(0.0)
+                    + 1.0 * (dawn - 0.2).max(0.0)
             };
             let mut pick = (coarse, sirens, f64::MAX);
-            for door in coarse.saturating_sub(1).max(floor)..=coarse + 1 {
-                for sir in sirens.saturating_sub(1).max(crew as u32)..=sirens + 1 {
+            // Nearer sirens and a nearer door trade last orders for a verdict.
+            for door in coarse.saturating_sub(3).max(floor)..=coarse + 1 {
+                for sir in sirens.saturating_sub(2).max(2)..=sirens + 1 {
                     let s = batch(
                         *d,
                         crew,

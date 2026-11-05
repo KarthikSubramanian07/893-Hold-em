@@ -24,8 +24,8 @@ use serde::{Deserialize, Serialize};
 use crate::card::{Card, Rng, full_deck};
 use crate::eval::{HandValue, evaluate};
 use crate::rules::{
-    Difficulty, LAST_ORDERS, MAX_CREW, MIN_CREW, NOD_BOARD, SHOWDOWN_SECONDS, door_for,
-    house_cards, sirens_for,
+    Difficulty, LAST_ORDERS, MAX_CREW, MIN_CREW, NOD_BOARD, SHOWDOWN_SECONDS, dawn_is_a_raid,
+    door_for, house_cards, sirens_for,
 };
 
 pub type Ms = u64;
@@ -54,7 +54,7 @@ pub enum Phase {
 pub enum Verdict {
     /// The marker reached the door.
     Clean,
-    /// The marker reached the sirens.
+    /// The marker reached the sirens, or the clock ran out at the boss's table.
     Raid,
     /// Last orders came first.
     Dawn,
@@ -750,7 +750,11 @@ impl Game {
         } else if self.meter <= -(self.sirens as i32) {
             self.finish(Verdict::Raid);
         } else if self.hand >= LAST_ORDERS {
-            self.finish(Verdict::Dawn);
+            self.finish(if dawn_is_a_raid(self.config.difficulty) {
+                Verdict::Raid
+            } else {
+                Verdict::Dawn
+            });
         } else {
             self.phase = Phase::Showdown;
             self.deadline = Some(now + SHOWDOWN_SECONDS * 1000);
@@ -1060,6 +1064,35 @@ mod tests {
     }
 
     #[test]
+    fn the_boss_has_no_last_orders() {
+        for (d, verdict) in [
+            (Difficulty::Kabukicho, Verdict::Dawn),
+            (Difficulty::Oyabun, Verdict::Raid),
+        ] {
+            let (mut g, ids) = table_of(2, 0);
+            g.set_config(&ids[0], Some(d), None).unwrap();
+            g.start(&ids[0], 0).unwrap();
+            let mut now = 0;
+            while g.phase != Phase::Over {
+                now += 1000;
+                match g.phase {
+                    Phase::Nod => all_pass(&mut g, &ids, now),
+                    Phase::Call => all_call(&mut g, &ids, Stance::Out, now),
+                    Phase::Showdown => {
+                        for id in &ids {
+                            g.next(id, now).unwrap();
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            assert_eq!(g.meter, 0);
+            assert_eq!(g.hand, LAST_ORDERS);
+            assert_eq!(g.verdict, Some(verdict));
+        }
+    }
+
+    #[test]
     fn a_full_night_ends_at_the_door_the_sirens_or_last_orders() {
         for seed in 0..40 {
             let mut g = Game::new("K7QX2", seed);
@@ -1091,7 +1124,10 @@ mod tests {
             assert_eq!(g.history.len(), g.hand as usize);
             match g.verdict.unwrap() {
                 Verdict::Clean => assert!(g.meter >= g.door as i32),
-                Verdict::Raid => assert!(g.meter <= -(g.sirens as i32)),
+                Verdict::Raid => assert!(
+                    g.meter <= -(g.sirens as i32)
+                        || (dawn_is_a_raid(g.config.difficulty) && g.hand == LAST_ORDERS)
+                ),
                 Verdict::Dawn => assert_eq!(g.hand, LAST_ORDERS),
             }
             let sum: i32 = g.history.iter().map(|h| h.moved).sum();

@@ -37,9 +37,15 @@ For each table and crew size:
    70% (Shitamachi), 50% (Kabukichō) or 30% (Oyabun) of nights. Every
    candidate is played at its own numbers, because the regulars weigh each
    step by how far the door and the sirens are.
-3. **Confirm** the chosen numbers on fresh deals.
+3. **Refine** around that door: up to three steps nearer or one further,
+   with the sirens up to two steps nearer or one further. Each pair is scored
+   on the goal, on nights of five to eight hands, and on rarely reaching last
+   orders (every point of dawn above 20% costs as much as a point off the
+   goal), so a night ends with a verdict, not the shutters.
+4. **Confirm** the chosen numbers on fresh deals.
 
-It ends with a Rust table to paste into `BALANCE`, and the TypeScript mirror
+It ends with a Rust table to paste into `BALANCE` (rows for tables or crews
+filtered out by `TABLE` or `CREWS` keep their current values), and the TypeScript mirror
 in `src/engine/rules.ts` must match it (a test checks).
 
 ## Probe

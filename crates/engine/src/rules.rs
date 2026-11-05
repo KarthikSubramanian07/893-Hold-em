@@ -25,6 +25,13 @@ pub const NOD_BOARD: usize = 4;
 /// reached the door or the sirens. The clock is what keeps a crew from
 /// sitting Out forever.
 pub const LAST_ORDERS: u8 = 10;
+/// Does this table have last orders? At the boss's table it doesn't: a crew
+/// still in the room when the clock runs out is raided, so every night there
+/// ends at the door or the sirens.
+pub fn dawn_is_a_raid(d: Difficulty) -> bool {
+    d == Difficulty::Oyabun
+}
+
 /// Seconds the showdown waits for "next" before dealing on.
 pub const SHOWDOWN_SECONDS: u64 = 10;
 
@@ -64,7 +71,7 @@ pub const BALANCE: [[(u32, u32); 5]; 3] = [
     // Kabukicho
     [(6, 2), (8, 3), (10, 4), (12, 5), (14, 6)],
     // Oyabun
-    [(8, 2), (10, 3), (13, 4), (17, 5), (19, 6)],
+    [(8, 2), (10, 2), (13, 3), (16, 3), (19, 4)],
 ];
 
 fn balance(d: Difficulty, crew: usize) -> (u32, u32) {
