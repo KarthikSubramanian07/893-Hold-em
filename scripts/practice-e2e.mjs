@@ -3,7 +3,7 @@
 // engine, no 3D until you sit down) and that no socket to a room ever opens.
 //
 //   npx vite --port 5213 &
-//   node scripts/practice-e2e.mjs [http://localhost:5213] [out-dir] [desktop|phone]
+//   [TABLE=oyabun] node scripts/practice-e2e.mjs [http://localhost:5213] [out-dir] [desktop|phone]
 //
 // Screenshots of each stage land in out-dir (default /tmp/893-practice).
 
@@ -66,6 +66,8 @@ await shot('02-lobby');
 
 // Change the room and the crew before starting, like any host.
 await page.getByText('30s').click();
+// TABLE=oyabun (or kabukicho) picks a harder room.
+if (process.env.TABLE) await page.locator(`.room--${process.env.TABLE}`).click();
 await page.getByRole('button', { name: /remove a bot/i }).click();
 await page.getByRole('button', { name: /add a bot/i }).click();
 await page.waitForTimeout(400);

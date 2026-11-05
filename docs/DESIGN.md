@@ -32,7 +32,11 @@ One link, no accounts. Open a table, send the link, play in a minute.
    tie moves nothing for that hand. Out: nothing moves, but the clock runs.
 
 Reach the door = clean getaway. Reach the sirens = raid. After 10 hands
-("last orders") the night ends as **dawn**.
+("last orders") the night ends as **dawn**, except at Oyabun, where there are
+no last orders: a crew still in the boss's room after hand 10 is raided. Track
+tuning alone couldn't stop half of Oyabun nights fizzling out at dawn (nearer
+sirens just made crews sit Out more), so every night at the boss's table ends
+at the door or the sirens.
 
 ### Seats
 

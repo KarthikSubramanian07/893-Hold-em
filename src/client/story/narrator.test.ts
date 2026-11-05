@@ -331,7 +331,9 @@ describe('the verdict', () => {
       for (const verdict of ['clean', 'raid', 'dawn'] as const) {
         const config = { difficulty: table, timer: 30 as const };
         const prev = fixture('showdown', { config, hand: 6 });
-        const next = fixture('over', { config, verdict });
+        // A raid reached at the sirens, not at the clock.
+        const over = fixture('over', { config, verdict });
+        const next = verdict === 'raid' ? { ...over, meter: -over.sirens } : over;
         const out = narrate(prev, next, 's0', ctx);
         const epilogue = out.filter((l) => l.id.includes(`verdict:${table}:${verdict}`));
         expect(epilogue.length).toBeGreaterThanOrEqual(1);
@@ -339,6 +341,14 @@ describe('the verdict', () => {
         expect(epilogue[0]!.kanji).toBe(CHAPTERS[table].kanji);
       }
     }
+  });
+
+  it('tells a raid at dawn at the boss\'s table in its own words', () => {
+    const config = { difficulty: 'oyabun' as const, timer: 30 as const };
+    const prev = fixture('showdown', { config, hand: 10 });
+    const next = fixture('over', { config, verdict: 'raid', hand: 10, meter: 3 });
+    const epilogue = narrate(prev, next, 's0', ctx).filter((l) => l.id.includes('verdict:oyabun:raid'));
+    expect(CHAPTERS.oyabun.epilogue.dawn.some((run) => run[0] === epilogue[0]!.text)).toBe(true);
   });
 
   it('adds a word about a close shave', () => {

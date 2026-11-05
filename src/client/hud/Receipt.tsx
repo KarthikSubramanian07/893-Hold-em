@@ -4,7 +4,7 @@ import { TABLES } from '../../engine/rules';
 import type { GameView, HistoryEntry } from '../../engine/types';
 import { sfx } from '../audio';
 import { Link, navigate } from '../app/router';
-import { amHost, signed, VERDICT_LINE, VERDICT_SUB } from '../net/selectors';
+import { amHost, RAID_AT_DAWN_SUB, raidAtDawn, signed, VERDICT_LINE, VERDICT_SUB } from '../net/selectors';
 import { Track } from './TopBar';
 import { useTable } from '../net/store';
 import { Seal } from '../ui/Seal';
@@ -53,7 +53,7 @@ export function Receipt({ view, aside }: { view: GameView; aside?: ReactNode }) 
           <h2 id="receipt-verdict" className={`verdict-stamp verdict-stamp--${verdict}`} aria-live="polite">
             {VERDICT_LINE[verdict]}
           </h2>
-          <p>{VERDICT_SUB[verdict]}</p>
+          <p>{raidAtDawn(view) ? RAID_AT_DAWN_SUB : VERDICT_SUB[verdict]}</p>
         </div>
 
         <p className="receipt__thanks">*** Thank you. We never saw you. ***</p>

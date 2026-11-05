@@ -127,7 +127,8 @@ export const CHAPTERS: Record<Difficulty, Chapter> = {
     epilogue: {
       clean: [['Clean getaway from the boss’s table. He bowed. I’ve poured for him thirty years. He has never bowed.']],
       raid: [['Raided, even up here. He finished his tea first. Nod for the hands you’d bet your shoes on.']],
-      dawn: [['Last orders at the top of the stairs. He poured you a drink himself. That’s worse than shouting.']],
+      // There are no last orders up here: dawn is a raid.
+      dawn: [['No last orders at the top of the stairs. He poured you a drink himself, then opened the door for his men.']],
     },
   },
 };

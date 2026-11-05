@@ -219,6 +219,13 @@ export const VERDICT_LINE: Record<Verdict, string> = {
   dawn: 'Last orders',
 };
 
+/** A raid that came with the clock, at the boss's table, rather than at the sirens. */
+export function raidAtDawn(view: Pick<GameView, 'verdict' | 'meter' | 'sirens'>): boolean {
+  return view.verdict === 'raid' && view.meter > -view.sirens;
+}
+
+export const RAID_AT_DAWN_SUB = "Dawn at the boss's table. His men were already on the stairs.";
+
 export const VERDICT_SUB: Record<Verdict, string> = {
   clean: 'Out the back door before anyone looked up.',
   raid: 'Sirens on the stairs. The night is over.',
