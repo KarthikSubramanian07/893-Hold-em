@@ -36,7 +36,8 @@ The rules in four lines:
 4. **Every hand that's In plays the House on its own.** Each one that wins moves the marker a step toward the door. Each one that loses moves it a step toward the sirens. A tie moves nothing. Out: no move, but the clock runs.
 
 Reach the door for a clean getaway. Reach the sirens and the bar gets raided. After ten
-hands it's last orders, and the night ends at dawn.
+hands it's last orders, and the night ends at dawn. Except at Oyabun: the boss has no
+last orders, and a crew still in his room at dawn is raided.
 
 The showdown is the moment: every card flips, and you see your own hand for the first
 time. *You had a flush the whole time.* The two beside you knew. That's why they nodded.

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { BALANCE, HOUSE, HOUSE_UP, LAST_ORDERS, MAX_CREW, MIN_CREW, NOD_BOARD, doorFor, sirensFor } from './rules';
+import { BALANCE, HOUSE, HOUSE_UP, LAST_ORDERS, MAX_CREW, MIN_CREW, NOD_BOARD, dawnIsARaid, doorFor, sirensFor } from './rules';
 
 const rust = readFileSync(fileURLToPath(new URL('../../crates/engine/src/rules.rs', import.meta.url)), 'utf8');
 
@@ -38,6 +38,11 @@ describe('rules mirror crates/engine/src/rules.rs', () => {
       .filter((l) => l.trim().startsWith('[('))
       .map((l) => [...l.matchAll(/\((\d+),\s*(\d+)\)/g)].map((m) => [Number(m[1]), Number(m[2])]));
     expect(rows).toEqual([BALANCE.shitamachi, BALANCE.kabukicho, BALANCE.oyabun]);
+  });
+
+  it('agrees that only the boss has no last orders', () => {
+    expect(rust).toMatch(/fn dawn_is_a_raid\(d: Difficulty\) -> bool \{\s*d == Difficulty::Oyabun\s*\}/);
+    expect([dawnIsARaid('shitamachi'), dawnIsARaid('kabukicho'), dawnIsARaid('oyabun')]).toEqual([false, false, true]);
   });
 
   it('clamps crew size like the engine', () => {

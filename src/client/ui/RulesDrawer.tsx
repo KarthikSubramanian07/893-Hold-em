@@ -19,7 +19,8 @@ export function RulesContent() {
         </ol>
         <p className="rules__fine">
           Reach the door for a clean getaway. Reach the sirens and the bar is raided. After {LAST_ORDERS} hands it is last
-          orders, and the night ends at dawn.
+          orders, and the night ends at dawn. Except at Oyabun: the boss has no last orders, and a crew still in his room at
+          dawn is raided.
         </p>
       </section>
 

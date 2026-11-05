@@ -12,6 +12,11 @@ export const NOD_BOARD = 4;
 /** The night ends after this many hands if the marker reached neither end. */
 export const LAST_ORDERS = 10;
 
+/** At the boss's table there are no last orders: still in the room when the clock runs out is a raid. */
+export function dawnIsARaid(d: Difficulty): boolean {
+  return d === 'oyabun';
+}
+
 /**
  * How many cards the House holds, per table, for crews of 2 through 6. It plays
  * its best five with the board, and every In hand plays it on its own.
@@ -60,10 +65,10 @@ export const BALANCE: Record<Difficulty, readonly (readonly [number, number])[]>
   ],
   oyabun: [
     [8, 2],
-    [10, 3],
-    [13, 4],
-    [17, 5],
-    [19, 6],
+    [10, 2],
+    [13, 3],
+    [16, 3],
+    [19, 4],
   ],
 };
 
@@ -116,7 +121,7 @@ export const TABLES: Record<Difficulty, TableInfo> = {
     id: 'oyabun',
     kanji: '親分',
     name: 'Oyabun',
-    blurb: "The boss's room. The door is far and the sirens are close.",
+    blurb: "The boss's room. No last orders: still here at dawn is a raid.",
     house: houseRange('oyabun'),
     odds: '3 in 10',
   },

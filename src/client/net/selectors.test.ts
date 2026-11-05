@@ -21,6 +21,7 @@ import {
   revealLine,
   signed,
   stillDeciding,
+  raidAtDawn,
   teammates,
   VERDICT_LINE,
 } from './selectors';
@@ -150,6 +151,14 @@ describe('wording', () => {
     expect(handPhrase(sd.seats[1]!.hand!)).toBe('a full house');
     expect(handPhrase(sd.seats[2]!.hand!)).toBe('a pair of sevens');
     expect(handPhrase(sd.seats[0]!.hand!)).toBe('two pair, kings and sevens');
+  });
+});
+
+describe('raidAtDawn', () => {
+  it('tells a raid at the sirens from one at the clock', () => {
+    expect(raidAtDawn({ verdict: 'raid', meter: -6, sirens: 6 })).toBe(false);
+    expect(raidAtDawn({ verdict: 'raid', meter: 2, sirens: 6 })).toBe(true);
+    expect(raidAtDawn({ verdict: 'dawn', meter: 2, sirens: 6 })).toBe(false);
   });
 });
 

@@ -16,7 +16,7 @@ One link, no accounts, no downloads. Open a table, send the link to your friends
 3. **In or Out.** After the river, everyone picks In or Out at the same moment.
 4. **The showdown.** Every card flips, yours too. Every hand that's In plays the House on its own. Each one that wins moves the marker a step toward the door; each one that loses, a step toward the sirens.
 
-Reach the door for a clean getaway. Reach the sirens and the bar gets raided. After ten hands it's last orders.
+Reach the door for a clean getaway. Reach the sirens and the bar gets raided. After ten hands it's last orders, except at Oyabun, where dawn means a raid.
 
 ## Three tables
 

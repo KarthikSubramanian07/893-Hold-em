@@ -326,7 +326,9 @@ function verdictLines(view: GameView): Line[] {
   const verdict = view.verdict!;
   const ch = CHAPTERS[table];
   const event = `verdict:${table}:${verdict}`;
-  const run = pick(ch.epilogue[verdict], seedOf(view), view.hand, event);
+  // At the boss's table the clock running out is a raid, told in its own words.
+  const bank = verdict === 'raid' && view.meter > -view.sirens ? ch.epilogue.dawn : ch.epilogue[verdict];
+  const run = pick(bank, seedOf(view), view.hand, event);
   const mood: Mood = verdict === 'clean' ? 'gold' : verdict === 'raid' ? 'danger' : 'cold';
   const out = run.map((text, i) =>
     line(view, `${event}:${i}`, { speaker: 'master', text, mood, kanji: i === 0 ? ch.kanji : undefined, hold: Math.max(5200, holdFor(text) + 1200) }),

@@ -14,7 +14,7 @@ description: "The complete rules of 893 Hold'em: you see the two hands beside yo
 3. **After the river, everyone picks In or Out at once.**
 4. **Every hand that's In plays the House on its own.** Each one that wins: one step toward the door. Each one that loses: one step toward the sirens. A tie moves nothing for that hand. Out: nothing moves, but the clock runs.
 
-Reach the door and you get away clean. Reach the sirens and the bar is raided. After ten hands it is last orders, and the night ends at dawn.
+Reach the door and you get away clean. Reach the sirens and the bar is raided. After ten hands it is last orders, and the night ends at dawn. Except at Oyabun: the boss has no last orders, and a crew still in his room at dawn is raided.
 
 ## A hand
 
