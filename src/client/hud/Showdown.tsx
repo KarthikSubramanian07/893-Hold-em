@@ -3,7 +3,7 @@
 // marker went.
 import type { GameView } from '../../engine/types';
 import { sfx } from '../audio';
-import { isMonster, movedLine, mySeat, nodsOn, OUTCOME_LINE, readyQuorum, revealLine, signed } from '../net/selectors';
+import { isMonster, movedLine, mySeat, nodsOn, OUTCOME_LINE, readyQuorum, revealLine, signed, tallyLine } from '../net/selectors';
 import { useTable } from '../net/store';
 import { AvatarSeal } from '../ui/avatars';
 import { CardPair, MiniCard } from './MiniCard';
@@ -17,7 +17,7 @@ export function Showdown({ view }: { view: GameView }) {
   const { ready, needed } = readyQuorum(view);
   const iAmReady = view.you ? view.ready.includes(view.you) : true;
   const last = view.hand >= view.lastOrders;
-  const carriers = view.seats.filter((s) => s.champion);
+  const tally = tallyLine(view);
   const reveal = revealLine(view);
   const monster = isMonster(me?.hand);
 
@@ -56,9 +56,9 @@ export function Showdown({ view }: { view: GameView }) {
         <div className={r.outcome === 'crew' ? 'is-win' : ''}>
           <dt className="label">
             The crew
-            {carriers.length > 0 && <span className="sd__by"> · {carriers.map((c) => c.name).join(' & ')}</span>}
+            {tally && <span className="sd__by"> · {tally}</span>}
           </dt>
-          <dd>{r.crewBest?.name ?? 'Nobody went In'}</dd>
+          <dd>{r.crewBest ? `Best: ${r.crewBest.name}` : 'Nobody went In'}</dd>
         </div>
         <div className="sd__vs" aria-hidden="true">
           対
@@ -76,6 +76,7 @@ export function Showdown({ view }: { view: GameView }) {
         {view.seats.map((s) => {
           const nods = nodsOn(view, s.id);
           const could = r.couldHave.includes(s.id) && s.stance === 'out';
+          const lost = s.stance === 'in' && !s.champion && (s.hand?.score ?? 0) < r.houseBest.score;
           return (
             <li key={s.id} className={`sdseat${s.stance === 'in' ? ' is-in' : ' is-out'}${s.champion ? ' is-carrier' : ''}${s.id === view.you ? ' is-you' : ''}`}>
               <AvatarSeal avatar={s.avatar} size={22} />
@@ -94,7 +95,8 @@ export function Showdown({ view }: { view: GameView }) {
                   <span className="sdseat__none">no nods</span>
                 )}
               </span>
-              {s.champion && <span className="sdseat__tag">{r.outcome === 'crew' ? 'carried' : 'led'}</span>}
+              {s.champion && <span className="sdseat__tag">won</span>}
+              {lost && <span className="sdseat__tag sdseat__tag--lost">lost</span>}
               {could && <span className="sdseat__tag sdseat__tag--could">could have</span>}
             </li>
           );

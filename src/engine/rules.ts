@@ -7,17 +7,19 @@ export const MIN_CREW = 2;
 export const MAX_CREW = 6;
 /** Cards the House shows from the start; the rest stay hidden to the showdown. */
 export const HOUSE_UP = 1;
+/** Board cards face up while the crew nods: the flop and the turn. */
+export const NOD_BOARD = 4;
 /** The night ends after this many hands if the marker reached neither end. */
 export const LAST_ORDERS = 10;
 
 /**
  * How many cards the House holds, per table, for crews of 2 through 6. It plays
- * its best five with the board, so a bigger crew faces a stronger House.
+ * its best five with the board, and every In hand plays it on its own.
  */
 export const HOUSE: Record<Difficulty, readonly number[]> = {
-  shitamachi: [3, 3, 4, 4, 4],
-  kabukicho: [3, 4, 4, 5, 5],
-  oyabun: [4, 4, 5, 5, 5],
+  shitamachi: [2, 2, 2, 2, 2],
+  kabukicho: [2, 2, 2, 2, 2],
+  oyabun: [2, 2, 2, 2, 2],
 };
 
 function crewIndex(crew: number): number {
@@ -38,30 +40,30 @@ function houseRange(d: Difficulty): string {
 
 /**
  * [steps to the door, steps to the sirens] for crews of 2 through 6, per table.
- * A win moves the marker one step toward the door per player In; a loss one
- * step toward the sirens per player In.
+ * Every In hand that beats the House moves the marker one step toward the
+ * door; every In hand that loses, one step toward the sirens.
  */
 export const BALANCE: Record<Difficulty, readonly (readonly [number, number])[]> = {
   shitamachi: [
-    [3, 5],
-    [5, 7],
-    [5, 9],
-    [6, 12],
-    [7, 14],
+    [4, 4],
+    [6, 5],
+    [7, 6],
+    [9, 7],
+    [10, 8],
   ],
   kabukicho: [
-    [4, 3],
-    [4, 6],
-    [8, 7],
-    [6, 10],
-    [7, 12],
+    [6, 2],
+    [8, 3],
+    [10, 4],
+    [12, 5],
+    [14, 6],
   ],
   oyabun: [
-    [3, 3],
-    [5, 4],
-    [5, 6],
-    [8, 8],
-    [10, 10],
+    [8, 2],
+    [10, 3],
+    [13, 4],
+    [17, 5],
+    [19, 6],
   ],
 };
 
@@ -98,7 +100,7 @@ export const TABLES: Record<Difficulty, TableInfo> = {
     id: 'shitamachi',
     kanji: '下町',
     name: 'Shitamachi',
-    blurb: 'The corner bar. The House holds three or four cards.',
+    blurb: 'The corner bar. The sirens are a long way off.',
     house: houseRange('shitamachi'),
     odds: '7 in 10',
   },
@@ -106,7 +108,7 @@ export const TABLES: Record<Difficulty, TableInfo> = {
     id: 'kabukicho',
     kanji: '歌舞伎町',
     name: 'Kabukichō',
-    blurb: 'Neon and noise. The House holds three to five.',
+    blurb: 'Neon and noise. The sirens sit closer.',
     house: houseRange('kabukicho'),
     odds: '1 in 2',
   },
@@ -114,7 +116,7 @@ export const TABLES: Record<Difficulty, TableInfo> = {
     id: 'oyabun',
     kanji: '親分',
     name: 'Oyabun',
-    blurb: "The boss's room. The House holds four or five.",
+    blurb: "The boss's room. The door is far and the sirens are close.",
     house: houseRange('oyabun'),
     odds: '3 in 10',
   },
@@ -124,8 +126,8 @@ export const DEFAULT_TABLE: Difficulty = 'shitamachi';
 
 /** The four rules, in the plain words used everywhere. */
 export const RULES_IN_FOUR: readonly string[] = [
-  "Everyone sees every hand but their own. The House shows one card and plays its best five with the board; it holds more cards the bigger your crew.",
-  'After the flop, each player may nod at one teammate: "you\'re good". One nod each per hand, or pass.',
+  'You see the hands of the two players beside you, never your own. The House shows one card and plays its best five with the board.',
+  'After the turn, nod at one of the two you can see: "you\'re good". Or pass. Every nod turns over at once.',
   'After the river, everyone picks In or Out at once.',
-  'The best hand that\'s In faces the House. Win: one step toward the door per player In. Lose: one step toward the sirens per player In. Everyone Out: nothing moves, but the clock runs.',
+  'Every hand that\'s In plays the House on its own. Each win: a step toward the door. Each loss: a step toward the sirens. Out: nothing moves, but the clock runs.',
 ];

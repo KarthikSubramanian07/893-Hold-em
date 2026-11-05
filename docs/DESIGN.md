@@ -10,10 +10,11 @@ This is the canonical spec. Code, copy, and art all answer to it.
 
 ## 1. The pitch
 
-A co-op poker heist for 2 to 6 people. The crew sits on one side of a lacquer
-table in a back-alley bar in Shinjuku. The House sits across, in a mask.
-You can see every teammate's cards but never your own, and nobody may talk.
-All you get is **one nod a hand**, and the nods that come back to you.
+A co-op poker heist for 2 to 6 people. The crew sits in a ring on one side of a
+lacquer table in a back-alley bar in Shinjuku. The House sits across, in a mask.
+You can see the cards of the two players beside you but never your own, and
+nobody may talk. All you get is **one nod a hand**, and the nods that come back
+to you.
 
 One link, no accounts. Open a table, send the link, play in a minute.
 
@@ -21,15 +22,14 @@ One link, no accounts. Open a table, send the link, play in a minute.
 
 ### In four lines
 
-1. **Everyone sees every hand but their own.** The House shows one card. It holds 3
-   cards at Shitamachi, 4 at Kabukichō, 5 at Oyabun, and plays its best five with
-   the board.
-2. **After the flop, each player may nod at one teammate**: "you're good". One nod
-   each per hand, or pass.
+1. **You see the hands of the two players beside you, never your own.** The
+   House shows one card and plays its best five with the board.
+2. **After the turn, each player may nod at one of the two they can see**:
+   "you're good". One nod each per hand, or pass.
 3. **After the river, everyone picks In or Out at once.**
-4. **The best hand that's In faces the House.** Win: the marker moves one step
-   toward the door per player In. Lose: one step toward the sirens per player In.
-   Tie: no move. Everyone Out: no move, but the clock runs.
+4. **Every hand that's In plays the House on its own.** Each one that beats it:
+   one step toward the door. Each one that loses: one step toward the sirens. A
+   tie moves nothing for that hand. Out: nothing moves, but the clock runs.
 
 Reach the door = clean getaway. Reach the sirens = raid. After 10 hands
 ("last orders") the night ends as **dawn**.
@@ -37,48 +37,77 @@ Reach the door = clean getaway. Reach the sirens = raid. After 10 hands
 ### Seats
 
 - **The crew** is 2 to 6 seats, humans or bot regulars who fill empty chairs.
+  The seats sit in a ring, so everyone has exactly two neighbours. At two or
+  three players that is everyone else at the table; from four up, nobody sees
+  the whole table.
 - **The House** is one masked figure: Okame at Shitamachi, Kitsune at Kabukichō,
-  the Okina at Oyabun. Its cards (`HOUSE_CARDS`: 3, 4, 5) are dealt face down
-  except the first (`HOUSE_UP = 1`).
+  the Okina at Oyabun. It holds two cards at every table, dealt face down except
+  the first (`HOUSE_UP = 1`).
 
 ### A hand
 
 Phases: `lobby` → `nod` → `call` → `showdown` → next hand (or `over`).
 
-1. **The deal.** Each player gets 2 hole cards, facing out: everyone sees their
-   teammates' cards; your own are `'back'` in your view until the showdown.
-   Spectators see no hole cards at all. The flop (3 board cards) is face up.
-2. **`nod`.** Each player sends `{ t: 'nod', at: seatId }` or `{ t: 'nod', at: null }`
-   to pass. One per hand. Nods stay hidden from others until everyone has nodded;
-   your own is always visible to you.
-3. **`call`.** The turn and the river turn together (all 5 board cards). Each
-   player sends `{ t: 'call', stance: 'in' | 'out' }`. Stances stay hidden until the
-   showdown.
-4. **`showdown`.** Every card flips, including your own, for the first time. The
-   best hand among the players In faces the House's best five (its cards plus the
-   board). `result.moved` is +1 per player In on a win, −1 per player In on a loss,
-   0 on a tie, −1 if everyone was Out. `result.couldHave` lists every seat (In or
-   Out) whose hand beat the House.
+1. **The deal.** Each player gets 2 hole cards, facing out: you see the cards of
+   the two seats beside you, and your own are `'back'` in your view until the
+   showdown. Everyone else's are hidden too. Spectators see no hole cards at all.
+   The flop and the turn (4 board cards, `NOD_BOARD`) are face up.
+2. **`nod`.** Each player sends `{ t: 'nod', at: seatId }` for one of their two
+   neighbours, or `{ t: 'nod', at: null }` to pass. One per hand. Nods stay hidden
+   from others until everyone has nodded, then turn over together; your own is
+   always visible to you. Since you only have two neighbours, nobody can receive
+   more than two nods.
+3. **`call`.** The river comes out (all 5 board cards). Each player sends
+   `{ t: 'call', stance: 'in' | 'out' }`. Stances stay hidden until the showdown.
+4. **`showdown`.** Every card flips, including your own, for the first time.
+   Each hand that's In plays the House's best five (its cards plus the board) on
+   its own. `result.moved` is +1 for every In hand that beat the House and −1 for
+   every In hand that lost to it; ties and Out hands count 0.
+   `result.crewChampions` lists the In hands that won, `result.couldHave` every
+   seat (In or Out) whose hand beat the House. The showdown lists which In hands
+   won and which lost, and the best winner is the best hand that beat the House.
 
-The tension is the nod, and the trade. A nod says "I can see your hand, and it
-looks strong." Going In adds a step either way; sitting out a winner leaves steps on
-the table.
+The tension is the nod, and the trade. A nod says "of the two hands I can see,
+this one looks good." One nod, two neighbours: if both look good, you have to
+pick, so a neighbour who nodded past you at their other side is telling you
+something too. Going In is a step either way, and only your own hand decides
+which; sitting out a winner leaves a step on the table.
+
+### Why it works this way
+
+An earlier version let everyone see every hand but their own, and sent only the
+best In hand against the House. At three to six players the best hand was
+obvious to everyone, every nod landed on it, and the nods carried no real
+information. And with only the best hand playing, everyone could just go In
+whenever the table looked strong.
+
+Now only your two neighbours know your hand. Their one nod is a forced comparison
+between their two neighbours, and since every In hand plays alone, you have to
+read your own strength from the nods. The simulator agrees: crews that nod well
+get away roughly twice as often as crews that nod at random, and far more often
+than crews that never nod.
 
 ### The track
 
 One marker starts at 0. The door sits at `door`, the sirens at `-sirens`; both depend
-on the table **and** the crew size, because every player In moves the marker. They
+on the table **and** the crew size, because every In hand moves the marker. They
 live in `BALANCE` in `crates/engine/src/rules.rs` (mirrored in `src/engine/rules.ts`,
 with a test that fails on drift), tuned by the simulator (`crates/sim`) toward the
 goal clean rates below.
 
 ### Difficulty ("tables")
 
-| Table | House holds | Goal clean rate |
-| --- | --- | --- |
-| **Shitamachi** (下町): the corner bar | 3 cards | ~70% |
-| **Kabukichō** (歌舞伎町) | 4 cards | ~50% |
-| **Oyabun** (親分): the boss's room | 5 cards | ~30% |
+The House holds two cards everywhere. What changes from table to table is the
+track: how far the door and the sirens sit from the start.
+
+| Table | House holds | The track | Goal clean rate |
+| --- | --- | --- | --- |
+| **Shitamachi** (下町): the corner bar | 2 cards | forgiving, the sirens far off | ~70% |
+| **Kabukichō** (歌舞伎町): the neon | 2 cards | the sirens closer | ~50% |
+| **Oyabun** (親分): the boss's room | 2 cards | the sirens close, the door far | ~30% |
+
+The goal is for a crew that plays well. The exact distances for each crew size
+are in `BALANCE`, and the rules drawer in the game shows the ones for your table.
 
 Shitamachi is the default table.
 

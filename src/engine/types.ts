@@ -21,7 +21,7 @@ export type Stance = 'in' | 'out';
 
 export type Phase =
   | 'lobby' // seats filling, host configuring
-  | 'nod' // the flop is out; each player may nod at one teammate
+  | 'nod' // the turn is out; each player may nod at one of the two beside them
   | 'call' // the river is out; each player picks In or Out
   | 'showdown' // hand resolved, results on the table, waiting for "next"
   | 'over'; // the night is over, verdict shown
@@ -69,8 +69,8 @@ export type Avatar =
 
 // ---------------------------------------------------------------------------
 // Views: what one viewer is allowed to know. The server builds one per socket.
-// During a hand you see every teammate's cards but never your own; spectators
-// see no hole cards at all.
+// During a hand you see the cards of the two players beside you, never your
+// own; spectators see no hole cards at all.
 // ---------------------------------------------------------------------------
 
 export interface SeatView {
@@ -81,8 +81,10 @@ export interface SeatView {
   bot: boolean;
   host: boolean;
   connected: boolean;
-  /** Hole cards: real cards for teammates (and everyone at the showdown); `'back'` for your own and for spectators. */
+  /** Hole cards: real cards for the two beside you (and everyone at the showdown); `'back'` for your own, for teammates out of sight, and for spectators. */
   cards: Slot[];
+  /** You can see this seat's cards this hand, so you may nod at it: the two beside you (at two or three players, everyone else). */
+  inSight: boolean;
   /** Has this seat decided in the current phase (nodded or passed during `nod`, picked In/Out during `call`)? */
   locked: boolean;
   /** Seat id this seat nodded at. Others' nods are hidden (null) until every nod is in; your own is always visible. */
@@ -91,7 +93,7 @@ export interface SeatView {
   stance: Stance | null;
   /** At the showdown: this seat's evaluated hand. */
   hand: HandValue | null;
-  /** At the showdown: this seat's hand carried the crew (several on a tie). */
+  /** At the showdown: this seat was In and beat the House. */
   champion: boolean;
 }
 
@@ -106,15 +108,16 @@ export type HandOutcome = 'crew' | 'house' | 'tie' | 'walked';
 
 export interface HandResult {
   outcome: HandOutcome;
-  /** Steps the marker moved: +1 per player In on a win, -1 per player In on a loss, 0 on a tie or when everyone was Out. */
+  /** Steps the marker moved: +1 for every In hand that beat the House, -1 for every In hand that lost to it. */
   moved: number;
   /** Seat ids that were In. */
   ins: string[];
+  /** The best hand that was In. */
   crewBest: HandValue | null;
   houseBest: HandValue;
-  /** Seat ids whose hand was the crew's best among those In (several on a tie). */
+  /** Seat ids that were In and beat the House. */
   crewChampions: string[];
-  /** Seat ids (In or Out) whose hand beat the House: who could have carried it. */
+  /** Seat ids (In or Out) whose hand beat the House. */
   couldHave: string[];
 }
 
@@ -124,11 +127,14 @@ export interface HistoryEntry {
   moved: number;
   /** How many were In. */
   ins: number;
+  /** How many of those beat the House, and how many lost to it. */
+  won: number;
+  lost: number;
   crewBestName: string | null;
   houseBestName: string;
-  /** Name of the seat whose hand carried the crew, if any. */
+  /** Name of the seat with the best hand that beat the House, if any. */
   carrier: string | null;
-  /** Nods the carrier received that hand. */
+  /** Nods that seat received that hand. */
   carrierNods: number;
 }
 
@@ -140,7 +146,7 @@ export interface GameView {
   you: string | null;
   seats: SeatView[];
   house: HouseView;
-  /** Always five slots: three face up during `nod`, five from `call` on. */
+  /** Always five slots: four face up during `nod` (the flop and the turn), five from `call` on. */
   board: Slot[];
   /** Nights started at this table: 0 before the first, then 1, 2, … */
   night: number;

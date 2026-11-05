@@ -93,7 +93,7 @@ describe('deriveTargets', () => {
   it('seats one House with its cards, first face up', () => {
     const t = deriveTargets(F('nod'));
     expect(t.house).toHaveLength(1);
-    expect(t.house[0]!.cards).toEqual(['Kc', 'back', 'back']);
+    expect(t.house[0]!.cards).toEqual(['Kc', 'back']);
     expect(t.house[0]!.mask).toBe('okame');
     expect(t.house[0]!.watches).toEqual(['s0', 's1', 's2', 's3']);
   });
@@ -103,11 +103,12 @@ describe('deriveTargets', () => {
     // Board Kh 7s 7d 2c Qh. Crew best: 7h 7s 7d Qs Qh. House best: Kh Kc 7s 7d Qh.
     expect(t.board.map((b) => b.crew)).toEqual([false, true, true, false, true]);
     expect(t.board.map((b) => b.house)).toEqual([true, true, true, false, true]);
-    const champ = t.seats.find((s) => s.champion)!;
-    expect(champ.key).toBe('s1');
-    expect(champ.glow).toEqual([true, true]);
-    expect(t.seats.find((s) => s.key === 's0')!.glow).toEqual([false, false]);
-    expect(t.house[0]!.glow).toEqual([true, false, false]);
+    // Two hands beat the House; each lights its own best five.
+    expect(t.seats.filter((s) => s.champion).map((s) => s.key)).toEqual(['s0', 's1']);
+    expect(t.seats.find((s) => s.key === 's1')!.glow).toEqual([true, true]);
+    expect(t.seats.find((s) => s.key === 's0')!.glow).toEqual([true, true]);
+    expect(t.seats.find((s) => s.key === 's3')!.glow).toEqual([false, false]);
+    expect(t.house[0]!.glow).toEqual([true, false]);
     // The House stares down the hand that beat it.
     expect(t.house[0]!.saw).toEqual(['s1']);
   });

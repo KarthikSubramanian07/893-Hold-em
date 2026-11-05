@@ -1,25 +1,25 @@
-// The only way to talk at this table, in two calm steps. On the flop: tap a
-// teammate to nod at them, or pass. On the river: In or Out. A clock ring
+// The only way to talk at this table, in two calm steps. On the flop: tap one
+// of the two beside you to nod at them, or pass. On the river: In or Out. A clock ring
 // keeps time; everything else stays out of the way.
 import { useCallback, useEffect, useState } from 'react';
 import type { GameView, SeatView, Stance } from '../../engine/types';
 import { sfx } from '../audio';
 import { countdown, ringOffset, type Countdown } from '../lib/countdown';
-import { dockMode, listNames, mySeat, nodsOn, seatById, stillDeciding, teammates } from '../net/selectors';
+import { dockMode, inSight, listNames, mySeat, nodsOn, seatById, stillDeciding, teammates } from '../net/selectors';
 import { useTable } from '../net/store';
 import { AvatarSeal } from '../ui/avatars';
 import { CardPair } from './MiniCard';
 import { useNow } from './useNow';
 
 const PICKS: { stance: Stance; kanji: string; label: string; key: string; hint: string }[] = [
-  { stance: 'in', kanji: '入', label: 'In', key: 'I', hint: 'Your hand counts. One step for you, win or lose.' },
+  { stance: 'in', kanji: '入', label: 'In', key: 'I', hint: 'Your hand plays the House. A step toward the door if it wins, toward the sirens if not.' },
   { stance: 'out', kanji: '出', label: 'Out', key: 'O', hint: 'Sit this one out. Your hand stays off the table.' },
 ];
 
 /** The first-night coach: one plain line per step, on hand one only. */
 export const COACH = {
-  nod: "You can't see your own cards. Nod at the teammate whose hand looks strong.",
-  call: 'In or Out? A win moves you toward the door, a loss toward the sirens, one step per player In.',
+  nod: "You see the two beside you, never yourself. Nod at the one whose hand looks strong.",
+  call: 'Only your neighbours saw your hand. Read their nods: In plays your hand against the House, alone.',
 } as const;
 
 function typing(e: KeyboardEvent): boolean {
@@ -38,6 +38,7 @@ export function Dock({ view }: { view: GameView }) {
   const mode = dockMode(view, mine !== null);
   const me = mySeat(view);
   const mates = teammates(view);
+  const beside = inSight(view);
   const [armed, setArmed] = useState(false);
 
   const totalMs = view.config.timer * 1000;
@@ -81,13 +82,13 @@ export function Dock({ view }: { view: GameView }) {
       else if (k === 'n') setArmed((a) => !a);
       else if (k === 'escape') setArmed(false);
       else if (/^[1-6]$/.test(k)) {
-        const target = mates[Number(k) - 1];
+        const target = beside[Number(k) - 1];
         if (target) nodAt(target.id);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [mode, mates, nodAt, pick]);
+  }, [mode, beside, nodAt, pick]);
 
   // Tick in the last five seconds.
   const urgentSecond = clock?.urgent ? clock.seconds : 0;
@@ -129,14 +130,14 @@ export function Dock({ view }: { view: GameView }) {
               頷
             </span>
             <span>
-              <b>The flop.</b> Nod at one teammate, or pass.
+              <b>The turn.</b> {beside.length > 1 ? 'Nod at one of the two beside you, or pass.' : 'Nod at your teammate, or pass.'}
             </span>
           </p>
           {clock ? <Ring clock={clock} /> : null}
         </header>
         {coach && <p className="dock__coach">{coach}</p>}
-        <div className="dock__mates" role="group" aria-label="Your teammates">
-          {mates.map((s, i) => (
+        <div className="dock__mates" role="group" aria-label="The teammates beside you">
+          {beside.map((s, i) => (
             <MateChip
               key={s.id}
               seat={s}
@@ -166,7 +167,12 @@ export function Dock({ view }: { view: GameView }) {
             </p>
           ) : (
             <p className="dock__keys" aria-hidden="true">
-              Tap a teammate, or press <span className="kbd">1</span>–<span className="kbd">{Math.min(6, mates.length)}</span>
+              Tap a teammate, or press <span className="kbd">1</span>
+              {beside.length > 1 && (
+                <>
+                  {' '}or <span className="kbd">2</span>
+                </>
+              )}
             </p>
           )}
           {status}
@@ -186,7 +192,7 @@ export function Dock({ view }: { view: GameView }) {
             決
           </span>
           <span>
-            <b>The river.</b> {onMe === 0 ? 'Nobody nodded at you.' : onMe === 1 ? 'One teammate nodded at you.' : `${onMe} teammates nodded at you.`}
+            <b>The river.</b> {onMe === 0 ? 'Nobody nodded at you.' : onMe === 1 ? 'One neighbour nodded at you.' : 'Both your neighbours nodded at you.'}
           </span>
         </p>
         {clock ? <Ring clock={clock} /> : null}
@@ -196,10 +202,16 @@ export function Dock({ view }: { view: GameView }) {
         {mates.map((s) => {
           const n = nodsOn(view, s.id);
           return (
-            <li key={s.id} className={`read${n ? ' is-nodded' : ''}`}>
+            <li key={s.id} className={`read${n ? ' is-nodded' : ''}${s.inSight ? '' : ' is-unseen'}`}>
               <AvatarSeal avatar={s.avatar} size={20} />
               <span className="read__name">{s.name}</span>
-              <CardPair cards={s.cards} size="xs" />
+              {s.inSight ? (
+                <CardPair cards={s.cards} size="xs" />
+              ) : (
+                <span className="read__unseen" title="Out of your sight: read their nods">
+                  unseen
+                </span>
+              )}
               <span className="read__nods" aria-label={n === 1 ? '1 nod' : `${n} nods`}>
                 {n ? '●'.repeat(n) : '·'}
               </span>

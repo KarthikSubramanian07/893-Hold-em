@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { BALANCE, HOUSE, HOUSE_UP, LAST_ORDERS, MAX_CREW, MIN_CREW, doorFor, sirensFor } from './rules';
+import { BALANCE, HOUSE, HOUSE_UP, LAST_ORDERS, MAX_CREW, MIN_CREW, NOD_BOARD, doorFor, sirensFor } from './rules';
 
 const rust = readFileSync(fileURLToPath(new URL('../../crates/engine/src/rules.rs', import.meta.url)), 'utf8');
 
@@ -17,6 +17,7 @@ describe('rules mirror crates/engine/src/rules.rs', () => {
     expect(constant('MAX_CREW')).toBe(MAX_CREW);
     expect(constant('HOUSE_UP')).toBe(HOUSE_UP);
     expect(constant('LAST_ORDERS')).toBe(LAST_ORDERS);
+    expect(constant('NOD_BOARD')).toBe(NOD_BOARD);
   });
 
   it('agrees on how many cards the House holds', () => {

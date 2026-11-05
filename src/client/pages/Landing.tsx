@@ -210,13 +210,13 @@ const BEATS = [
   {
     n: '一',
     title: 'The deal',
-    body: "Two cards each, facing out. You see every teammate's hand but never your own. The House shows one of its cards.",
+    body: "Two cards each, facing out. You see the two players beside you, never yourself. The House shows one of its cards.",
     art: <ArtDeal />,
   },
   {
     n: '二',
     title: 'The nod',
-    body: "After the flop, nod at one teammate: you're good. Or pass. Every nod turns over at once.",
+    body: "After the turn, nod at one of the two beside you: you're good. Or pass. Every nod turns over at once.",
     art: <ArtNod />,
   },
   {
@@ -228,7 +228,7 @@ const BEATS = [
   {
     n: '四',
     title: 'The showdown',
-    body: "Every card flips, yours too. The best hand that's In faces the House. Win and the crew steps toward the door, one step per player In.",
+    body: "Every card flips, yours too. Every hand that's In plays the House: each win a step toward the door, each loss a step toward the sirens.",
     art: <ArtShowdown />,
   },
 ];
@@ -369,13 +369,13 @@ function Quiet() {
           The only conversation is the nod.
         </h2>
         <p className="quiet__p">
-          <span className="quiet__drop">Y</span>ou can see everyone's cards except your own. There's no chat, no voice, no
-          table talk. All you get is one nod a hand, at the teammate whose cards look strong, and the nods that come back to
-          you.
+          <span className="quiet__drop">Y</span>ou can see the two players beside you, never yourself. There's no chat, no
+          voice, no table talk. All you get is one nod a hand, at whichever neighbour looks strong, and the nods that come
+          back to you.
         </p>
         <p className="quiet__p">
-          Three nods on you says <em>go In, you've got this.</em> None says <em>sit this one out.</em> Then you pick, and
-          every card turns over, yours too. After a few hands, a crew of strangers starts reading each other like old friends.
+          Two nods on you says <em>go In, you've got this.</em> A neighbour who nodded past you says <em>the other one's
+          better.</em> None says <em>sit this one out.</em> Then you pick, and every card turns over, yours too. After a few hands, a crew of strangers starts reading each other like old friends.
           That's the game.
         </p>
         <p className="quiet__sig hand">— the Master</p>

@@ -95,23 +95,19 @@ export function Receipt({ view, aside }: { view: GameView; aside?: ReactNode }) 
   );
 }
 
-const TAG = { crew: 'Won', house: 'Lost', tie: 'Even', walked: 'All out' } as const;
+const TAG = { crew: 'Ahead', house: 'Behind', tie: 'Even', walked: 'All out' } as const;
 
 function Line({ h }: { h: HistoryEntry }) {
   const nods = h.carrierNods ? `${h.carrierNods} ${h.carrierNods === 1 ? 'nod' : 'nods'}` : 'no nods';
-  // Only a won hand was carried; on a loss or a tie, name the hand that led.
-  const who = h.carrier
-    ? `${h.carrier} ${h.outcome === 'crew' ? 'carried' : 'led'} · ${nods}`
-    : h.ins === 0
-      ? 'Nobody went In'
-      : null;
+  // The carrier is the best hand that beat the House.
+  const who = h.carrier ? `${h.carrier} won biggest · ${nods}` : h.ins === 0 ? 'Nobody went In' : null;
   return (
     <li className={`rl rl--${h.outcome}`}>
       <span className="rl__n">{String(h.hand).padStart(2, '0')}</span>
       <span className="rl__main">
         <span className="rl__title">
           {TAG[h.outcome]}
-          <span className="rl__ins">{h.ins} In</span>
+          <span className="rl__ins">{h.ins === 0 ? '0 In' : `${h.won} of ${h.ins} won`}</span>
         </span>
         {who && <span className="rl__who">{who}</span>}
         <span className="rl__vs">

@@ -18,6 +18,9 @@ pub const MIN_CREW: usize = 2;
 pub const MAX_CREW: usize = 6;
 /// Cards the House shows from the start; the rest stay hidden to the showdown.
 pub const HOUSE_UP: usize = 1;
+/// Board cards face up while the crew nods: the flop and the turn. The river
+/// comes with the call.
+pub const NOD_BOARD: usize = 4;
 /// Last orders: the night ends after this many hands if the marker hasn't
 /// reached the door or the sirens. The clock is what keeps a crew from
 /// sitting Out forever.
@@ -26,16 +29,17 @@ pub const LAST_ORDERS: u8 = 10;
 pub const SHOWDOWN_SECONDS: u64 = 10;
 
 /// How many cards the House holds, per table and crew size of 2 through 6.
-/// It plays its best five with the board, like anyone else. Chosen so a crew
-/// that always goes In together wins a bit under half its hands at Shitamachi
-/// and about a third at Oyabun: going In blind doesn't pay, reading does.
+/// It plays its best five with the board, like anyone else, and every In hand
+/// plays it alone. Two cards, like yours, so a hand going In blind wins a bit
+/// under half the time and a hand the nods vouched for wins about two in
+/// three: reading pays. The tables differ by the track, not the House.
 pub const HOUSE: [[usize; 5]; 3] = [
     // Shitamachi
-    [3, 3, 4, 4, 4],
+    [2, 2, 2, 2, 2],
     // Kabukicho
-    [3, 4, 4, 5, 5],
+    [2, 2, 2, 2, 2],
     // Oyabun
-    [4, 4, 5, 5, 5],
+    [2, 2, 2, 2, 2],
 ];
 
 pub fn house_cards(d: Difficulty, crew: usize) -> usize {
@@ -51,17 +55,16 @@ fn row(d: Difficulty) -> usize {
 }
 
 /// (steps to the door, steps to the sirens) for crews of 2 through 6, per
-/// table. A won hand moves the marker one step toward the door for every
-/// player who was in; a lost hand moves it one step toward the sirens for
-/// every player who was in. Tuned by `crates/sim` so the regulars escape
-/// about 70% / 50% / 30% of nights, in five to seven hands.
+/// table. Every In hand that beats the House moves the marker one step toward
+/// the door; every In hand that loses, one step toward the sirens. Tuned by
+/// `crates/sim` so the regulars escape about 70% / 50% / 30% of nights.
 pub const BALANCE: [[(u32, u32); 5]; 3] = [
     // Shitamachi
-    [(3, 5), (5, 7), (5, 9), (6, 12), (7, 14)],
+    [(4, 4), (6, 5), (7, 6), (9, 7), (10, 8)],
     // Kabukicho
-    [(4, 3), (4, 6), (8, 7), (6, 10), (7, 12)],
+    [(6, 2), (8, 3), (10, 4), (12, 5), (14, 6)],
     // Oyabun
-    [(3, 3), (5, 4), (5, 6), (8, 8), (10, 10)],
+    [(8, 2), (10, 3), (13, 4), (17, 5), (19, 6)],
 ];
 
 fn balance(d: Difficulty, crew: usize) -> (u32, u32) {
@@ -83,16 +86,21 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_house_grows_with_the_crew_and_the_table() {
+    fn the_house_never_shrinks_at_a_harder_table() {
         for crew in MIN_CREW..=MAX_CREW {
             let easy = house_cards(Difficulty::Shitamachi, crew);
             let mid = house_cards(Difficulty::Kabukicho, crew);
             let hard = house_cards(Difficulty::Oyabun, crew);
             assert!(easy <= mid && mid <= hard);
-            // The evaluator takes up to twelve cards; the House plus the board stays at ten.
-            assert!((3..=5).contains(&hard));
+            // It shows one card and keeps at least one hidden; the evaluator
+            // takes up to twelve, and the House plus the board stays at ten.
+            assert!(easy > HOUSE_UP && (2..=5).contains(&hard));
         }
-        assert!(house_cards(Difficulty::Shitamachi, 6) >= house_cards(Difficulty::Shitamachi, 2));
+    }
+
+    #[test]
+    fn the_crew_nods_on_the_turn() {
+        assert_eq!(NOD_BOARD, 4);
     }
 
     #[test]

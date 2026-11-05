@@ -33,6 +33,9 @@ export const entry = (hand: number, outcome: HistoryEntry['outcome'], moved: num
   outcome,
   moved,
   ins,
+  // Every In hand plays the House on its own: wins minus losses is the move.
+  won: Math.max(0, Math.floor((ins + moved) / 2)),
+  lost: Math.max(0, ins - Math.floor((ins + moved) / 2)),
   crewBestName: outcome === 'walked' ? null : 'Pair of nines',
   houseBestName: 'King high',
   carrier,
@@ -64,8 +67,10 @@ export function scriptedNight(): Step[] {
       const cards = o.cards ?? ['back', 'back'];
       return {
         ...s,
-        // During a hand you see teammates' cards, never your own.
-        cards: !open && i === 0 ? ['back', 'back'] : cards,
+        // During a hand you see the two beside you (Mio and Taka), never
+        // your own, and not Sumi across the table.
+        cards: !open && (i === 0 || i === 2) ? ['back', 'back'] : cards,
+        inSight: i === 1 || i === 3,
         locked: o.locked ?? false,
         nod: o.nod ?? null,
         stance: o.stance ?? null,
@@ -77,8 +82,8 @@ export function scriptedNight(): Step[] {
   const night = (over: Partial<GameView>): GameView => ({
     ...lobby2,
     phase: 'nod',
-    house: { cards: ['Kc', 'back', 'back', 'back'], hand: null },
-    board: ['9h', '3s', 'Td', null, null],
+    house: { cards: ['Kc', 'back'], hand: null },
+    board: ['9h', '3s', 'Td', 'Jc', null],
     deadline: null,
     ...over,
   });
@@ -86,25 +91,26 @@ export function scriptedNight(): Step[] {
   const show = (hand: number, meter: number, history: HistoryEntry[], spec: Seat[], result: Partial<HandResult>, board: Slot[], house: Slot[]): GameView =>
     withResult(night({ hand, meter, history, board, phase: 'showdown', house: { cards: house, hand: result.houseBest ?? KING_HIGH }, seats: seats(spec, true) }), result);
 
-  // Hand 1: everyone nods at Sumi; Sumi carries an eight-nine-three.
+  // Hand 1: Mio and Taka, the two who can see Sumi, both nod at her; Sumi
+  // wins with an eight-nine-three, and the two who went In with her win too.
   const holes1: Slot[][] = [['Ah', 'Kd'], ['7h', '5s'], ['8c', '9d'], ['Qs', '4c']];
   const h1 = night({ hand: 1, seats: seats(holes1.map((cards) => ({ cards }))) });
   const h1call = night({
     hand: 1,
     phase: 'call',
     board: ['9h', '3s', 'Td', 'Jc', '2h'],
-    seats: seats(holes1.map((cards, i) => ({ cards, nod: i === 2 ? null : 's2' }))),
+    seats: seats(holes1.map((cards, i) => ({ cards, nod: i === 1 || i === 3 ? 's2' : null }))),
   });
   const sumiPair = hv(2_900_000, 'pair', 'Pair of nines', ['9d', '9h', 'Jc', 'Td', '8c']);
-  const hist1 = [entry(1, 'crew', 3, 3, 'Sumi', 3)];
+  const hist1 = [entry(1, 'crew', 3, 3, 'Sumi', 2)];
   const h1sd = show(
     1,
     3,
     hist1,
-    holes1.map((cards, i) => ({ cards, nod: i === 2 ? null : 's2', stance: i === 1 ? 'out' : 'in', champion: i === 2, hand: i === 2 ? sumiPair : undefined })),
-    { outcome: 'crew', moved: 3, ins: ['s0', 's2', 's3'], crewBest: sumiPair, crewChampions: ['s2'], couldHave: ['s2'] },
+    holes1.map((cards, i) => ({ cards, nod: i === 1 || i === 3 ? 's2' : null, stance: i === 1 ? 'out' : 'in', champion: i === 2, hand: i === 2 ? sumiPair : undefined })),
+    { outcome: 'crew', moved: 3, ins: ['s0', 's2', 's3'], crewBest: sumiPair, crewChampions: ['s0', 's2', 's3'], couldHave: ['s0', 's2', 's3'] },
     ['9h', '3s', 'Td', 'Jc', '2h'],
-    ['Kc', '6d', '5d', '4h'],
+    ['Kc', '6d'],
   );
 
   // Hand 2: nobody nods; Mio sits out holding the winner; the House takes four steps.
@@ -121,7 +127,7 @@ export function scriptedNight(): Step[] {
     holes2.map((cards, i) => ({ cards, stance: i === 1 ? 'out' : 'in', hand: i === 1 ? mioTrips : undefined })),
     { outcome: 'house', moved: -3, ins: ['s0', 's2', 's3'], crewBest: hv(2_500_000, 'pair', 'Pair of queens', ['Qd', 'Qc', 'As', 'Kh', '8s']), houseBest: houseTwoPair, couldHave: ['s1'] },
     ['Kh', '6c', '2d', 'As', '8s'],
-    ['Ac', '6h', '4d', '3c'],
+    ['Ac', '6h'],
   );
 
   // Hand 3: the House again, four In, and the marker one step from the sirens. You held a flush.
@@ -135,7 +141,7 @@ export function scriptedNight(): Step[] {
     [{ cards: ['Ah', 'Qh'], stance: 'in', hand: myFlush }, { cards: ['7d', '7s'], stance: 'in' }, { cards: ['5c', '5d'], stance: 'in' }, { cards: ['Tc', '9c'], stance: 'in' }],
     { outcome: 'house', moved: -4, ins: ['s0', 's1', 's2', 's3'], crewBest: myFlush, houseBest: hv(7_200_000, 'full-house', 'Full house, nines full of sixes', ['9h', '9s', '9d', '6h', '6s']), couldHave: [] },
     ['9h', '6h', '2h', '9s', '6s'],
-    ['9d', 'Kc', '4s', '3d'],
+    ['9d', 'Kc'],
   );
 
   // Hand 4: one more loss puts the marker a step from the sirens.
@@ -147,7 +153,7 @@ export function scriptedNight(): Step[] {
     [{ stance: 'out' }, { stance: 'in', cards: ['4c', '2s'] }, { stance: 'out' }, { stance: 'out' }],
     { outcome: 'house', moved: -1, ins: ['s1'], crewBest: hv(2_000_000, 'pair', 'Pair of fours', ['4c', '4d', 'Kh', 'Jd', '9s']), couldHave: [] },
     ['4d', 'Kh', 'Jd', '9s', '7c'],
-    ['Ks', 'Qd', '8h', '3h'],
+    ['Ks', 'Qd'],
   );
 
   // Hand 5: everyone In, and it holds.
@@ -158,9 +164,9 @@ export function scriptedNight(): Step[] {
     -1,
     hist5,
     [{ stance: 'in', nod: 's1' }, { stance: 'in', champion: true, hand: mioStraight, cards: ['9c', '8d'] }, { stance: 'in', nod: 's1' }, { stance: 'in', nod: 's0' }],
-    { outcome: 'crew', moved: 4, ins: ['s0', 's1', 's2', 's3'], crewBest: mioStraight, crewChampions: ['s1'], couldHave: ['s1'] },
+    { outcome: 'crew', moved: 4, ins: ['s0', 's1', 's2', 's3'], crewBest: mioStraight, crewChampions: ['s0', 's1', 's2', 's3'], couldHave: ['s0', 's1', 's2', 's3'] },
     ['7h', '6s', '5c', 'Kd', '2c'],
-    ['Kc', '7d', '4h', '2s'],
+    ['Kc', '7d'],
   );
 
   // Hand 6: Taka goes In with no nods and carries it.
@@ -170,10 +176,10 @@ export function scriptedNight(): Step[] {
     6,
     3,
     hist6,
-    [{ stance: 'in', nod: 's2' }, { stance: 'in', nod: 's2' }, { stance: 'in', nod: 's1' }, { stance: 'in', champion: true, hand: takaTrips, cards: ['Jh', 'Js'] }],
-    { outcome: 'crew', moved: 4, ins: ['s0', 's1', 's2', 's3'], crewBest: takaTrips, crewChampions: ['s3'], couldHave: ['s3'] },
+    [{ stance: 'in', nod: 's1' }, { stance: 'in', nod: 's2' }, { stance: 'in', nod: 's1' }, { stance: 'in', champion: true, hand: takaTrips, cards: ['Jh', 'Js'] }],
+    { outcome: 'crew', moved: 4, ins: ['s0', 's1', 's2', 's3'], crewBest: takaTrips, crewChampions: ['s0', 's1', 's2', 's3'], couldHave: ['s0', 's1', 's2', 's3'] },
     ['Jd', 'Ad', '9c', '5s', '3h'],
-    ['Ac', 'Tc', '6d', '2h'],
+    ['Ac', 'Tc'],
   );
 
   // Hand 7: four steps more, and out the door.
@@ -184,9 +190,9 @@ export function scriptedNight(): Step[] {
     7,
     hist7,
     [{ stance: 'in', champion: true, cards: ['Td', 'Tc'], hand: hv(4_000_000, 'trips', 'Trip tens', ['Td', 'Tc', 'Th', 'Ks', '8s']) }, { stance: 'in', nod: 's0' }, { stance: 'in' }, { stance: 'in' }],
-    { outcome: 'crew', moved: 4, ins: ['s0', 's1', 's2', 's3'], crewBest: hv(4_000_000, 'trips', 'Trip tens', ['Td', 'Tc', 'Th', 'Ks', '8s']), crewChampions: ['s0'], couldHave: ['s0'] },
+    { outcome: 'crew', moved: 4, ins: ['s0', 's1', 's2', 's3'], crewBest: hv(4_000_000, 'trips', 'Trip tens', ['Td', 'Tc', 'Th', 'Ks', '8s']), crewChampions: ['s0', 's1', 's2', 's3'], couldHave: ['s0', 's1', 's2', 's3'] },
     ['Th', 'Ks', '8s', '4c', '2d'],
-    ['Kc', '9d', '5h', '3s'],
+    ['Kc', '9d'],
   );
   // Hand 8 (off screen): two more steps, and the marker reaches the door at 9.
   const over: GameView = { ...h7sd, phase: 'over', hand: 8, meter: 9, verdict: 'clean', history: [...hist7, entry(8, 'crew', 2, 2, 'Mio', 1)] };
@@ -195,19 +201,19 @@ export function scriptedNight(): Step[] {
     { label: 'Lobby: you arrive', view: lobby0 },
     { label: 'Lobby: Sumi sits down', view: lobby1 },
     { label: 'Lobby: Taka takes the stool by the door', view: lobby2 },
-    { label: 'Hand 1: the flop, nod at a teammate', view: h1 },
-    { label: 'Hand 1: everyone nodded at Sumi', view: h1call },
-    { label: 'Hand 1: Sumi carries an eight-nine-three', view: h1sd },
-    { label: 'Hand 2: the flop', view: h2 },
+    { label: 'Hand 1: the turn, nod at a neighbour', view: h1 },
+    { label: 'Hand 1: both of Sumi\'s neighbours nodded at her', view: h1call },
+    { label: 'Hand 1: Sumi wins with an eight-nine-three', view: h1sd },
+    { label: 'Hand 2: the turn', view: h2 },
     { label: 'Hand 2: not one nod', view: h2call },
     { label: 'Hand 2: Mio sat out with trip kings', view: h2sd },
-    { label: 'Hand 3: the flop', view: h3 },
+    { label: 'Hand 3: the turn', view: h3 },
     { label: 'Hand 3: your flush, unseen, loses anyway', view: h3sd },
     { label: 'Hand 4: one step from the sirens', view: h4sd },
     { label: 'Hand 5: everyone In, and it holds', view: h5sd },
-    { label: 'Hand 6: Taka, no nods, carries it', view: h6sd },
-    { label: 'Hand 7: the flop', view: h7 },
-    { label: 'Hand 7: you carry it', view: h7sd },
+    { label: 'Hand 6: Taka, no nods, wins it', view: h6sd },
+    { label: 'Hand 7: the turn', view: h7 },
+    { label: 'Hand 7: you win it', view: h7sd },
     { label: 'Over: a clean getaway, after a close shave', view: over },
   ];
 }

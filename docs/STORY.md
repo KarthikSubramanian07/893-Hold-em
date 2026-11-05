@@ -29,8 +29,8 @@ remembers it. The family doesn't take payment by bank transfer. It takes it at
 the House's table, across from the mask, one night at a time.
 
 Nobody at the table may speak about their cards, and nobody can see their own.
-Everyone else can. All you get is one nod a hand, and the nods that come back to
-you. That silence is the whole game.
+The two sitting beside you can. All you get is one nod a hand, and the nods that
+come back to you. That silence is the whole game.
 
 ## 2. The bar
 
@@ -118,7 +118,7 @@ printed notice, sealed 胴元: *dōmoto*, the bank in Japanese gambling.
 
 | Role | Mask | Who wears it |
 | --- | --- | --- |
-| The House | **Okina** 翁, the sacred old man of noh | **The Oyabun himself.** Soft-spoken, grandfatherly, and the reason the whole street is quiet after midnight. He holds the most cards and plays the best five of them. He always has. |
+| The House | **Okina** 翁, the sacred old man of noh | **The Oyabun himself.** Soft-spoken, grandfatherly, and the reason the whole street is quiet after midnight. He holds two cards, same as you, and plays the best five with the board. It has always been enough. |
 | Family | **Hannya** 般若 | At his left. |
 | Family | **Kitsune** 狐 | At his right. |
 
@@ -155,13 +155,14 @@ have a word at exactly one kind of moment.
 | **Nao** | 直 | Night taxi driver. Leaves the meter running downstairs, on principle. | "Nao. Meter's running. Let's go." | The last hand: "Meter's at eleven thousand. Just saying." |
 | **Fuji** | 藤 | Enka singer. One hit in 1989. | "Fuji. You might know my song. You don't." | |
 
-When a regular's hand carries the crew, sometimes they say so ("Steel." "On the
+When a regular's hand beats the House, sometimes they say so ("Steel." "On the
 one." "Encore."). Otherwise they keep quiet.
 
 ## 7. The chapters
 
-The three tables are three chapters of one debt, with the House's hand growing
-(the House holds more cards at each one). Each opens with the Master and ends with one
+The three tables are three chapters of one debt, with the walk home getting
+longer (the House holds two cards everywhere, but the sirens sit closer and the
+door further off at each one). Each opens with the Master and ends with one
 of three epilogues: clean getaway, raid, or last orders at dawn. The lines
 below are the voice to write toward; `lines.ts` holds the banks in play.
 Clearing a chapter (any clean getaway at that table) unlocks its first clean
@@ -201,11 +202,11 @@ again."
 ### 第三章 · 親分 · The Old Man Upstairs
 
 The room at the top of the stairs, with tatami and the one good chair. The
-House holds four or five cards here.
+door is far and the sirens are close.
 
 **Intro** (one of): "Top of the stairs. The room with the tatami and the one
-good chair. He's already sitting." / "The Oyabun plays his own hand. Five
-cards. He always has." / "Shoes off. Voices down. He notices."
+good chair. He's already sitting." / "The Oyabun plays his own hand. Two
+cards, same as you. He's never needed more." / "Shoes off. Voices down. He notices."
 
 | Ending | The Master |
 | --- | --- |
@@ -226,21 +227,24 @@ lines, and usually none. Silence is the default; a line has to earn its place.
 | --- | --- | --- |
 | Welcome | First view of a room | The Master: first visit, returning, rejoining mid-night, or spectating. Special greetings win: a name like "Oyabun", a room code with 893 in it, real 3 a.m. |
 | Someone sits down | A new seat in the lobby | A regular introduces themselves; a human is named by the Master. One line, however many sit. |
-| The night starts | Lobby to hand 1 | The Master's chapter intro, naming how many cards the House holds. |
+| The night starts | Lobby to hand 1 | The Master's chapter intro, saying how far off the door and the sirens are. |
 | A new hand | Hand 2 onward | Silence, except **last orders** (hand 10): how far the door is, or that the sirens are close (or Nao). |
-| The nods turn over | `nod` to `call` | Only the telling patterns: everyone nodded at one teammate, two nodded at each other, or (now and then) nobody nodded at all. |
-| The showdown | A hand resolves | One reading, most special first (below), then a word on a big swing (four steps or more). Ordinary results go to a regular who carried it, or nobody. |
+| The nods turn over | `nod` to `call` | Only the telling patterns: both of a player's neighbours nodded at them, two nodded at each other, or (now and then) nobody nodded at all. |
+| The showdown | A hand resolves | One reading, most special first (below), then a word on a big swing (four steps or more). Ordinary results go to a regular whose hand beat the House, or nobody. |
 | Your reveal | A hand resolves | **Personal**: when your own cards turn over and they were a straight or better you never saw. Only you hear it. |
 | The marker | One step from the door or the sirens | The Master (or Gin at the door, Taka at the sirens). Never on top of a verdict. |
 | The verdict | The night ends | The chapter epilogue, plus a coda for a sweep or a close shave. |
 | Idle | A slow timer in the lobby | `idleLine(view, tick)`: about two ticks in three say something small, often a rule in plain words. |
 
+The showdown lists which In hands won and which lost. The **best winner** is
+the best hand that beat the House, and most readings are about that seat.
+
 **Showdown readings, most special first:** a royal flush (either side), 8-9-3
-in the carrier's cards and the board, a teammate who **sat out holding the
-winner** (named, when the crew didn't win), everyone Out, a bad beat (full house
-or better and still lost), everyone In and winning, a carrier **nobody nodded
-at**, a carrier who was nodded at (a regular may speak), a big swing, then plain
-crew, House, or tie.
+in the best winner's cards and the board, a teammate who **sat out holding a
+winner** (named, when the crew didn't come out ahead), everyone Out, a bad beat
+(full house or better and still lost), everyone In and the crew ahead, a best
+winner **nobody nodded at**, a best winner who was nodded at (a regular may
+speak), a big swing, then plain crew, House, or tie.
 
 **Sameness at the table.** Every line is chosen by `pick(bank, code, hand,
 event)`: an FNV-1a hash of the room code and the event, walking a fixed shuffle
@@ -298,19 +302,19 @@ played, and eggs found.
 | 逃 | Clean Getaway | Out the door before the sirens. Any table counts. | Reach the door at any table. |
 | 下町 | Small Debts | The corner table, paid in full. | Clean getaway at Shitamachi. |
 | 歌舞伎 | Every Sign Is Lying | Out of Kabukichō clean. People don't. | Clean getaway at Kabukichō. |
-| 親分 | Oyabun's Favor | Five cards in his hand, and he still bowed. | Clean getaway at Oyabun. |
-| 頷 | The Nod | They nodded at you. You carried it. | Carry a hand you were nodded on. |
-| 盲信 | Blind Faith | No nods. In anyway. Carried the crew. | Carry a hand with no nods (crew of three or more). |
-| 目利 | Good Eye | Your nod went to the hand that carried. | Nod at the teammate who carries. |
-| 総入 | Full House In | Every stool In, and the House folded. | Everyone In, and the crew wins. |
+| 親分 | Oyabun's Favor | His cards, his room, and he still bowed. | Clean getaway at Oyabun. |
+| 頷 | The Nod | They nodded at you. You went In and won. | Win a hand you were nodded on. |
+| 盲信 | Blind Faith | No nods. In anyway. Beat the House. | Win a hand with no nods on you (crew of three or more). |
+| 目利 | Good Eye | Your nod went to a hand that beat the House. | Nod at a neighbour who goes In and wins. |
+| 総入 | Full House In | Every stool In, and the crew came out ahead. | Everyone In, and more In hands win than lose. |
 | 紙一重 | Close Shave | One step from the sirens, then out the door. | Clean getaway after the marker came within one step of the sirens. |
 | 総取 | Clean Sweep | Not one step toward the sirens all night. | Clean getaway where every hand moved toward the door. |
 | 終 | Last Orders | Ten hands, and the shutters came down. | The night ends at dawn. |
 | 化物 | Never Knew | A straight or better in your hands, unseen until the end. | Your own hand turns over as a straight or better. |
-| 惜 | So Close | Out, holding the winner. Your crew saw it coming. | Go Out with a hand that beat the House, when the crew didn't win. |
+| 惜 | So Close | Out, holding the winner. Your crew saw it coming. | Go Out with a hand that beat the House, when the crew didn't come out ahead. |
 | 幽霊 | Ghosts | Everyone Out. The clock didn’t care. | Everyone sits a hand out. |
-| 八九三 | Ya-ku-za | Eight, nine, three. The worst hand, and it carried. | Carry a hand while your hole cards and the board hold an 8, a 9 and a 3, with at least one in your hand. |
-| 王 | Royal | Ten to the ace, one suit, our side. | Carry with a royal flush. |
+| 八九三 | Ya-ku-za | Eight, nine, three. The worst hand, and it won. | Win a hand while your hole cards and the board hold an 8, a 9 and a 3, with at least one in your hand. |
+| 王 | Royal | Ten to the ace, one suit, our side. | Win with a royal flush. |
 | 梟 | Night Owl | Played at three in the morning. The real one. | Play between 3:00 and 3:59, local time. |
 | 満席 | Full Bar | Six stools, six people, no regulars. | Start a night with six humans. |
 | 踏込 | The Knock | Everyone hears it once. Out the back. | Get raided. |

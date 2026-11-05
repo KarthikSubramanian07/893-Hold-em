@@ -240,9 +240,9 @@ describe('practice table', () => {
 });
 
 /**
- * Hidden information, blind-nod style: before a hand opens up, you see every
- * teammate's real cards and never your own, the House shows exactly one card,
- * and the board shows three cards during the nod. Your own cards are learned
+ * Hidden information, blind-nod style: before a hand opens up, you see the
+ * real cards of the two beside you and never your own (nor anyone else's), the
+ * House shows exactly one card, and the board shows four cards during the nod. Your own cards are learned
  * from the showdown and checked against every earlier view of that hand.
  */
 function assertBlindNod(views: GameView[]) {
@@ -264,9 +264,14 @@ function assertBlindNod(views: GameView[]) {
     expect(JSON.stringify(v)).not.toMatch(new RegExp(real.map((c) => `"${c}"`).join('|') || '^$'));
     for (const s of v.seats) {
       if (s.id === v.you) continue;
-      expect(s.cards.every((c) => c && c !== 'back')).toBe(true);
       const known = truth.get(`${v.hand}:${s.id}`);
-      if (known) expect(s.cards).toEqual(known);
+      if (s.inSight) {
+        expect(s.cards.every((c) => c && c !== 'back')).toBe(true);
+        if (known) expect(s.cards).toEqual(known);
+      } else {
+        expect(s.cards).toEqual(['back', 'back']);
+        if (known) expect(JSON.stringify(v)).not.toMatch(new RegExp(known.map((c) => `"${c}"`).join('|')));
+      }
       // Others' In/Out stays hidden until the showdown.
       expect(s.stance).toBeNull();
       if (v.phase === 'nod') expect(s.nod).toBeNull();
@@ -275,7 +280,7 @@ function assertBlindNod(views: GameView[]) {
     const up = v.house.cards.filter((c) => c && c !== 'back').length;
     expect(up).toBe(1);
     const board = v.board.filter((c) => c && c !== 'back').length;
-    expect(board).toBe(v.phase === 'nod' ? 3 : 5);
+    expect(board).toBe(v.phase === 'nod' ? 4 : 5);
   }
   expect(checked).toBeGreaterThan(0);
 }

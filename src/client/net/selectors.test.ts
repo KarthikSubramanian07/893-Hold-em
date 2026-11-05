@@ -157,12 +157,18 @@ describe('revealLine', () => {
   const sd = FIXTURES.showdown!;
   const as = (you: string | null) => ({ ...structuredClone(sd), you });
 
-  it('celebrates the carrier', () => {
-    expect(revealLine(as('s1'))).toBe('You had a full house, and it carried the crew.');
+  it('celebrates a hand that beat the House', () => {
+    expect(revealLine(as('s1'))).toBe('You had a full house, and it beat the House.');
+  });
+
+  it('says so when you went In and lost', () => {
+    expect(revealLine(as('s3'))).toBe('You had a pair of sevens. The House had better.');
   });
 
   it('names a plain hand plainly', () => {
-    expect(revealLine(as('s3'))).toBe('You had a pair of sevens.');
+    const v = as('s3');
+    v.seats[3]!.stance = 'out';
+    expect(revealLine(v)).toBe('You had a pair of sevens.');
   });
 
   it('tells you when sitting out cost the crew', () => {
@@ -172,8 +178,8 @@ describe('revealLine', () => {
   });
 
   it('makes a fuss over a monster you never saw', () => {
-    const v = as('s0');
-    v.seats[0]!.hand = { ...sd.seats[1]!.hand!, category: 'flush', name: 'Flush, ace high' };
+    const v = as('s2');
+    v.seats[2]!.hand = { ...sd.seats[2]!.hand!, category: 'flush', name: 'Flush, ace high' };
     expect(revealLine(v)).toBe('You had a flush the whole time.');
   });
 

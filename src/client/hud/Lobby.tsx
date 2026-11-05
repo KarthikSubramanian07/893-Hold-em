@@ -112,7 +112,7 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
               const t = TABLES[id];
               const on = view.config.difficulty === id;
               return (
-                <label key={id} className={`room room--${id}${on ? ' is-on' : ''}`} title={`The House holds ${t.house} cards. ${doorFor(id, crew)} steps to the door, ${sirensFor(id, crew)} to the sirens.`}>
+                <label key={id} className={`room room--${id}${on ? ' is-on' : ''}`} title={`${t.blurb} ${doorFor(id, crew)} steps to the door, ${sirensFor(id, crew)} to the sirens.`}>
                   <input
                     type="radio"
                     name="difficulty"
@@ -133,7 +133,7 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
                         <i key={p} className={p <= i ? 'on' : ''} />
                       ))}
                     </span>
-                    {`${t.house} cards · ${doorFor(id, crew)}/${sirensFor(id, crew)}`}
+                    {`door ${doorFor(id, crew)} · sirens ${sirensFor(id, crew)}`}
                   </span>
                 </label>
               );

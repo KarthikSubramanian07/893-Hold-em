@@ -13,7 +13,7 @@ Read 8-9-3 as *ya-ku-za*: the worst hand in oicho-kabu, an old Japanese card gam
 
 ## Why it exists
 
-Most poker pits friends against each other. This one puts them on the same side. You can see everyone's cards except your own, and nobody can talk, so the game is about one gesture: the nod that says "you're good", and trusting the nods that come back to you. It is meant for game nights, remote friends, and anyone who likes poker but would rather win with people than against them.
+Most poker pits friends against each other. This one puts them on the same side. You can see the cards of the two players beside you but never your own, and nobody can talk, so the game is about one gesture: the nod that says "you're good", and trusting the nods that come back to you. It is meant for game nights, remote friends, and anyone who likes poker but would rather win with people than against them.
 
 ## How it is made
 

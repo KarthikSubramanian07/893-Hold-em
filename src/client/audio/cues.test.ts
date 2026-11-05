@@ -15,6 +15,7 @@ function seat(i: number, over: Partial<SeatView> = {}): SeatView {
     connected: true,
     // You see teammates' cards, never your own.
     cards: i === 0 ? ['back', 'back'] : ['2c', '3c'],
+    inSight: i !== 0,
     locked: false,
     nod: null,
     stance: null,

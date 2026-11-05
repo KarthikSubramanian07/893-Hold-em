@@ -298,7 +298,7 @@ function phrase(name: string, category: string): string {
 
 /**
  * Now and then, a bot regular has a word about an ordinary hand: the one whose
- * cards carried the crew, or one who went In and lost. About one hand in three,
+ * hand beat the House, or one who went In and lost. About one hand in three,
  * so the table has voices without turning into chatter.
  */
 function regularAfterHand(view: GameView, kind: 'crew' | 'house'): Line | null {
