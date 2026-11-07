@@ -58,7 +58,14 @@ export function saveProfile(p: Profile, kv: KV | null = storage()): Profile {
 
 const PID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
-export function makePid(rand: () => number = Math.random): string {
+/** Uniform in [0, 1) from the CSPRNG: the pid reclaims a seat, so it must not be predictable. */
+function cryptoRand(): number {
+  const a = new Uint32Array(1);
+  crypto.getRandomValues(a);
+  return a[0]! / 2 ** 32;
+}
+
+export function makePid(rand: () => number = cryptoRand): string {
   let s = '';
   for (let i = 0; i < 21; i++) s += PID_ALPHABET[Math.floor(rand() * PID_ALPHABET.length)];
   return s;

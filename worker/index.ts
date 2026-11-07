@@ -19,6 +19,9 @@ const CODE_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{5}$/;
 /** An empty table is forgotten after this long. */
 const FORGET_AFTER_MS = 6 * 60 * 60 * 1000;
 const MAX_SOCKETS = 24;
+/** Per-socket flood limit: a burst of this many messages, refilled at this rate per second. */
+const MSG_BURST = 30;
+const MSG_PER_SECOND = 10;
 
 type Effect = { do: 'broadcast' } | { do: 'reply'; json: string } | { do: 'shout'; json: string };
 
@@ -46,6 +49,19 @@ export default {
 
 export class Table extends DurableObject<Env> {
   private engine: Engine | null = null;
+  /** Token buckets per socket. In memory only: hibernation resets them, which is fine. */
+  private buckets = new WeakMap<WebSocket, { tokens: number; at: number }>();
+
+  /** False when this socket has sent too much too fast; its message is dropped. */
+  private allow(ws: WebSocket, now: number): boolean {
+    const b = this.buckets.get(ws) ?? { tokens: MSG_BURST, at: now };
+    b.tokens = Math.min(MSG_BURST, b.tokens + ((now - b.at) / 1000) * MSG_PER_SECOND);
+    b.at = now;
+    this.buckets.set(ws, b);
+    if (b.tokens < 1) return false;
+    b.tokens -= 1;
+    return true;
+  }
 
   /** Load the table from storage, or open a fresh one. */
   private async table(code?: string): Promise<Engine> {
@@ -85,9 +101,12 @@ export class Table extends DurableObject<Env> {
   override async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer): Promise<void> {
     const text = typeof raw === 'string' ? raw : new TextDecoder().decode(raw);
     if (text.length > 2048) return;
+    const now = Date.now();
+    // Every accepted message can broadcast and write storage; a flooding client
+    // must not be able to run the table's bill up or starve the others.
+    if (!this.allow(ws, now)) return;
     const engine = await this.table();
     const att = (ws.deserializeAttachment() as Attachment | null) ?? { hello: false, seat: null };
-    const now = Date.now();
 
     if (!att.hello) {
       const out = engine.hello(text, now);
