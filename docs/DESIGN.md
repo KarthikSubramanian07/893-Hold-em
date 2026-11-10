@@ -164,6 +164,10 @@ paper burns away or slides open like a shoji, and the lantern flickers on.
 | `--matcha` | `#7d8b5a` | win states, sparingly |
 | `--neon` | `#ff4f6d` | neon signage, the sirens |
 
+Text on these colours keeps WCAG 2.2 AA contrast (4.5:1 for body text). Washi text on a
+vermilion button uses `--shu-button` (`#bd3a25`), one step darker than `--shu`; the faintest
+ink is `#676054` on paper and washi at 52% on the night (2026-11-10).
+
 ### Type
 
 - **Shippori Mincho B1**: display and kanji. Big, high-contrast, editorial.

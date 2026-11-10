@@ -212,7 +212,7 @@ svg {
 }
 
 .btn--shu {
-  --bg: var(--shu);
+  --bg: var(--shu-button);
   --fg: var(--washi);
 }
 
@@ -287,4 +287,17 @@ svg {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* The Motion switch: the same as the system's reduced motion, by hand. */
+:root[data-motion='still'] {
+  scroll-behavior: auto;
+}
+
+:root[data-motion='still'] *,
+:root[data-motion='still'] *::before,
+:root[data-motion='still'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
 }
