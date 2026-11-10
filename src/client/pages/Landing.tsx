@@ -10,6 +10,7 @@ import { PRACTICE_PATH } from '../net/practice';
 import { HandArrow, IconArrow } from '../ui/icons';
 import { RulesDrawer } from '../ui/RulesDrawer';
 import { Seal } from '../ui/Seal';
+import { MotionToggle } from '../ui/MotionToggle';
 import './landing.css';
 
 const REPO = 'https://github.com/KarthikSubramanian07/893-Hold-em';
@@ -47,9 +48,10 @@ export function Landing() {
 function Masthead({ onRules }: { onRules: () => void }) {
   return (
     <header className="mast">
-      <Link to="/" className="mast__mark" aria-label="893 Hold'em, home">
+      <Link to="/" className="mast__mark">
         <Seal chars="八九三" shape="tall" size={20} seed={4} />
         <span className="label">893 Hold'em</span>
+        <span className="sr-only">, home</span>
       </Link>
       <p className="mast__mid label" aria-hidden="true">
         Golden Gai <span className="mast__dot">·</span> Shinjuku <span className="mast__dot">·</span> Open till the House
@@ -65,6 +67,7 @@ function Masthead({ onRules }: { onRules: () => void }) {
         <a className="mast__link label" href={REPO} target="_blank" rel="noreferrer">
           Source
         </a>
+        <MotionToggle className="icon-btn mast__motion" />
       </nav>
     </header>
   );

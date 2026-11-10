@@ -73,8 +73,8 @@ export function Matchbook({ data: given, open: controlled, onOpenChange, onClose
                     onMouseEnter={() => setFocus(s.id)}
                     onFocus={() => setFocus(s.id)}
                     onClick={() => setFocus(s.id)}
-                    aria-label={hidden ? 'An unfound secret stamp' : `${s.name}${at ? ', stamped' : ', not yet'}`}
                   >
+                    <span className="sr-only">{hidden ? 'An unfound secret stamp' : `${s.name}${at ? ', stamped' : ', not yet'}`}</span>
                     <span className="matchbook__ring">
                       {hidden ? (
                         <span className="matchbook__secret">?</span>
@@ -111,12 +111,13 @@ export function Matchbook({ data: given, open: controlled, onOpenChange, onClose
 
         {/* The cover. Its front is the art; its back is the inside of the flap. */}
         <div className="matchbook__cover">
-          <button type="button" className="matchbook__front" onClick={() => setOpen(true)} tabIndex={open ? -1 : 0} aria-label="Open the matchbook">
-            <span className="matchbook__bar">BAR</span>
-            <span className="matchbook__kanji">八九三</span>
-            <span className="matchbook__numerals">893</span>
+          <button type="button" className="matchbook__front" onClick={() => setOpen(true)} tabIndex={open ? -1 : 0}>
+            <span className="sr-only">Open the matchbook</span>
+            <span className="matchbook__bar" aria-hidden="true">BAR</span>
+            <span className="matchbook__kanji" aria-hidden="true">八九三</span>
+            <span className="matchbook__numerals" aria-hidden="true">893</span>
             <span className="matchbook__rule" />
-            <span className="matchbook__address">
+            <span className="matchbook__address" aria-hidden="true">
               新宿区 ゴールデン街 · 二階
               <br />
               Upstairs · Six stools · No phone
