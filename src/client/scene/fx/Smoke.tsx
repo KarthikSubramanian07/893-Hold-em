@@ -25,7 +25,7 @@ export function Smoke() {
   const refs = useRef<(THREE.Mesh | null)[]>([]);
   const mats = useMemo(() => Array.from({ length: WISPS }, smokeMaterial), []);
   useFrame(({ clock, camera }) => {
-    const t = clock.elapsedTime * (live.reducedMotion ? 0.4 : 1);
+    const t = clock.elapsedTime * (live.still ? 0 : live.reducedMotion ? 0.4 : 1);
     for (let i = 0; i < WISPS; i++) {
       const m = refs.current[i];
       if (!m) continue;

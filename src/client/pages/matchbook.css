@@ -183,3 +183,8 @@
     animation: none;
   }
 }
+
+.mbp__motion {
+  margin-left: auto;
+  color: inherit;
+}

@@ -1279,3 +1279,15 @@
   text-align: center;
   color: var(--ink-soft);
 }
+
+/* The Motion switch sits at the end of the masthead's links. */
+.mast__nav {
+  align-items: center;
+}
+
+.mast__motion {
+  width: 32px;
+  height: 32px;
+  margin-block: -0.4rem;
+  color: var(--ink-soft);
+}

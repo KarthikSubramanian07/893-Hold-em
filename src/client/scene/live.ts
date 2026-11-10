@@ -9,6 +9,8 @@ import type { SceneTargets } from './derive';
 export interface Live {
   targets: SceneTargets;
   reducedMotion: boolean;
+  /** The Motion switch is on: looping ambience (smoke, dust, rain) stops outright. */
+  still: boolean;
   /** Smoothed 0..1 values. Danger: how close the marker is to the sirens. */
   danger: number;
   neon: number;
@@ -39,6 +41,7 @@ export function createLive(targets: SceneTargets, reducedMotion: boolean): Live 
   return {
     targets,
     reducedMotion,
+    still: false,
     danger: targets.danger,
     neon: targets.neon,
     police: targets.police,
