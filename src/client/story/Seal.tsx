@@ -52,7 +52,8 @@ export function Seal({ text, shape = 'square', variant = 'solid', size = 64, til
       viewBox="0 0 100 100"
       width={size}
       height={size}
-      role={title ? 'img' : 'presentation'}
+      role={title ? 'img' : undefined}
+      aria-hidden={title ? undefined : true}
       aria-label={title}
       style={{ transform: `rotate(${angle}deg)` }}
     >

@@ -35,6 +35,10 @@ export interface TableStore {
   skew: number;
   error: { code: ErrorCode | 'net'; message: string } | null;
   reactions: ReactionEvent[];
+  /** The practice table's clock is stopped. */
+  paused: boolean;
+  /** Stop or restart the clock. Only the practice table can; elsewhere this does nothing. */
+  pause(on: boolean): void;
   connect(code: string, profile: Profile): void;
   send(msg: ClientMessage): void;
   /** During `nod`: nod at a teammate, or pass with `null`. */
@@ -176,6 +180,12 @@ export const useTable = create<TableStore>((set, get) => {
     skew: 0,
     error: null,
     reactions: [],
+    paused: false,
+    pause(on) {
+      if (!socket?.pause) return;
+      socket.pause(on);
+      set({ paused: on });
+    },
     connect(code, profile) {
       const f = fixtureName();
       const fixture = f ? FIXTURES[f] : undefined;
@@ -192,7 +202,7 @@ export const useTable = create<TableStore>((set, get) => {
       get().leave();
       current = { code, profile };
       retry = 0;
-      set({ code, view: null, error: null, reactions: [] });
+      set({ code, view: null, error: null, reactions: [], paused: false });
       open();
     },
     send(msg) {
@@ -215,7 +225,7 @@ export const useTable = create<TableStore>((set, get) => {
       const line = socket;
       socket = null;
       line?.close();
-      set({ status: 'idle', code: null, view: null, error: null, reactions: [] });
+      set({ status: 'idle', code: null, view: null, error: null, reactions: [], paused: false });
     },
   };
 });

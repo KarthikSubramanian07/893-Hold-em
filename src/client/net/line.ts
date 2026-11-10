@@ -8,6 +8,11 @@ export interface Line {
   /** Send one raw protocol message (a `ClientMessage` as JSON). */
   send(raw: string): void;
   close(): void;
+  /**
+   * Stop the table's clock, or start it again. Only the practice table, which
+   * runs in this tab, can stop time; a shared table has others waiting on it.
+   */
+  pause?(on: boolean): void;
 }
 
 export interface LineHandlers {

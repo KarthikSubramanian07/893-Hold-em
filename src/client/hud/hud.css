@@ -307,7 +307,7 @@
 }
 
 .lobby__k {
-  color: var(--shu);
+  color: var(--shu-deep);
 }
 
 .lobby__code {
@@ -466,7 +466,7 @@
 }
 
 .crew__act:hover {
-  color: var(--shu);
+  color: var(--shu-deep);
 }
 
 .crew__kick {

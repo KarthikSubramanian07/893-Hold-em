@@ -3,7 +3,8 @@ import type { ReactNode } from 'react';
 import { TABLES } from '../../engine/rules';
 import type { GameView } from '../../engine/types';
 import { sfx } from '../audio';
-import { IconCopy, IconSound } from '../ui/icons';
+import { IconCopy, IconPause, IconSound } from '../ui/icons';
+import { MotionToggle } from '../ui/MotionToggle';
 import { Seal } from '../ui/Seal';
 import { isPracticeCode } from '../net/practice';
 import { meterProgress } from '../net/selectors';
@@ -16,6 +17,8 @@ export function TopBar({
   onMute,
   onRules,
   extra,
+  paused,
+  onPause,
 }: {
   view: GameView;
   muted: boolean;
@@ -23,6 +26,9 @@ export function TopBar({
   onRules: () => void;
   /** Anything that lives on the bar itself (on some nights, the cat). */
   extra?: ReactNode;
+  /** The practice table only: its clock can be stopped. */
+  paused?: boolean;
+  onPause?: () => void;
 }) {
   const inNight = view.phase !== 'lobby';
   return (
@@ -64,6 +70,12 @@ export function TopBar({
         >
           <IconSound muted={muted} />
         </button>
+        {onPause && inNight && (
+          <button type="button" className="icon-btn top__icon" onClick={onPause} aria-label="Pause" aria-expanded={paused}>
+            <IconPause />
+          </button>
+        )}
+        <MotionToggle className="icon-btn top__icon" />
         <button type="button" className="icon-btn top__icon top__q" onClick={onRules} aria-label="How to play">
           ?
         </button>

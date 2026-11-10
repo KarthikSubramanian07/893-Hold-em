@@ -15,7 +15,9 @@ import { useTable, type Profile } from '../net/store';
 import { ProfileForm } from '../profile/ProfileForm';
 import { TableScene } from '../scene';
 import { BarCat, Narrator, checkName, type Line } from '../story';
+import { useReducedMotion } from '../story/motion';
 import { subtitleSlot } from '../story/stage';
+import { Announcer } from '../hud/Announcer';
 import { RulesDrawer } from '../ui/RulesDrawer';
 import { Seal } from '../ui/Seal';
 import './table.css';
@@ -37,9 +39,6 @@ function useMedia(query: string): boolean {
   return on;
 }
 
-function useReducedMotion(): boolean {
-  return useMedia('(prefers-reduced-motion: reduce)');
-}
 
 export function TablePage({ code }: { code: string }) {
   const [profile, setProfile] = useState<Profile | null>(() => loadProfile());
@@ -51,6 +50,7 @@ export function TablePage({ code }: { code: string }) {
   const view = useTable((s) => s.view);
   const status = useTable((s) => s.status);
   const error = useTable((s) => s.error);
+  const paused = useTable((s) => s.paused);
   const reduced = useReducedMotion();
   const practice = isPracticeCode(code);
   const wide = useMedia('(min-width: 900px)');
@@ -123,7 +123,7 @@ export function TablePage({ code }: { code: string }) {
 
   return (
     <div className="table night" data-phase={view?.phase ?? 'none'}>
-      <div className={`table__scene${view ? ' is-on' : ''}`}>{view && <TableScene view={view} quality={reduced ? 'low' : 'high'} />}</div>
+      <div className={`table__scene${view ? ' is-on' : ''}`}>{view && <TableScene view={view} quality={reduced ? 'low' : 'high'} paused={paused} />}</div>
       <div className="table__vignette" aria-hidden="true" />
 
       {view && (
@@ -133,6 +133,8 @@ export function TablePage({ code }: { code: string }) {
             muted={muted}
             onMute={toggleMute}
             onRules={openRules}
+            paused={practice ? paused : undefined}
+            onPause={practice ? () => useTable.getState().pause(true) : undefined}
             extra={story.cat ? <BarCat className="top__cat" size={46} /> : null}
           />
           <Banner status={status} error={error} hasView onRetry={() => profile && useTable.getState().connect(code, profile)} />
@@ -147,6 +149,7 @@ export function TablePage({ code }: { code: string }) {
           </div>
           <ReactionsTray view={view} />
           <ReactionFloats view={view} />
+          <Announcer view={view} paused={paused} />
         </div>
       )}
 
@@ -174,7 +177,30 @@ export function TablePage({ code }: { code: string }) {
 
       <ProfileDialog open={editing} code={code} profile={profile} onSubmit={rename} onClose={() => setEditing(false)} />
       <RulesDrawer open={rulesOpen} onClose={() => setRulesOpen(false)} />
+      {practice && <PauseDialog open={paused && !!view} onResume={() => useTable.getState().pause(false)} />}
     </div>
+  );
+}
+
+/** The practice table, paused: the clock and the regulars wait until you come back. */
+function PauseDialog({ open, onResume }: { open: boolean; onResume: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open]);
+  return (
+    <dialog ref={ref} className="pdialog pause paper" aria-labelledby="pause-title" onClose={() => open && onResume()}>
+      <h2 id="pause-title" className="pause__title">
+        Paused
+      </h2>
+      <p className="pause__text">The clock has stopped and the regulars are waiting on you. Nothing moves until you come back.</p>
+      <button type="button" className="btn btn--kin" autoFocus onClick={onResume}>
+        Resume
+      </button>
+    </dialog>
   );
 }
 

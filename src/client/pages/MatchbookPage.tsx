@@ -9,6 +9,7 @@ import { CODE_RE } from '../../protocol';
 import { PRACTICE_PATH, isPracticeCode } from '../net/practice';
 import { ColdOpen, Matchbook, Rain, Seal, STAMPS, useMatchbook } from '../story';
 import { useReducedMotion } from '../story/motion';
+import { MotionToggle } from '../ui/MotionToggle';
 import './matchbook.css';
 
 /** How long the closed matchbook sits in the light before it opens. */
@@ -44,13 +45,15 @@ export function MatchbookPage() {
       <div className="mbp__lamp" aria-hidden="true" />
 
       <header className="mbp__top">
-        <Link to="/" className="mbp__mark" aria-label="893 Hold'em, back to the front door">
+        <Link to="/" className="mbp__mark">
           <Seal text="八九三" size={22} />
           <span>893 Hold'em</span>
+          <span className="sr-only">, back to the front door</span>
         </Link>
         <p className="mbp__k" aria-hidden="true">
           押印帳 · The matchbook
         </p>
+        <MotionToggle className="icon-btn mbp__motion" />
       </header>
 
       <main id="main" className="mbp__main">

@@ -8,6 +8,8 @@
   --sumi-3: #3a3731;
   --shu: #d2412a;
   --shu-deep: #a8301d;
+  /* Vermilion one step darker, so washi text on it reads at 4.5:1 (WCAG 1.4.3). */
+  --shu-button: #bd3a25;
   --kin: #c9a45c;
   --kin-hi: #e4c88a;
   --ai: #2d4a6b;
@@ -16,14 +18,14 @@
 
   --ink: var(--sumi);
   --ink-soft: #4a463e;
-  --ink-faint: #8a8170;
+  --ink-faint: #676054;
   --hair: rgb(27 26 23 / 0.16);
   --hair-strong: rgb(27 26 23 / 0.32);
   --night-hair: rgb(239 232 218 / 0.09);
   --night-hair-strong: rgb(239 232 218 / 0.18);
   --night-ink: #efe8da;
   --night-ink-soft: rgb(239 232 218 / 0.62);
-  --night-ink-faint: rgb(239 232 218 / 0.38);
+  --night-ink-faint: rgb(239 232 218 / 0.52);
 
   --serif: 'Shippori Mincho B1', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
   --mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;

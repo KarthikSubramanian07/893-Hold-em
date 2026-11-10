@@ -71,7 +71,7 @@ export function Dust({ dpr }: { dpr: number }) {
     return { geo, mat };
   }, []);
   useFrame(({ clock }) => {
-    mat.uniforms.uTime!.value = live.reducedMotion ? clock.elapsedTime * 0.3 : clock.elapsedTime;
+    mat.uniforms.uTime!.value = live.still ? 0 : live.reducedMotion ? clock.elapsedTime * 0.3 : clock.elapsedTime;
     mat.uniforms.uLamp!.value.copy(live.lanternPos);
     mat.uniforms.uPx!.value = 9 * dpr;
     mat.uniforms.uLevel!.value = live.lantern;

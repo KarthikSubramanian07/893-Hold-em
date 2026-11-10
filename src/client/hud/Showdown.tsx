@@ -8,9 +8,13 @@ import { useTable } from '../net/store';
 import { AvatarSeal } from '../ui/avatars';
 import { CardPair, MiniCard } from './MiniCard';
 import { Track } from './TopBar';
+import { useRef } from 'react';
+import { useRescueFocus } from './useRescueFocus';
 
 export function Showdown({ view }: { view: GameView }) {
   const send = useTable((s) => s.send);
+  const verdict = useRef<HTMLHeadingElement>(null);
+  useRescueFocus(verdict, view.hand);
   const r = view.result;
   if (!r) return null;
   const me = mySeat(view);
@@ -32,7 +36,7 @@ export function Showdown({ view }: { view: GameView }) {
             ))}
           </div>
           {reveal && (
-            <p className="sd__revealline" aria-live="polite">
+            <p className="sd__revealline">
               {reveal}
             </p>
           )}
@@ -43,7 +47,7 @@ export function Showdown({ view }: { view: GameView }) {
         <p className="label sd__k">
           Hand {view.hand} <span aria-hidden="true">·</span> showdown
         </p>
-        <h2 id="sd-verdict" className="sd__verdict" aria-live="assertive">
+        <h2 id="sd-verdict" ref={verdict} tabIndex={-1} className="sd__verdict">
           {OUTCOME_LINE[r.outcome]}
         </h2>
         <p className="sd__moved">
@@ -52,25 +56,25 @@ export function Showdown({ view }: { view: GameView }) {
         </p>
       </div>
 
-      <dl className="sd__hands">
-        <div className={r.outcome === 'crew' ? 'is-win' : ''}>
+      <div className="sd__hands">
+        <dl className={r.outcome === 'crew' ? 'is-win' : ''}>
           <dt className="label">
             The crew
             {tally && <span className="sd__by"> · {tally}</span>}
           </dt>
           <dd>{r.crewBest ? `Best: ${r.crewBest.name}` : 'Nobody went In'}</dd>
-        </div>
+        </dl>
         <div className="sd__vs" aria-hidden="true">
           対
         </div>
-        <div className={r.outcome === 'house' || r.outcome === 'walked' ? 'is-win' : ''}>
+        <dl className={r.outcome === 'house' || r.outcome === 'walked' ? 'is-win' : ''}>
           <dt className="label">The House</dt>
           <dd>
             {r.houseBest.name}
             <CardPair cards={view.house.cards} size="xs" />
           </dd>
-        </div>
-      </dl>
+        </dl>
+      </div>
 
       <ul className="sd__seats" aria-label="Who was In">
         {view.seats.map((s) => {

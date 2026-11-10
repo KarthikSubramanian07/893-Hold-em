@@ -185,6 +185,35 @@ describe('practice table', () => {
     p.line.close();
   });
 
+  it('stands still while paused: the clock, the regulars and your own moves wait, then carry on', async () => {
+    const p = sitDown(null);
+    await settle();
+    p.send({ t: 'config', config: { timer: 15 } });
+    p.send({ t: 'start' });
+    const before = p.view();
+    expect(before.phase).toBe('nod');
+    const left = before.deadline! - before.now;
+
+    p.line.pause!(true);
+    const seen = p.inbox.length;
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(p.inbox.length).toBe(seen);
+    p.send({ t: 'nod', at: null });
+    expect(p.inbox.length).toBe(seen);
+
+    p.line.pause!(false);
+    const after = p.view();
+    expect(after.phase).toBe('nod');
+    expect(after.hand).toBe(before.hand);
+    expect(after.deadline! - after.now).toBe(left);
+    expect(after.seats.find((s) => s.id === after.you)!.locked).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(15_000 + 100);
+    const passed = p.view();
+    expect(passed.phase === 'call' || passed.seats.find((s) => s.id === passed.you)!.locked).toBe(true);
+    p.line.close();
+  });
+
   it('resumes a game from storage after a reload, without seating more regulars', async () => {
     const storage = new MemoryStorage();
     const first = sitDown(storage);

@@ -215,7 +215,7 @@ export function Room() {
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
     const u = mat.uniforms;
-    u.uTime!.value = live.reducedMotion ? t * 0.35 : t;
+    u.uTime!.value = live.still ? 0 : live.reducedMotion ? t * 0.35 : t;
     u.uNeonLevel!.value = live.neon;
     u.uHeat!.value = live.danger;
     u.uPolice!.value = live.police;
@@ -223,8 +223,11 @@ export function Room() {
     const egg = neonEgg(since(live, 'neon', t));
     u.uSurge!.value = live.surge + egg.surge;
     u.uGate!.value = live.reducedMotion ? Math.max(0.6, egg.gate) : egg.gate;
-    const strobe = Math.floor(t * 2.2 * 2) % 2 === 0;
-    const blink = Math.floor(t * 8.8) % 2 === 0 ? 1 : 0.4;
+    // The police lights swap and dip together, 2.2 times a second: under the
+    // three-flashes-a-second limit (WCAG 2.3.1). With reduced motion they hold steady.
+    const calm = live.reducedMotion || live.still;
+    const strobe = calm || Math.floor(t * 2.2 * 2) % 2 === 0;
+    const blink = calm || strobe ? 1 : 0.4;
     const pl = police.current;
     if (pl) {
       pl.intensity = live.police * 24 * blink;
@@ -232,7 +235,7 @@ export function Room() {
       pl.position.x = strobe ? -3.5 : 3.5;
     }
     if (neonLight.current) {
-      const flick = 0.9 + 0.1 * Math.sin(t * 31) * Math.sin(t * 3.3);
+      const flick = calm ? 1 : 0.9 + 0.1 * Math.sin(t * 31) * Math.sin(t * 3.3);
       neonLight.current.intensity = (2.5 + live.neon * 9 + (live.surge + egg.surge) * 18) * flick * egg.gate;
     }
   });

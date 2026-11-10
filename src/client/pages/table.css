@@ -234,3 +234,21 @@
 .pdialog[open] {
   animation: fade-up 0.4s var(--ease-out) both;
 }
+
+/* ---- Paused (the practice table) ---------------------------------------- */
+
+.pause {
+  width: min(calc(100vw - 2rem), 26rem);
+  text-align: center;
+}
+
+.pause__title {
+  margin: 0 0 0.6rem;
+  font: 700 clamp(1.6rem, 5vw, 2.2rem) / 1.1 var(--serif);
+}
+
+.pause__text {
+  margin: 0 0 1.4rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}

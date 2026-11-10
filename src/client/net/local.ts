@@ -60,9 +60,22 @@ function randomSeed(): number {
   return s[0]! * 2 ** 21 + (s[1]! >>> 11);
 }
 
+function isPing(raw: string): boolean {
+  try {
+    return (JSON.parse(raw) as { t?: unknown }).t === 'ping';
+  } catch {
+    return false;
+  }
+}
+
 /** Open a practice table in this tab and return a line to it. */
 export function dialPractice(h: LineHandlers, opts: PracticeOptions): Line {
-  const now = opts.now ?? Date.now;
+  const clockNow = opts.now ?? Date.now;
+  // Paused, the table's clock stands still: deadlines and the regulars wait.
+  // Time spent paused is taken off the clock when play goes on.
+  let pausedAt: number | null = null;
+  let offset = 0;
+  const now = () => (pausedAt ?? clockNow()) - offset;
   const store = opts.storage === undefined ? sessionStore() : opts.storage;
   let engine: Engine | null = null;
   let closed = false;
@@ -86,7 +99,7 @@ export function dialPractice(h: LineHandlers, opts: PracticeOptions): Line {
     if (timer) clearTimeout(timer);
     timer = null;
     const next = engine?.nextWake();
-    if (next === undefined || closed) return;
+    if (next === undefined || closed || pausedAt !== null) return;
     timer = setTimeout(
       () => {
         timer = null;
@@ -137,8 +150,23 @@ export function dialPractice(h: LineHandlers, opts: PracticeOptions): Line {
     },
     send(raw) {
       if (!engine || closed || raw.length > 2048) return;
+      if (pausedAt !== null && greeted && !isPing(raw)) return; // Nothing moves while paused.
       if (!greeted) hello(raw);
       else apply(JSON.parse(engine.message(seat, raw, now())) as Effect[]);
+    },
+    pause(on) {
+      if (closed || on === (pausedAt !== null)) return;
+      if (on) {
+        pausedAt = clockNow();
+        if (timer) clearTimeout(timer);
+        timer = null;
+        return;
+      }
+      offset += clockNow() - pausedAt!;
+      pausedAt = null;
+      // A fresh view carries the table's time, so the page's clock lines up again.
+      if (engine && greeted) h.onMessage(engine.stateFor(seat, now()));
+      schedule();
     },
     close() {
       if (closed) return;
