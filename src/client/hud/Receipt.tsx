@@ -1,5 +1,6 @@
 // The night, itemized. Printed on the bar's thermal roll and stamped.
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
+import { useRescueFocus } from './useRescueFocus';
 import { TABLES } from '../../engine/rules';
 import type { GameView, HistoryEntry } from '../../engine/types';
 import { sfx } from '../audio';
@@ -12,6 +13,8 @@ import { Seal } from '../ui/Seal';
 export function Receipt({ view, aside }: { view: GameView; aside?: ReactNode }) {
   const send = useTable((s) => s.send);
   const leave = useTable((s) => s.leave);
+  const title = useRef<HTMLHeadingElement>(null);
+  useRescueFocus(title);
   const verdict = view.verdict ?? 'dawn';
   const host = amHost(view);
   const table = TABLES[view.config.difficulty];
@@ -36,7 +39,7 @@ export function Receipt({ view, aside }: { view: GameView; aside?: ReactNode }) 
           </p>
         </header>
 
-        <ol className="receipt__lines">
+        <ol className="receipt__lines" tabIndex={0} aria-label="Hand by hand">
           {view.history.map((h) => (
             <Line key={h.hand} h={h} />
           ))}
@@ -50,7 +53,7 @@ export function Receipt({ view, aside }: { view: GameView; aside?: ReactNode }) 
         </div>
 
         <div className="receipt__verdict">
-          <h2 id="receipt-verdict" className={`verdict-stamp verdict-stamp--${verdict}`} aria-live="polite">
+          <h2 id="receipt-verdict" ref={title} tabIndex={-1} className={`verdict-stamp verdict-stamp--${verdict}`}>
             {VERDICT_LINE[verdict]}
           </h2>
           <p>{raidAtDawn(view) ? RAID_AT_DAWN_SUB : VERDICT_SUB[verdict]}</p>

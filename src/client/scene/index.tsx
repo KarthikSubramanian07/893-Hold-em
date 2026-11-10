@@ -8,12 +8,14 @@ import { Environment, Lightformer, PerformanceMonitor } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber';
 import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react';
 import type { GameView } from '../../engine/types';
+import { describeTable } from '../hud/announce';
 import { AnchorTracker } from './AnchorTracker';
 import { Prewarm } from './Prewarm';
 import { CameraRig } from './CameraRig';
 import { deriveTargets, type SceneTargets } from './derive';
 import { EggListener } from './EggListener';
 import { catVisits } from '../story/eggs';
+import { useReducedMotion, useStill } from '../story/motion';
 import { Bar } from './parts/Bar';
 import { fontsReady } from './fonts';
 import { Dust } from './fx/Dust';
@@ -39,19 +41,8 @@ export interface TableSceneProps {
   quality?: 'low' | 'high';
   /** Force Kyū onto the bar (or off it). Defaults to catVisits(view.code), tonight. */
   cat?: boolean;
-}
-
-function usePrefersReducedMotion(): boolean {
-  const query = '(prefers-reduced-motion: reduce)';
-  const [reduced, setReduced] = useState(() => typeof window !== 'undefined' && window.matchMedia?.(query).matches);
-  useEffect(() => {
-    const mq = window.matchMedia?.(query);
-    if (!mq) return;
-    const on = () => setReduced(mq.matches);
-    mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, []);
-  return reduced;
+  /** The practice table is paused: hold the frame. */
+  paused?: boolean;
 }
 
 function World({ targets, high, dpr, cat }: { targets: SceneTargets; high: boolean; dpr: number; cat: boolean }) {
@@ -96,14 +87,16 @@ function World({ targets, high, dpr, cat }: { targets: SceneTargets; high: boole
   );
 }
 
-export function TableScene({ view, quality = 'high', cat }: TableSceneProps) {
+export function TableScene({ view, quality = 'high', cat, paused = false }: TableSceneProps) {
   const targets = useMemo(() => deriveTargets(view), [view]);
   const catTonight = useMemo(() => cat ?? catVisits(view.code), [cat, view.code]);
-  const reduced = usePrefersReducedMotion();
+  const reduced = useReducedMotion();
+  const still = useStill();
   // One mutable bag of per-frame values, shared down the tree.
   const [live] = useState(() => createLive(targets, reduced));
   live.targets = targets;
   live.reducedMotion = reduced;
+  live.still = still;
   const [dpr, setDpr] = useState(() => Math.min(1.75, Math.max(1, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)));
   const [degraded, setDegraded] = useState(false);
   const swings = useRef(0);
@@ -147,7 +140,10 @@ export function TableScene({ view, quality = 'high', cat }: TableSceneProps) {
         dpr={dpr}
         camera={{ fov: initial.fov, near: 0.1, far: 40, position: [initial.position.x, initial.position.y, initial.position.z] }}
         gl={{ antialias: !high, powerPreference: 'high-performance', stencil: false }}
-        aria-label="The table"
+        frameloop={paused ? 'never' : 'always'}
+        // The canvas has no words of its own; this is the table in words (also on the T key).
+        role="img"
+        aria-label={describeTable(view)}
       >
         <LiveContext.Provider value={live}>
           {watching && (

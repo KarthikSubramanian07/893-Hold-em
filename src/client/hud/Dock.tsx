@@ -1,7 +1,7 @@
 // The only way to talk at this table, in two calm steps. On the flop: tap one
 // of the two beside you to nod at them, or pass. On the river: In or Out. A clock ring
 // keeps time; everything else stays out of the way.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameView, SeatView, Stance } from '../../engine/types';
 import { sfx } from '../audio';
 import { countdown, ringOffset, type Countdown } from '../lib/countdown';
@@ -10,6 +10,7 @@ import { useTable } from '../net/store';
 import { AvatarSeal } from '../ui/avatars';
 import { CardPair } from './MiniCard';
 import { useNow } from './useNow';
+import { useRescueFocus } from './useRescueFocus';
 
 const PICKS: { stance: Stance; kanji: string; label: string; key: string; hint: string }[] = [
   { stance: 'in', kanji: '入', label: 'In', key: 'I', hint: 'Your hand plays the House. A step toward the door if it wins, toward the sirens if not.' },
@@ -31,6 +32,7 @@ export function Dock({ view }: { view: GameView }) {
   const nod = useTable((s) => s.nod);
   const call = useTable((s) => s.call);
   const skew = useTable((s) => s.skew);
+  const paused = useTable((s) => s.paused);
   const stepKey = `${view.night}:${view.hand}:${view.phase}`;
   // What you just pressed, before the server echoes it back.
   const [local, setLocal] = useState<{ key: string; nod?: string | null; stance?: Stance } | null>(null);
@@ -40,9 +42,11 @@ export function Dock({ view }: { view: GameView }) {
   const mates = teammates(view);
   const beside = inSight(view);
   const [armed, setArmed] = useState(false);
+  const panel = useRef<HTMLElement>(null);
+  useRescueFocus(panel, `${stepKey}:${mode}`);
 
   const totalMs = view.config.timer * 1000;
-  const now = useNow(view.deadline != null && mode !== 'none', 200);
+  const now = useNow(view.deadline != null && mode !== 'none' && !paused, 200);
   const clock = countdown(view.deadline, now, skew, totalMs);
 
   const nodAt = useCallback(
@@ -71,7 +75,7 @@ export function Dock({ view }: { view: GameView }) {
   useEffect(() => {
     if (mode !== 'nod' && mode !== 'call') return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat || typing(e)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat || typing(e) || useTable.getState().paused) return;
       const k = e.key.toLowerCase();
       if (mode === 'call') {
         if (k === 'i') pick('in');
@@ -103,7 +107,7 @@ export function Dock({ view }: { view: GameView }) {
 
   if (mode === 'spectator') {
     return (
-      <section className="dock dock--quiet" aria-label="Watching">
+      <section ref={panel} tabIndex={-1} className="dock dock--quiet" aria-label="Watching">
         <p className="dock__quiet">
           <span className="dock__quiet-k" aria-hidden="true">
             観
@@ -123,7 +127,7 @@ export function Dock({ view }: { view: GameView }) {
   if (mode === 'nod' || mode === 'nodded') {
     const chosen = mine?.nod !== undefined ? mine.nod : me?.locked ? (me.nod ?? null) : undefined;
     return (
-      <section className={`dock dock--nod${mode === 'nodded' ? ' is-done' : ''}${armed ? ' is-armed' : ''}`} aria-label="Nod at a teammate">
+      <section ref={panel} tabIndex={-1} className={`dock dock--nod${mode === 'nodded' ? ' is-done' : ''}${armed ? ' is-armed' : ''}`} aria-label="Nod at a teammate">
         <header className="dock__head">
           <p className="dock__step">
             <span className="dock__stepk" aria-hidden="true">
@@ -185,7 +189,7 @@ export function Dock({ view }: { view: GameView }) {
   const chosen = mine?.stance ?? me?.stance ?? null;
   const onMe = me ? nodsOn(view, me.id) : 0;
   return (
-    <section className={`dock dock--call${mode === 'called' ? ' is-done' : ''}`} aria-label="In or Out">
+    <section ref={panel} tabIndex={-1} className={`dock dock--call${mode === 'called' ? ' is-done' : ''}`} aria-label="In or Out">
       <header className="dock__head">
         <p className="dock__step">
           <span className="dock__stepk" aria-hidden="true">
@@ -288,7 +292,6 @@ function MateChip({
       disabled={disabled}
       aria-pressed={chosen}
       aria-keyshortcuts={String(index + 1)}
-      aria-label={`Nod at ${seat.name}`}
       onClick={onNod}
       onMouseEnter={() => !disabled && sfx.hover()}
     >
@@ -296,7 +299,10 @@ function MateChip({
         {index + 1}
       </span>
       <AvatarSeal avatar={seat.avatar} size={26} />
-      <span className="mate__name">{seat.name}</span>
+      <span className="mate__name">
+        <span className="sr-only">Nod at </span>
+        {seat.name}
+      </span>
       <CardPair cards={seat.cards} size="xs" />
       {chosen && (
         <span className="mate__nod" aria-hidden="true">

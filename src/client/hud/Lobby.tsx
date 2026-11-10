@@ -9,6 +9,8 @@ import { AvatarSeal } from '../ui/avatars';
 import { IconClose, IconCopy } from '../ui/icons';
 import { Seal } from '../ui/Seal';
 import { copyInvite } from './invite';
+import { useRef } from 'react';
+import { useRescueFocus } from './useRescueFocus';
 import { PracticeNote, PracticeOffer } from './Practice';
 
 const TIMERS: { v: TimerSetting; label: string }[] = [
@@ -27,12 +29,14 @@ export function Lobby({ view, onEditProfile }: { view: GameView; onEditProfile: 
   const full = seats.length >= MAX_CREW;
   const hostName = seats.find((s) => s.host)?.name ?? 'the host';
   const crew = Math.max(MIN_CREW, seats.length);
+  const title = useRef<HTMLHeadingElement>(null);
+  useRescueFocus(title);
 
   return (
     <section className="lobby paper" aria-labelledby="lobby-title">
       <div className="lobby__col lobby__crew">
         <p className="label lobby__k">Tonight's table</p>
-        <h1 id="lobby-title" className="lobby__code" aria-label={`Table ${view.code.split('').join(' ')}`}>
+        <h1 id="lobby-title" ref={title} tabIndex={-1} className="lobby__code" aria-label={`Table ${view.code.split('').join(' ')}`}>
           {view.code.split('').map((ch, i) => (
             <span key={i}>{ch}</span>
           ))}
